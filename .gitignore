@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 # Personal
-#upload_images/cleanup_uploads.sh
+upload_images/cleanup_uploads.sh
