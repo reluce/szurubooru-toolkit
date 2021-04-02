@@ -33,7 +33,7 @@ def get_files(upload_dir):
     
     return files
 
-def get_image_token(image, file):
+def get_image_token(image):
     """
     Upload the image to the temporary uploads endpoint.
     We can access our temporary image with the image token.
@@ -54,7 +54,6 @@ def get_image_token(image, file):
     try:
         response    = requests.post(post_url, files={'content': image}, headers=booru_headers)
         image_token = response.json()['token']
-        os.remove(file)
 
         return(image_token)
     except Exception as e:
@@ -90,6 +89,7 @@ def check_similarity(image_token):
 def upload_file(image_token, similar_posts):
     """
     Uploads/Moves our temporary image to 'production' with similar posts if any were found.
+    Deletes file after upload has been completed.
 
     Args:
         image_token: An image token from szurubooru
@@ -135,7 +135,7 @@ if files:
     for file in tqdm(files, ncols=80, position=0, leave=False):
         image = open(file, 'rb')
 
-        image_token = get_image_token(image, file)
+        image_token = get_image_token(image)
         exact_post, similar_posts = check_similarity(image_token)
 
         if not exact_post:
@@ -143,7 +143,8 @@ if files:
             for post in similar_posts:
                 similar_posts_ids.append(post['post']['id'])
                 
-            upload_file(image_token, similar_posts_ids)
+            upload_file(image_token, similar_posts_ids, file)
+            os.remove(file)
 
     print()
     print('Script has finished uploading.')
