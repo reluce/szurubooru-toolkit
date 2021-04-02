@@ -1,0 +1,6 @@
+[szurubooru]
+address   = https://example.com
+api_token = my_api_key
+
+[options]
+upload_dir = /local/path/to/upload/dir
