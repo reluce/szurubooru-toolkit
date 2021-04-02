@@ -1,6 +1,0 @@
-[szurubooru]
-address   = https://example.com
-api_token = myapikey
-
-[options]
-upload_dir = path_to_images

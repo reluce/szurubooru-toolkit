@@ -130,3 +130,5 @@ dmypy.json
 
 # Personal
 upload_images/cleanup_uploads.sh
+upload_images/config
+
