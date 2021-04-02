@@ -129,6 +129,6 @@ dmypy.json
 .pyre/
 
 # Personal
-upload_images/cleanup_uploads.sh
-upload_images/config
+#upload_images/cleanup_uploads.sh
+#upload_images/config
 
