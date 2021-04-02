@@ -86,7 +86,7 @@ def check_similarity(image_token):
     except Exception as e:
         print(f'An error occured during the similarity check: {e}')
 
-def upload_file(image_token, similar_posts):
+def upload_file(image_token, similar_posts, file_path):
     """
     Uploads/Moves our temporary image to 'production' with similar posts if any were found.
     Deletes file after upload has been completed.
@@ -104,6 +104,7 @@ def upload_file(image_token, similar_posts):
 
     try:
         requests.post(post_url, headers=booru_headers, data=metadata)
+        os.remove(file_path)
     except Exception as e:
         print(f'An error occured during the upload: {e}')
         
@@ -127,13 +128,13 @@ def delete_posts(start_id, finish_id):
             print(f'An error occured while deleting posts: {e}')
 
 # Start processing the script from here on
-files = get_files(upload_dir)
+files_to_upload  = get_files(upload_dir)
 
-if files:
-    print('Found ' + str(len(files)) + ' images. Starting upload...')
+if files_to_upload:
+    print('Found ' + str(len(files_to_upload)) + ' images. Starting upload...')
 
-    for file in tqdm(files, ncols=80, position=0, leave=False):
-        image = open(file, 'rb')
+    for file_to_upload in tqdm(files_to_upload, ncols=80, position=0, leave=False):
+        image = open(file_to_upload, 'rb')
 
         image_token = get_image_token(image)
         exact_post, similar_posts = check_similarity(image_token)
@@ -143,8 +144,7 @@ if files:
             for post in similar_posts:
                 similar_posts_ids.append(post['post']['id'])
                 
-            upload_file(image_token, similar_posts_ids, file)
-            os.remove(file)
+            upload_file(image_token, similar_posts_ids, file_to_upload)
 
     print()
     print('Script has finished uploading.')
