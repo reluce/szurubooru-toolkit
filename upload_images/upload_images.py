@@ -147,6 +147,8 @@ if files_to_upload:
                 similar_posts_ids.append(post['post']['id'])
                 
             upload_file(image_token, tags, similar_posts_ids, file_to_upload)
+        else:
+            os.remove(file_to_upload)
 
     print()
     print('Script has finished uploading.')
