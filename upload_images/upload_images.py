@@ -1,5 +1,6 @@
 import os
 import json
+import shutil
 import requests
 import configparser
 from glob import glob
@@ -149,6 +150,21 @@ if files_to_upload:
             upload_file(image_token, tags, similar_posts_ids, file_to_upload)
         else:
             os.remove(file_to_upload)
+
+    # Remove empty directories recursively from bottom to top
+    for root, dirs, files in os.walk(upload_dir, topdown=False):
+        for name in files:
+            # Remove Thumbs.db file created by Windows
+            if name == 'Thumbs.db':
+                os.remove(os.path.join(root, name))
+        for name in dirs:
+            # Remove @eaDir directory created on Synology systems
+            if name == '@eaDir':
+                shutil.rmtree(os.path.join(root, name))
+            try:
+                os.rmdir(os.path.join(root, name))
+            except OSError:
+                pass
 
     print()
     print('Script has finished uploading.')
