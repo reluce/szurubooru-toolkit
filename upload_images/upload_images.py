@@ -15,6 +15,7 @@ booru_api_url   = booru_address + '/api'
 booru_api_token = config['szurubooru']['api_token']
 booru_headers   = {'Accept': 'application/json', 'Authorization': 'Token ' + booru_api_token}
 upload_dir      = config['options']['upload_dir']
+tags            = config['options']['tags'].split(',')
 
 def get_files(upload_dir):
     """
@@ -86,7 +87,7 @@ def check_similarity(image_token):
     except Exception as e:
         print(f'An error occured during the similarity check: {e}')
 
-def upload_file(image_token, similar_posts, file_path):
+def upload_file(image_token, tags, similar_posts, file_path):
     """
     Uploads/Moves our temporary image to 'production' with similar posts if any were found.
     Deletes file after upload has been completed.
@@ -100,10 +101,11 @@ def upload_file(image_token, similar_posts, file_path):
     """
 
     post_url = booru_api_url + '/posts'
-    metadata = json.dumps({'tags': 'tagme', 'safety': 'unsafe', 'relations': similar_posts, 'contentToken': image_token})
+    metadata = json.dumps({'tags': tags, 'safety': 'unsafe', 'relations': similar_posts, 'contentToken': image_token})
 
     try:
-        requests.post(post_url, headers=booru_headers, data=metadata)
+        res = requests.post(post_url, headers=booru_headers, data=metadata)
+        #print(res.json())
         os.remove(file_path)
     except Exception as e:
         print(f'An error occured during the upload: {e}')
@@ -144,7 +146,7 @@ if files_to_upload:
             for post in similar_posts:
                 similar_posts_ids.append(post['post']['id'])
                 
-            upload_file(image_token, similar_posts_ids, file_to_upload)
+            upload_file(image_token, tags, similar_posts_ids, file_to_upload)
 
     print()
     print('Script has finished uploading.')
