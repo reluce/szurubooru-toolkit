@@ -7,7 +7,7 @@ After the upload has been completed, the script attempts to delete empty directo
 
 ### User configuration
 The config file accepts following input:
-```
+```INI
 [szurubooru]
 address   = https://example.com
 api_token = my_api_key
