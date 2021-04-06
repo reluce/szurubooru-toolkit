@@ -46,7 +46,7 @@ def get_image_token(api, image):
     post_url    = api.booru_api_url + '/uploads'
 
     try:
-        response    = requests.post(post_url, files={'content': image}, headers=api.api_headers)
+        response    = requests.post(post_url, files={'content': image}, headers=api.headers)
         image_token = response.json()['token']
 
         return(image_token)
@@ -72,7 +72,7 @@ def check_similarity(api, image_token):
     metadata = json.dumps({'contentToken': image_token})
     
     try:
-        response = requests.post(post_url, headers=api.api_headers, data=metadata)
+        response = requests.post(post_url, headers=api.headers, data=metadata)
         exact_post = response.json()['exactPost']
         similar_posts = response.json()['similarPosts']
 
@@ -97,7 +97,7 @@ def upload_file(api, post, file_path):
     metadata = json.dumps({'tags': post.tags, 'safety': 'unsafe', 'relations': post.similar_posts, 'contentToken': post.image_token})
 
     try:
-        res = requests.post(post_url, headers=api.api_headers, data=metadata)
+        res = requests.post(post_url, headers=api.headers, data=metadata)
         #print(res.json())
         os.remove(file_path)
     except Exception as e:
@@ -143,7 +143,7 @@ def delete_posts(api, start_id, finish_id):
     for id in range(start_id, finish_id + 1):
         post_url = api.booru_api_url + '/post/' + str(id)
         try:
-            requests.delete(post_url, headers=api.api_headers, data=json.dumps({'version': '1'}))
+            requests.delete(post_url, headers=api.headers, data=json.dumps({'version': '1'}))
         except Exception as e:
             print(f'An error occured while deleting posts: {e}')
 
