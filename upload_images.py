@@ -99,9 +99,8 @@ def upload_file(api, post, file_path):
     try:
         res = requests.post(post_url, headers=api.headers, data=metadata)
 
-        if res.json()['name'] == 'InvalidParameterError':
-            error = res.json()['description']
-            raise Exception(error)
+        if 'description' in res.json():
+            raise Exception(res.json()['description'])
         else:
            os.remove(file_path)
     except Exception as e:
