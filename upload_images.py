@@ -98,9 +98,14 @@ def upload_file(api, post, file_path):
 
     try:
         res = requests.post(post_url, headers=api.headers, data=metadata)
-        #print(res.json())
-        os.remove(file_path)
+
+        if res.json()['name'] == 'InvalidParameterError':
+            error = res.json()['description']
+            raise Exception(error)
+        else:
+           os.remove(file_path)
     except Exception as e:
+        print()
         print(f'An error occured during the upload: {e}')
 
 def cleanup_dirs(dir):
