@@ -168,6 +168,7 @@ def main():
 
     post       = Post()
     user_input = UserInput()
+    user_input.parse_config()
     api        = API(
         booru_address   = user_input.booru_address,
         booru_api_token = user_input.booru_api_token,

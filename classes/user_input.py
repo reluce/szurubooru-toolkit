@@ -16,9 +16,6 @@ class UserInput:
         self.upload_dir      = ''
         self.tags            = []
 
-        #self.parse_input()
-        self.parse_config()
-
     def parse_input(self):
         # Create the parser
         parser = argparse.ArgumentParser(description='This script will automagically tag your szurubooru posts based on your input query.')
