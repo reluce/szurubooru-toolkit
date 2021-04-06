@@ -9,7 +9,7 @@ class Post:
         self.rating        = 'unsafe'
         self.source        = 'Anonymous'
         self.exact_post    = None
-        self.similar_posts = None
+        self.similar_posts = []
 
     def describe(self):
         data = {
