@@ -43,14 +43,19 @@ def get_image_token(api, image):
         Exception
     """
 
-    post_url    = api.booru_api_url + '/uploads'
+    post_url = api.booru_api_url + '/uploads'
 
     try:
         response    = requests.post(post_url, files={'content': image}, headers=api.headers)
-        image_token = response.json()['token']
 
-        return(image_token)
+        if 'description' in response.json():
+            raise Exception(response.json()['description'])
+        else:
+            image_token = response.json()['token']
+
+        return image_token
     except Exception as e:
+        print()
         print(f'An error occured while getting the image token: {e}')
 
 def check_similarity(api, image_token):
@@ -73,11 +78,16 @@ def check_similarity(api, image_token):
     
     try:
         response = requests.post(post_url, headers=api.headers, data=metadata)
-        exact_post = response.json()['exactPost']
-        similar_posts = response.json()['similarPosts']
+
+        if 'description' in response.json():
+            raise Exception(response.json()['description'])
+        else:
+            exact_post = response.json()['exactPost']
+            similar_posts = response.json()['similarPosts']
 
         return exact_post, similar_posts 
     except Exception as e:
+        print()
         print(f'An error occured during the similarity check: {e}')
 
 def upload_file(api, post, file_path):
@@ -97,10 +107,10 @@ def upload_file(api, post, file_path):
     metadata = json.dumps({'tags': post.tags, 'safety': 'unsafe', 'relations': post.similar_posts, 'contentToken': post.image_token})
 
     try:
-        res = requests.post(post_url, headers=api.headers, data=metadata)
+        response = requests.post(post_url, headers=api.headers, data=metadata)
 
-        if 'description' in res.json():
-            raise Exception(res.json()['description'])
+        if 'description' in response.json():
+            raise Exception(response.json()['description'])
         else:
            os.remove(file_path)
     except Exception as e:
