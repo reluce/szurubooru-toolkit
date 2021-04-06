@@ -10,7 +10,7 @@ class API:
         self.booru_offline   = booru_offline
         self.booru_api_url   = self.booru_address + '/api'
         self.booru_api_token = booru_api_token
-        self.api_headers     = {'Accept':'application/json', 'Authorization':'Token ' + booru_api_token}
+        self.headers     = {'Accept':'application/json', 'Authorization':'Token ' + booru_api_token}
 
     def get_post_ids(self, query):
         """
@@ -22,7 +22,7 @@ class API:
 
         try:
             query_url     = self.booru_api_url + '/posts/?query=' + query
-            response      = requests.get(query_url, headers=self.api_headers)
+            response      = requests.get(query_url, headers=self.headers)
 
             total         = str(response.json()['total'])
             posts         = response.json()['results']
@@ -38,7 +38,7 @@ class API:
                 if pages > 1:
                     for page in range(1, pages + 1):
                         query_url = self.booru_api_url + '/posts/?offset=' + str(page) + '00&query=' + query
-                        posts     = requests.get(query_url, headers=self.api_headers).json()['results']
+                        posts     = requests.get(query_url, headers=self.headers).json()['results']
 
                         for post in posts:
                             post_ids.append(str(post['id']))
@@ -58,7 +58,7 @@ class API:
 
         try:
             query_url   = self.booru_api_url + '/post/' + post_id
-            response    = requests.get(query_url, headers=self.api_headers)
+            response    = requests.get(query_url, headers=self.headers)
 
             content_url = response.json()['contentUrl']
             version     = response.json()['version']
@@ -79,7 +79,7 @@ class API:
         meta_data = json.dumps({"version": post.version, "tags": post.tags, "source": post.source, "safety": post.rating})
 
         try:
-            requests.put(query_url, headers=self.api_headers, data=meta_data)
+            requests.put(query_url, headers=self.headers, data=meta_data)
         except Exception as e:
             print(f'Could not upload your post: {e}')
         
