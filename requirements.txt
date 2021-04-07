@@ -1,2 +1,4 @@
-requests
-tqdm
+requests==2.25.1
+tqdm==4.59.0
+beautifulsoup4==4.9.3
+Pillow==8.2.0
