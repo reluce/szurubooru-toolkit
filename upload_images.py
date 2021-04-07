@@ -5,7 +5,6 @@ import requests
 import configparser
 from glob import glob
 from tqdm import tqdm
-from requests.auth import HTTPBasicAuth
 from classes.user_input import UserInput
 from classes.api import API
 from classes.post import Post
