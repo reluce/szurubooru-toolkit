@@ -5,7 +5,7 @@ from classes.iqdb import IQDB
 from classes.user_input import UserInput
 from misc.helpers import get_metadata_sankaku, statistics
 
-def get_iqdb_result(iqdb, post, booru_offline):
+def get_iqdb_result(iqdb, post, booru_offline, local_temp_path):
     """
     Uploads your file to IQDB and returns the IQDB HTML result page.
 
@@ -13,7 +13,7 @@ def get_iqdb_result(iqdb, post, booru_offline):
         iqdb: An IQDB object
         post: A post object
         booru_offline: If your booru is online or offline
-
+        local_temp_path: Directory where images should be saved if booru is offline
     Returns:
         result_page: The IQDB HTML result page
 
@@ -22,7 +22,7 @@ def get_iqdb_result(iqdb, post, booru_offline):
     """
 
     try:
-        result_page = iqdb.get_result(post, booru_offline)
+        result_page = iqdb.get_result(post, booru_offline, local_temp_path)
         return(result_page)
     except Exception as e:
         print(e)
@@ -116,7 +116,7 @@ def main():
                     post.tags = ['tagme']
                 else:
                     # Get post and upload it to iqdb
-                    result_page = get_iqdb_result(iqdb, post, api.booru_offline)
+                    result_page = get_iqdb_result(iqdb, post, api.booru_offline, user_input.local_temp_path)
 
                     # Parse result from iqdb
                     post.tags, post.source, post.rating = parse_iqdb_result(iqdb, result_page, user_input)

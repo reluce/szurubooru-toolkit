@@ -11,7 +11,7 @@ class IQDB:
         self.base_url_download = self.base_url + '?url='
         self.results           = False
 
-    def get_result(self, post, booru_offline):
+    def get_result(self, post, booru_offline, local_temp_path):
         """
         If our booru is offline, upload the image to iqdb and return the result html page.
         Otherwise, let iqdb download the image from our szuru instance.
@@ -20,7 +20,7 @@ class IQDB:
         if(booru_offline == True):
             # Download temporary image
             filename = post.image_url.split('/')[-1]
-            local_file_path = urllib.request.urlretrieve(post.image_url, '/tmp/' + filename)[0]
+            local_file_path = urllib.request.urlretrieve(post.image_url, local_temp_path + filename)[0]
 
             # Resize image if it's too big. IQDB limit is 8192KB or 7500x7500px.
             # Resize images bigger than 3MB to reduce stress on iqdb.

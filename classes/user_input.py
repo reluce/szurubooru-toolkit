@@ -15,6 +15,7 @@ class UserInput:
         self.fallback_booru  = ''
         self.upload_dir      = ''
         self.tags            = []
+        self.local_temp_path = ''
 
     def parse_input(self):
         # Create the parser
@@ -43,6 +44,7 @@ class UserInput:
         self.fallback_booru  = config['options'].get('fallback_booru', 'sankaku')
         self.upload_dir      = config['options']['upload_dir']
         self.tags            = config['options']['tags'].split(',')
+        self.local_temp_path = config['options'].get('local_temp_path', 'tmp')
 
     def describe(self):
         data = {
