@@ -1,6 +1,6 @@
 [szurubooru]
 address   = https://szuru.example.com
-api_token = my_api_key
+api_token = my_api_token
 offline   = True
 
 [options]
