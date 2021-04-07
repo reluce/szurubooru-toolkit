@@ -128,7 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Personal
-upload_images/cleanup_uploads.sh
-upload_images/config
+# Personal config file
+config
 
