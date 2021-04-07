@@ -185,6 +185,7 @@ def main():
             post.exact_post, similar_posts = check_similarity(api, post.image_token)
 
             if not post.exact_post:
+                post.tags = user_input.tags
                 post.similar_posts_ids = []        
                 for entry in similar_posts:
                     post.similar_posts_ids.append(entry['post']['id'])
