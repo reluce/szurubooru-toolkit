@@ -13,6 +13,7 @@ A python3 release and the required modules. Install those with:
 This script searches through your specified upload folder in the config file for any image/video files and uploads them to your booru.
 After the upload has been completed, the script attempts to delete empty directories under your upload directory.
 
+#### Usage
 After editing the config file, we can just execute the script:
 
 `python3 upload_images.py`
@@ -24,6 +25,7 @@ If your image was found on neither of those choices, the script attempts to fall
 
 By default the script searches Danbooru first, Sankaku after that and falls back to the best match.
 
+#### Usage
 So simply edit your config file and execute the script with your query:
 
 * `python3 auto_tagger.py 'date:today tag-count:0'`
@@ -63,3 +65,4 @@ You can generate your API token with following command:
 * Better error handling, especially with said user input
 * Add a reverse image search for Sankaku
 * Probably a lot of refactoring
+* JSON > INI config file
