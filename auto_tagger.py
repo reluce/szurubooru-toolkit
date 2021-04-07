@@ -98,7 +98,7 @@ def main():
     post_ids, total = api.get_post_ids(user_input.query)
 
     # If posts were found, start tagging
-    if total > 0:
+    if int(total) > 0:
         blacklist_extensions = ['mp4', 'webm', 'mkv']
 
         if user_input.sankaku_url:

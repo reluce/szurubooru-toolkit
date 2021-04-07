@@ -3,7 +3,7 @@ import requests
 import bs4
 import re
 import urllib
-from helpers import resize_image, convert_rating
+from misc.helpers import resize_image, convert_rating
 
 class IQDB:
     def __init__(self):
@@ -27,7 +27,6 @@ class IQDB:
             image_size = os.path.getsize(local_file_path)
 
             if image_size > 3000000:
-                #print("Input file is too big. Resizing...")
                 resize_image(local_file_path)
 
             # Upload it to IQDB
@@ -50,12 +49,9 @@ class IQDB:
 
         if result_page.find_all(text='No relevant matches'):
             self.results = False
-        else:
-            self.results = True
-
-        if not self.results:
             tags = ['tagme']
         else:
+            self.results = True
             self.elems = result_page.select(f"#pages a[href*={booru}] > img")
 
             if(booru == 'sankaku'):
