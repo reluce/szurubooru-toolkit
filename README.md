@@ -1,5 +1,5 @@
 # szurubooru-scripts
-Scripts which help managing larger szurubooru instances.
+Simplify your file uploads and automatically tag your posts.
 
 ## Requirements
 
