@@ -41,14 +41,14 @@ This is especially useful since IQDB hasn't updated their Sankaku database in ov
 The config file accepts following input:
 ```INI
 [szurubooru]
-address   = https://example.com
-api_token = my_api_key
+address   = https://szuru.example.com
+api_token = my_api_token
 offline   = True
 
 [options]
 upload_dir      = /local/path/to/upload/dir
-preferred_booru = sankaku
-fallback_booru  = danbooru
+preferred_booru = danbooru
+fallback_booru  = sankaku
 tags            = tagme,tag1,tag2,tag3
 ```
 Input should be formatted like the provided example, meaning:
