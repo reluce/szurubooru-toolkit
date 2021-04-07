@@ -12,6 +12,10 @@ class Post:
         self.similar_posts = []
 
     def describe(self):
+        """
+        Prints the currently assigned attributes of the object.
+        """
+
         data = {
             'id': self.id,
             'version': self.version,

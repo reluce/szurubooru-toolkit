@@ -18,6 +18,10 @@ class UserInput:
         self.local_temp_path = ''
 
     def parse_input(self):
+        """
+        Parse the user input to the script auto_tagger.py and set the object attributes accordingly.
+        """
+
         # Create the parser
         parser = argparse.ArgumentParser(description='This script will automagically tag your szurubooru posts based on your input query.')
 
@@ -32,6 +36,10 @@ class UserInput:
         self.query       = args.query
 
     def parse_config(self):
+        """
+        Parse the user config and set the object attributes accordingly.
+        """
+
         config = configparser.ConfigParser()
 
         config.read('config')
@@ -40,13 +48,17 @@ class UserInput:
         self.booru_api_token = config['szurubooru']['api_token']
         self.booru_headers   = {'Accept': 'application/json', 'Authorization': 'Token ' + self.booru_api_token}
         self.booru_offline   = strtobool(config['szurubooru']['offline'])
-        self.preferred_booru = config['options'].get('preferred_booru', 'gelbooru')
+        self.preferred_booru = config['options'].get('preferred_booru', 'danbooru')
         self.fallback_booru  = config['options'].get('fallback_booru', 'sankaku')
         self.upload_dir      = config['options']['upload_dir']
         self.tags            = config['options']['tags'].split(',')
         self.local_temp_path = config['options'].get('local_temp_path', 'tmp')
 
     def describe(self):
+        """
+        Prints the currently assigned attributes of the object.
+        """
+
         data = {
             'booru_address': self.booru_address,
             'booru_api_url': self.booru_api_url,
