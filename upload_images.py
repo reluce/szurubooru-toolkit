@@ -188,7 +188,7 @@ def main():
                 post.tags = user_input.tags
                 post.similar_posts_ids = []        
                 for entry in similar_posts:
-                    post.similar_posts_ids.append(entry['post']['id'])
+                    post.similar_posts.append(entry['post']['id'])
                     
                 upload_file(api, post, file_to_upload)
             else:
