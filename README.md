@@ -1,11 +1,23 @@
 # szurubooru-scripts
 Scripts which help managing larger szurubooru instances.
 
-## upload_images
-This script searches through your specified upload folder for any image/video files and uploads them to your booru.
+## Requirements
+
+A python3 release and the required modules. Install those with:
+
+`python3 -m pip install requirements.txt`
+
+## Scripts
+
+### upload_images
+This script searches through your specified upload folder in the config file for any image/video files and uploads them to your booru.
 After the upload has been completed, the script attempts to delete empty directories under your upload directory.
 
-## auto_tagger
+After editing the config file, we can just execute the script:
+
+`python3 upload_images.py`
+
+### auto_tagger
 This script accepts a szurubooru query as a user input, fetches all posts returned by it and attempts to tag it.
 In your config you can specify your preferred booru and fallback booru where tags should be fetched from.
 If your image was found on neither of those choices, the script attempts to fallback to the best match returned by IQDB.
