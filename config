@@ -1,0 +1,10 @@
+[szurubooru]
+address   = https://szuru.example.com
+api_token = my_api_key
+offline   = True
+
+[options]
+upload_dir      = /local/path/to/upload/dir
+preferred_booru = danbooru
+fallback_booru  = sankaku
+tags            = tagme,tag1,tag2,tag3
