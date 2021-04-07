@@ -2,7 +2,6 @@ import os
 import json
 import shutil
 import requests
-import configparser
 from glob import glob
 from tqdm import tqdm
 from classes.user_input import UserInput
