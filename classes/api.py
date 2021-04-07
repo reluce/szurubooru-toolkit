@@ -4,7 +4,6 @@ from math import ceil
 from .post import Post
 
 class API:
-
     def __init__(self, booru_address, booru_api_token, booru_offline):
         self.booru_address   = booru_address
         self.booru_offline   = booru_offline
@@ -14,7 +13,17 @@ class API:
 
     def get_post_ids(self, query):
         """
-        Return the found post ids of the supplied query
+        Return the found post ids of the supplied query.
+
+        Args:
+            query: The user input query
+
+        Returns:
+            post_ids: A list of the found post ids
+            total: The total amount of posts found
+
+        Raises:
+            Exception
         """
 
         if query.isnumeric():
@@ -54,6 +63,15 @@ class API:
     def get_post(self, post_id):
         """
         Returns a boilerplate post object with post_id, image_url and version.
+
+        Args:
+            post_id: The id from the post
+
+        Returns:
+            post: A post object
+
+        Raises:
+            Exception
         """
 
         try:
@@ -73,6 +91,12 @@ class API:
     def set_meta_data(self, post):
         """
         Set tags on post if any were found. Default source to anonymous and rating to unsafe.
+
+        Args:
+            post: A post object
+        
+        Raises:
+            Exception
         """
 
         query_url = self.booru_api_url + '/post/' + post.id

@@ -12,7 +12,7 @@ def get_iqdb_result(iqdb, post, booru_offline, local_temp_path):
     Args:
         iqdb: An IQDB object
         post: A post object
-        booru_offline: If your booru is online or offline
+        booru_offline: If our booru is online or offline
         local_temp_path: Directory where images should be saved if booru is offline
     Returns:
         result_page: The IQDB HTML result page

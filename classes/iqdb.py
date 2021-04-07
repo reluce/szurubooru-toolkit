@@ -13,8 +13,16 @@ class IQDB:
 
     def get_result(self, post, booru_offline, local_temp_path):
         """
-        If our booru is offline, upload the image to iqdb and return the result html page.
+        If our booru is offline, upload the image to iqdb and return the result HTML page.
         Otherwise, let iqdb download the image from our szuru instance.
+
+        Args:
+            post: A post object
+            booru_offline: If our booru is online or offline
+            local_temp_path: Directory where images should be saved if booru is offline
+
+        Returns:
+            result_page: The IQDB HTML result page
         """
 
         if(booru_offline == True):
@@ -44,7 +52,13 @@ class IQDB:
     def get_tags(self, result_page, booru):
         """
         Get tags from the preferred booru. If preferred booru yields no result, try fallback booru.
-        If fallback booru also yields no result, call get_tags_best_match().
+
+        Args:
+            result_page: The IQDB HTML result page
+            booru: The booru which tags should be fetched from
+
+        Returns:
+            tags: The tags which were found for the specified booru
         """
 
         if result_page.find_all(text='No relevant matches'):
@@ -59,13 +73,20 @@ class IQDB:
             else:
                 tags = self.elems[0].get('title').split()[5:]
 
-        return(tags)
+        return tags
 
     def get_tags_best_match(self, result_page, source):
         """
         If preferred and fallback booru yielded no results, try for best match.
         Zerochan meta data differ a bit from the others, so we have to call get_source() first
         and supply the source in order to differentiate.
+
+        Args:
+            result_page: The IQDB HTML result page
+            source: The best match booru
+
+        Returns:
+            tags: The tags which were found
         """
 
         self.elems = result_page.select('#pages > div:nth-child(2) > table:nth-child(1) > tr:nth-child(2) > td > a > img')
@@ -79,13 +100,20 @@ class IQDB:
         else:
             tags = self.elems[0].get('title').split()[5:]
 
-        return(tags)
+        return tags
 
     def get_source(self, result_page, booru = None):
         """
         Get source from the result page. Searches for href.
         Search link for preferred of fallback booru.
-        The else part gets executed from get_tags_best_match().
+        If no booru was specified, get the best match.
+        
+        Args:
+            result_page: The IQDB HTML result page
+            booru: The booru where the source should be fetched from
+
+        Returns:
+            source: A URL of page where tags were fetched from
         """
 
         if booru:
@@ -98,15 +126,18 @@ class IQDB:
         source_stirred = re.sub(r'"><.*', '', source_mixed)
         source = 'https://' + source_stirred
 
-        return(source)
+        return source
 
     def get_rating(self):
         """
         Get rating, it's the eigth character - Rating: {s,q,e}
         Convert those ratings to szuru format
+
+        Returns:
+            rating: The rating of the post
         """
 
         rating_raw = self.elems[0].get('title')[8]
         rating = convert_rating(rating_raw)
 
-        return(rating)
+        return rating
