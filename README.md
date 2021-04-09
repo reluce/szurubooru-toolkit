@@ -35,11 +35,11 @@ After editing the config file, we can just execute the script with our query:
 * `python3 auto_tagger.py 'tagme'`
 * `python3 auto_tagger.py 'id:100,101'`
 
-If we want to tag a single post, you can omit the keyword `id` in our query:
+If we want to tag a single post, we can omit the keyword `id` in our query:
 
 * `python3 auto_tagger.py 100`
 
-Alternatively, you can tag a single post and specify `--sankaku_url` to fetch the tags from the supplied URL:
+Alternatively, we can tag a single post and specify `--sankaku_url` to fetch the tags from the supplied URL:
 
 `python3 auto_tagger.py --sankaku_url https://chan.sankakucomplex.com/post/show/<id> 100`
 
@@ -63,7 +63,7 @@ Input should be formatted like the provided example, meaning:
 * No quotes around strings
 * Separate tags by comma with no whitespaces
 
-You can generate your API token with following command:
+We can generate our API token with following command:
 `echo -n username:token | base64`
 
 ## ToDo's
