@@ -127,10 +127,10 @@ def cleanup_dirs(dir):
     for root, dirs, files in os.walk(dir, topdown=False):
         for name in files:
             # Remove Thumbs.db file created by Windows
-            os.remove(os.path.join(root, name)) if name == 'Thumbs.db'
+            if name == 'Thumbs.db': os.remove(os.path.join(root, name))
         for name in dirs:
             # Remove @eaDir directory created on Synology systems
-            shutil.rmtree(os.path.join(root, name)) if name == '@eaDir'
+            if name == '@eaDir': shutil.rmtree(os.path.join(root, name))
             try:
                 os.rmdir(os.path.join(root, name))
             except OSError:
