@@ -6,9 +6,10 @@ total_tagged = 0
 total_untagged = 0
 
 def resize_image(local_image_path):
-    image = Image.open(local_image_path)
-    image.thumbnail((1000, 1000))
-    image.save(local_image_path)
+    with Image.open(local_image_path) as image:
+        image = Image.open(local_image_path)
+        image.thumbnail((1000, 1000))
+        image.save(local_image_path)
 
 def convert_rating(rating):
     """
