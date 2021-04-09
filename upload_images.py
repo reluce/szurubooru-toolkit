@@ -185,7 +185,7 @@ def main():
 
             if not post.exact_post:
                 post.tags = user_input.tags
-                post.similar_posts_ids = []        
+                post.similar_posts = []        
                 for entry in similar_posts:
                     post.similar_posts.append(entry['post']['id'])
                     
