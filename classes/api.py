@@ -79,10 +79,15 @@ class API:
             response    = requests.get(query_url, headers=self.headers)
 
             content_url = response.json()['contentUrl']
-            version     = response.json()['version']
             image_url   = self.booru_address + '/' + content_url
+            version     = response.json()['version']
+            tags        = response.json()['tags']
+            tag_list    = []
 
-            post = Post(post_id, image_url, version)
+            for tag in tags:
+                tag_list.append(tag['names'][0])
+
+            post = Post(post_id, image_url, version, tag_list)
 
             return post
         except Exception as e:

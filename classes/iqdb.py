@@ -38,7 +38,10 @@ class IQDB:
                 resize_image(local_file_path)
 
             # Upload it to IQDB
-            files    = {'file': open(local_file_path, 'rb')}
+            with open(local_file_path, 'rb') as f:
+                img = f.read()
+                
+            files    = {'file': img}
             response = requests.post(self.base_url, files=files)
 
             # Remove temporary image

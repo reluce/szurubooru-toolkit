@@ -118,8 +118,12 @@ def main():
                     # Get post and upload it to iqdb
                     result_page = get_iqdb_result(iqdb, post, api.booru_offline, user_input.local_temp_path)
 
-                    # Parse result from iqdb
-                    post.tags, post.source, post.rating = parse_iqdb_result(iqdb, result_page, user_input)
+                    # Parse result from iqdb. Don't remove previously set tags.
+                    tags, post.source, post.rating = parse_iqdb_result(iqdb, result_page, user_input)
+                    if post.tags and 'tagme' in tags:
+                        post.tags.append(tags[0])
+                    else:
+                        post.tags = tags
 
                 # Set meta data for the post
                 try:
