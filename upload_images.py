@@ -152,7 +152,8 @@ def delete_posts(api, start_id, finish_id):
         post_url = api.booru_api_url + '/post/' + str(id)
         try:
             response = requests.delete(post_url, headers=api.headers, data=json.dumps({'version': '1'}))
-            raise Exception(response.json()['description']) if 'description' in response.json()
+            if 'description' in response.json():
+                raise Exception(response.json()['description']) 
         except Exception as e:
             print(f'An error occured while deleting posts: {e}')
 
