@@ -25,17 +25,23 @@ If your image was found on neither of those choices, the script attempts to fall
 
 By default the script searches Danbooru first, Sankaku after that and falls back to the best match.
 
+If no matches from IQDB were found, the script keeps the previously set tags of the post and additionally appends the tag `tagme`.
+
 #### Usage
-So simply edit your config file and execute the script with your query:
+After editing the config file, we can just execute the script with our query:
 
 * `python3 auto_tagger.py 'date:today tag-count:0'`
 * `python3 auto_tagger.py 'date:2021-04-07'`
 * `python3 auto_tagger.py 'tagme'`
 * `python3 auto_tagger.py 'id:100,101'`
 
+If we want to tag a single post, you can omit the keyword `id` in our query:
+
+* `python3 auto_tagger.py 100`
+
 Alternatively, you can tag a single post and specify `--sankaku_url` to fetch the tags from the supplied URL:
 
-`python3 auto_tagger.py --sankaku_url https://chan.sankakucomplex.com/post/show/<id> 'id:100'`
+`python3 auto_tagger.py --sankaku_url https://chan.sankakucomplex.com/post/show/<id> 100`
 
 This is especially useful since IQDB hasn't updated their Sankaku database in over three years+ now.
 
