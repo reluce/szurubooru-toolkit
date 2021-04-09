@@ -50,8 +50,7 @@ def get_image_token(api, image):
             raise Exception(response.json()['description'])
         else:
             image_token = response.json()['token']
-
-        return image_token
+            return image_token
     except Exception as e:
         print()
         print(f'An error occured while getting the image token: {e}')
@@ -82,8 +81,7 @@ def check_similarity(api, image_token):
         else:
             exact_post = response.json()['exactPost']
             similar_posts = response.json()['similarPosts']
-
-        return exact_post, similar_posts 
+            return exact_post, similar_posts 
     except Exception as e:
         print()
         print(f'An error occured during the similarity check: {e}')
@@ -129,12 +127,10 @@ def cleanup_dirs(dir):
     for root, dirs, files in os.walk(dir, topdown=False):
         for name in files:
             # Remove Thumbs.db file created by Windows
-            if name == 'Thumbs.db':
-                os.remove(os.path.join(root, name))
+            os.remove(os.path.join(root, name)) if name == 'Thumbs.db'
         for name in dirs:
             # Remove @eaDir directory created on Synology systems
-            if name == '@eaDir':
-                shutil.rmtree(os.path.join(root, name))
+            shutil.rmtree(os.path.join(root, name)) if name == '@eaDir'
             try:
                 os.rmdir(os.path.join(root, name))
             except OSError:
@@ -155,7 +151,8 @@ def delete_posts(api, start_id, finish_id):
     for id in range(start_id, finish_id + 1):
         post_url = api.booru_api_url + '/post/' + str(id)
         try:
-            requests.delete(post_url, headers=api.headers, data=json.dumps({'version': '1'}))
+            response = requests.delete(post_url, headers=api.headers, data=json.dumps({'version': '1'}))
+            raise Exception(response.json()['description']) if 'description' in response.json()
         except Exception as e:
             print(f'An error occured while deleting posts: {e}')
 
