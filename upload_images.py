@@ -176,7 +176,8 @@ def main():
         print('Found ' + str(len(files_to_upload)) + ' images. Starting upload...')
 
         for file_to_upload in tqdm(files_to_upload, ncols=80, position=0, leave=False):
-            post.image = open(file_to_upload, 'rb')
+            with open(file_to_upload, 'rb') as f:
+                post.image = f.read()
 
             post.image_token = get_image_token(api, post.image)
             post.exact_post, similar_posts = check_similarity(api, post.image_token)
