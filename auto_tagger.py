@@ -106,6 +106,10 @@ def main():
                 post = api.get_post(post_ids[0])
                 post.tags, post.rating = get_metadata_sankaku(user_input.sankaku_url) 
                 post.source = user_input.sankaku_url
+
+                # Set meta data for the post
+                api.set_meta_data(post)
+                statistics(1, 0)
             else:
                 print('Can only tag a single post if you specify --sankaku_url.')
         else:
@@ -131,9 +135,8 @@ def main():
                 except Exception as e:
                     print(e)
 
-                if not user_input.sankaku_url:
-                    # Sleep 7 seconds so IQDB does not ban us
-                    sleep(7)
+                # Sleep 7 seconds so IQDB does not ban us
+                sleep(7)
 
     total_tagged, total_untagged = statistics()
     skipped = int(total) - total_tagged - total_untagged
