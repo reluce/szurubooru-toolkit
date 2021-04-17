@@ -108,7 +108,9 @@ class API:
         meta_data = json.dumps({"version": post.version, "tags": post.tags, "source": post.source, "safety": post.rating})
 
         try:
-            requests.put(query_url, headers=self.headers, data=meta_data)
+            response =  requests.put(query_url, headers=self.headers, data=meta_data)
+            if 'description' in response.json():
+                raise Exception(response.json()['description'])
         except Exception as e:
             print(f'Could not upload your post: {e}')
         
