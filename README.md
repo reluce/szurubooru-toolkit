@@ -72,3 +72,4 @@ We can generate our API token with following command:
 * Add a reverse image search for Sankaku
 * Probably a lot of refactoring
 * JSON > INI config file
+* Use SauceNAO instead of IQDB
