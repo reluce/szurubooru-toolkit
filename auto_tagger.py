@@ -2,8 +2,10 @@ from tqdm import tqdm
 from time import sleep
 from classes.api import API
 from classes.iqdb import IQDB
+from classes.saucenao import SauceNAO
+from classes.boorus.danbooru import Danbooru
 from classes.user_input import UserInput
-from misc.helpers import get_metadata_sankaku, statistics
+from misc.helpers import get_metadata_sankaku, statistics, convert_rating
 
 def get_iqdb_result(iqdb, post, booru_offline, local_temp_path):
     """
@@ -93,6 +95,15 @@ def main():
         booru_offline   = user_input.booru_offline,
     )
     iqdb = IQDB()
+    sauce = SauceNAO(
+        user_input.preferred_booru,
+        user_input.booru_offline,
+        user_input.local_temp_path,
+    )
+    danbooru = Danbooru(
+        danbooru_user    = user_input.danbooru_user,
+        danbooru_api_key = user_input.danbooru_api_key,
+    )
 
     # Get post ids and pages from input query
     post_ids, total = api.get_post_ids(user_input.query)
@@ -108,6 +119,7 @@ def main():
                 post.source = user_input.sankaku_url
             else:
                 print('Can only tag a single post if you specify --sankaku_url.')
+
         else:
             for post_id in tqdm(post_ids, ncols=80, position=0, leave=False):
                 post = api.get_post(post_id)
@@ -116,10 +128,22 @@ def main():
                     post.tags = ['tagme']
                 else:
                     # Get post and upload it to iqdb
-                    result_page = get_iqdb_result(iqdb, post, api.booru_offline, user_input.local_temp_path)
+                    if user_input.use_saucenao:
+                        result_url = sauce.get_result(post)
+                        if result_url:
+                            danbooru.get_result(result_url)
+                            tags = danbooru.get_tags()
+                            post.source = result_url
+                            post.rating = convert_rating(danbooru.get_rating())
+                            statistics(1, 0)
+                        else:
+                            tags = ['tagme']
+                            statistics(0, 1)
+                    else:
+                        result_page = get_iqdb_result(iqdb, post, api.booru_offline, user_input.local_temp_path)
+                        # Parse result from iqdb. Don't remove previously set tags.
+                        tags, post.source, post.rating = parse_iqdb_result(iqdb, result_page, user_input)
 
-                    # Parse result from iqdb. Don't remove previously set tags.
-                    tags, post.source, post.rating = parse_iqdb_result(iqdb, result_page, user_input)
                     if post.tags and 'tagme' in tags:
                         post.tags.append(tags[0])
                     else:
@@ -131,9 +155,8 @@ def main():
                 except Exception as e:
                     print(e)
 
-                if not user_input.sankaku_url:
-                    # Sleep 7 seconds so IQDB does not ban us
-                    sleep(7)
+                # Sleep 7 seconds so IQDB does not ban us
+                sleep(7)
 
     total_tagged, total_untagged = statistics()
     skipped = int(total) - total_tagged - total_untagged
