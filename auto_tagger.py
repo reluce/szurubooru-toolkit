@@ -36,9 +36,17 @@ def main():
 
         if user_input.sankaku_url:
             if user_input.query.isnumeric():
-                post = api.get_post(post_ids[0])
+                post = api.get_post(post_ids[0], user_input.local_temp_path, user_input.sankaku_url)
                 post.tags, post.rating = get_metadata_sankaku(user_input.sankaku_url) 
                 post.source = user_input.sankaku_url
+
+                # Set meta data for the post
+                try:
+                    api.set_meta_data(post)
+                    statistics(1, 0)
+                except Exception as e:
+                    statistics(0, 1)
+                    print(e)
             else:
                 print('Can only tag a single post if you specify --sankaku_url.')
         else:
@@ -52,8 +60,9 @@ def main():
                     if not danbooru.get_by_md5(post.md5sum):
                         sauce_results = sauce.from_file(post.image)
                         for sauce_result in sauce_results:
-                            if 'danbooru' in sauce_result.urls[0]:
-                                result_url = sauce_result.urls[0]
+                            if sauce_result.urls:
+                                if 'danbooru' in sauce_result.urls[0]:
+                                    result_url = sauce_result.urls[0]
 
                     if danbooru.result or result_url:
                         if result_url:
