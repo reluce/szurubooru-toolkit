@@ -2,8 +2,8 @@ from tqdm import tqdm
 from time import sleep
 from classes.api import API
 from classes.iqdb import IQDB
-from classes.saucenao import SauceNAO
 from classes.boorus.danbooru import Danbooru
+from saucenao_api import SauceNao
 from classes.user_input import UserInput
 from misc.helpers import get_metadata_sankaku, statistics, convert_rating
 
@@ -21,11 +21,7 @@ def main():
         booru_api_token = user_input.booru_api_token,
         booru_offline   = user_input.booru_offline,
     )
-    sauce = SauceNAO(
-        user_input.preferred_booru,
-        user_input.booru_offline,
-        user_input.local_temp_path,
-    )
+    sauce    = SauceNao(api_key=user_input.saucenao_api_key)
     danbooru = Danbooru(
         danbooru_user    = user_input.danbooru_user,
         danbooru_api_key = user_input.danbooru_api_key,
@@ -47,14 +43,17 @@ def main():
                 print('Can only tag a single post if you specify --sankaku_url.')
         else:
             for post_id in tqdm(post_ids, ncols=80, position=0, leave=False):
-                post = api.get_post(post_id)
+                post = api.get_post(post_id, local_temp_path=user_input.local_temp_path)
 
                 if any(extension in post.image_url for extension in blacklist_extensions):
                     post.tags = ['tagme']
                 else:
                     result_url = None
                     if not danbooru.get_by_md5(post.md5sum):
-                        result_url = sauce.get_result(post)
+                        sauce_results = sauce.from_file(post.image)
+                        for sauce_result in sauce_results:
+                            if 'danbooru' in sauce_result.urls[0]:
+                                result_url = sauce_result.urls[0]
 
                     if danbooru.result or result_url:
                         if result_url:
@@ -81,7 +80,7 @@ def main():
                     print(e)
 
                 # Sleep 3 seconds so SauceNAO does not ban us
-                #sleep(3)
+                sleep(3)
 
     total_tagged, total_untagged = statistics()
     skipped = int(total) - total_tagged - total_untagged

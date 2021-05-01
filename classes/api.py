@@ -1,7 +1,10 @@
 import json
 import requests
+import urllib
+import os
 from math import ceil
 from .post import Post
+from misc.helpers import resize_image
 
 class API:
     def __init__(self, booru_address, booru_api_token, booru_offline):
@@ -60,7 +63,7 @@ class API:
         except Exception as e:
             print(f'Could not process your query: {e}.')
 
-    def get_post(self, post_id):
+    def get_post(self, post_id, local_temp_path=None):
         """
         Returns a boilerplate post object with post_id, image_url and version.
 
@@ -88,7 +91,25 @@ class API:
             for tag in tags:
                 tag_list.append(tag['names'][0])
 
-            post = Post(md5sum, post_id, image_url, version, tag_list)
+            # Download temporary image
+            filename = content_url.split('/')[-1]
+            local_file_path = urllib.request.urlretrieve(image_url, local_temp_path + filename)[0]
+
+            # Resize image if it's too big. IQDB limit is 8192KB or 7500x7500px.
+            # Resize images bigger than 3MB to reduce stress on iqdb.
+            image_size = os.path.getsize(local_file_path)
+
+            if image_size > 3000000:
+                resize_image(local_file_path)
+
+            with open(local_file_path, 'rb') as f:
+                image = f.read()
+
+            # Remove temporary image
+            #if os.path.exists(local_file_path):
+            #    os.remove(local_file_path)
+
+            post = Post(md5sum, post_id, image_url, image, version, tag_list)
 
             return post
         except Exception as e:
