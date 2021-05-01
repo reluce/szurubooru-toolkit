@@ -51,7 +51,7 @@ class UserInput:
         self.booru_offline     = strtobool(config['szurubooru']['external'])
         self.preferred_booru   = config['auto_tagger'].get('preferred_booru', 'danbooru')
         self.fallback_booru    = config['auto_tagger'].get('fallback_booru', 'sankaku')
-        self.local_temp_path   = config['auto_tagger'].get('local_temp_path', 'tmp')
+        self.local_temp_path   = config['auto_tagger'].get('local_temp_path', '/tmp/')
         self.saucenao_api_key  = config['auto_tagger']['saucenao_api_key']
         self.danbooru_user     = config['auto_tagger']['boorus']['danbooru']['user']
         self.danbooru_api_key  = config['auto_tagger']['boorus']['danbooru']['api_key']
