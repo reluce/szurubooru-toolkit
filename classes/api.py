@@ -80,6 +80,7 @@ class API:
 
             content_url = response.json()['contentUrl']
             image_url   = self.booru_address + '/' + content_url
+            md5sum      = response.json()['checksumMD5']
             version     = response.json()['version']
             tags        = response.json()['tags']
             tag_list    = []
@@ -87,7 +88,7 @@ class API:
             for tag in tags:
                 tag_list.append(tag['names'][0])
 
-            post = Post(post_id, image_url, version, tag_list)
+            post = Post(md5sum, post_id, image_url, version, tag_list)
 
             return post
         except Exception as e:
