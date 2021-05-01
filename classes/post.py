@@ -3,7 +3,7 @@ class Post:
         self.id            = id
         self.version       = version
         self.image_url     = image_url
-        self.image         = None
+        self.image         = image
         self.image_token   = None
         self.tags          = tags
         self.rating        = 'unsafe'

@@ -79,8 +79,8 @@ def main():
                 except Exception as e:
                     print(e)
 
-                # Sleep 3 seconds so SauceNAO does not ban us
-                sleep(3)
+                # Sleep 5 seconds so SauceNAO does not ban us
+                sleep(5)
 
     total_tagged, total_untagged = statistics()
     skipped = int(total) - total_tagged - total_untagged

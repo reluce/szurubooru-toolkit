@@ -91,7 +91,8 @@ class API:
             for tag in tags:
                 tag_list.append(tag['names'][0])
 
-            # Download temporary image
+            # Download image and add it to the post object
+            # ToDo: Don't do that if the booru is accessible over the internet
             filename = content_url.split('/')[-1]
             local_file_path = urllib.request.urlretrieve(image_url, local_temp_path + filename)[0]
 
@@ -106,8 +107,8 @@ class API:
                 image = f.read()
 
             # Remove temporary image
-            #if os.path.exists(local_file_path):
-            #    os.remove(local_file_path)
+            if os.path.exists(local_file_path):
+                os.remove(local_file_path)
 
             post = Post(md5sum, post_id, image_url, image, version, tag_list)
 
