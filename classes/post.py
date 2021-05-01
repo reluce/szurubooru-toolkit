@@ -1,5 +1,5 @@
 class Post:
-    def __init__(self, md5sum, id=None, image_url=None, version=None, tags=[]):
+    def __init__(self, md5sum=None, id=None, image_url=None, version=None, tags=[]):
         self.id            = id
         self.version       = version
         self.image_url     = image_url
