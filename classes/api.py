@@ -136,7 +136,8 @@ class API:
 
         try:
             response = requests.put(query_url, headers=self.headers, data=meta_data)
-            print(response.json())
+            if 'description' in response.json():
+                raise Exception(response.json()['description'])
         except Exception as e:
             print(f'Could not upload your post: {e}')
         
