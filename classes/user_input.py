@@ -52,13 +52,13 @@ class UserInput:
         self.preferred_booru   = config['auto_tagger'].get('preferred_booru', 'danbooru')
         self.fallback_booru    = config['auto_tagger'].get('fallback_booru', 'sankaku')
         self.local_temp_path   = config['auto_tagger'].get('local_temp_path', 'tmp')
+        self.saucenao_api_key  = config['auto_tagger']['saucenao_api_key']
         self.danbooru_user     = config['auto_tagger']['boorus']['danbooru']['user']
         self.danbooru_api_key  = config['auto_tagger']['boorus']['danbooru']['api_key']
         self.konachan_user     = config['auto_tagger']['boorus']['konachan']['user']
         self.konachan_pass     = config['auto_tagger']['boorus']['konachan']['password']
         self.yandere_user      = config['auto_tagger']['boorus']['yandere']['user']
         self.yandere_pass      = config['auto_tagger']['boorus']['yandere']['password']
-        self.use_saucenao      = strtobool(config['auto_tagger'].get('use_saucenao', 'True'))
         self.tagger_progress   = strtobool(config['auto_tagger'].get('show_progress', 'True'))
         self.uploader_progress = strtobool(config['upload_images'].get('show_progress', 'True'))
         self.upload_dir        = config['upload_images']['upload_dir']
