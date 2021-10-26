@@ -1,5 +1,6 @@
 import argparse
 import configparser
+import json
 from distutils.util import strtobool
 
 class UserInput:
@@ -16,6 +17,7 @@ class UserInput:
         self.upload_dir      = ''
         self.tags            = []
         self.local_temp_path = ''
+        self.use_saucenao    = True,
 
     def parse_input(self):
         """
@@ -39,36 +41,25 @@ class UserInput:
         """
         Parse the user config and set the object attributes accordingly.
         """
+        with open('config.json') as f:
+            config = json.load(f)
 
-        config = configparser.ConfigParser()
-
-        config.read('config')
-        self.booru_address   = config['szurubooru']['address']
-        self.booru_api_url   = self.booru_address + '/api'
-        self.booru_api_token = config['szurubooru']['api_token']
-        self.booru_headers   = {'Accept': 'application/json', 'Authorization': 'Token ' + self.booru_api_token}
-        self.booru_offline   = strtobool(config['szurubooru']['offline'])
-        self.preferred_booru = config['options'].get('preferred_booru', 'danbooru')
-        self.fallback_booru  = config['options'].get('fallback_booru', 'sankaku')
-        self.upload_dir      = config['options']['upload_dir']
-        self.tags            = config['options']['tags'].split(',')
-        self.local_temp_path = config['options'].get('local_temp_path', 'tmp')
-
-    def describe(self):
-        """
-        Prints the currently assigned attributes of the object.
-        """
-
-        data = {
-            'booru_address': self.booru_address,
-            'booru_api_url': self.booru_api_url,
-            'booru_api_token': self.booru_api_token,
-            'booru_headers': self.booru_headers,
-            'booru_offline': self.booru_offline,
-            'preferred_booru': self.preferred_booru,
-            'fallback_booru': self.fallback_booru,
-            'upload_dir': self.upload_dir,
-            'tags': self.tags,
-        }
-
-        print(data)
+        self.booru_address     = config['szurubooru']['url']
+        self.booru_api_url     = self.booru_address + '/api'
+        self.booru_api_token   = config['szurubooru']['api_token']
+        self.booru_headers     = {'Accept': 'application/json', 'Authorization': 'Token ' + self.booru_api_token}
+        self.booru_offline     = strtobool(config['szurubooru']['external'])
+        self.preferred_booru   = config['auto_tagger'].get('preferred_booru', 'danbooru')
+        self.fallback_booru    = config['auto_tagger'].get('fallback_booru', 'sankaku')
+        self.local_temp_path   = config['auto_tagger'].get('local_temp_path', '/tmp/')
+        self.saucenao_api_key  = config['auto_tagger']['saucenao_api_key']
+        self.danbooru_user     = config['auto_tagger']['boorus']['danbooru']['user']
+        self.danbooru_api_key  = config['auto_tagger']['boorus']['danbooru']['api_key']
+        self.konachan_user     = config['auto_tagger']['boorus']['konachan']['user']
+        self.konachan_pass     = config['auto_tagger']['boorus']['konachan']['password']
+        self.yandere_user      = config['auto_tagger']['boorus']['yandere']['user']
+        self.yandere_pass      = config['auto_tagger']['boorus']['yandere']['password']
+        self.tagger_progress   = strtobool(config['auto_tagger'].get('show_progress', 'True'))
+        self.uploader_progress = strtobool(config['upload_images'].get('show_progress', 'True'))
+        self.upload_dir        = config['upload_images']['upload_dir']
+        self.tags              = config['upload_images']['tags']
