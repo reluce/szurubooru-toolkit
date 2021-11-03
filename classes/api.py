@@ -120,13 +120,47 @@ class API:
         except Exception as e:
             print(f'Could not get image url: {e}')
 
+    def get_post_old(self, post_id):
+        """
+        Returns a boilerplate post object with post_id, image_url and version.
+
+        Args:
+            post_id: The id from the post
+
+        Returns:
+            post: A post object
+
+        Raises:
+            Exception
+        """
+
+        try:
+            query_url   = self.booru_api_url + '/post/' + post_id
+            response    = requests.get(query_url, headers=self.headers)
+
+            content_url = response.json()['contentUrl']
+            image_url   = self.booru_address + '/' + content_url
+            version     = response.json()['version']
+            tags        = response.json()['tags']
+            tag_list    = []
+
+            for tag in tags:
+                tag_list.append(tag['names'][0])
+
+            md5sum = None
+            image = None
+            post = Post(md5sum, post_id, image_url, image, version, tag_list)
+            return post
+        except Exception as e:
+            print(f'Could not get image url: {e}')
+
     def set_meta_data(self, post):
         """
         Set tags on post if any were found. Default source to anonymous and rating to unsafe.
 
         Args:
             post: A post object
-        
+
         Raises:
             Exception
         """
@@ -135,13 +169,8 @@ class API:
         meta_data = json.dumps({"version": post.version, "tags": post.tags, "source": post.source, "safety": post.rating})
 
         try:
-<<<<<<< HEAD
-            response =  requests.put(query_url, headers=self.headers, data=meta_data)
-=======
             response = requests.put(query_url, headers=self.headers, data=meta_data)
->>>>>>> 31fd8d79d259c928dbb6cee13ca1775b1cfb3213
             if 'description' in response.json():
                 raise Exception(response.json()['description'])
         except Exception as e:
             print(f'Could not upload your post: {e}')
-        
