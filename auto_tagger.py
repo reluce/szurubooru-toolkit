@@ -2,10 +2,10 @@ from tqdm import tqdm
 from time import sleep
 from classes.api import API
 from classes.iqdb import IQDB
-from classes.boorus.danbooru import Danbooru
-from saucenao_api import SauceNao
+# from classes.boorus.danbooru import Danbooru
+from classes.saucenao import SauceNao
 from classes.user_input import UserInput
-from misc.helpers import get_metadata_sankaku, statistics, convert_rating
+from misc.helpers import get_metadata_sankaku, statistics, convert_rating, audit_rating, collect_tags, collect_sources
 
 def main():
     """
@@ -21,80 +21,66 @@ def main():
         booru_api_token = user_input.booru_api_token,
         booru_offline   = user_input.booru_offline,
     )
-    sauce    = SauceNao(api_key=user_input.saucenao_api_key)
-    danbooru = Danbooru(
-        danbooru_user    = user_input.danbooru_user,
-        danbooru_api_key = user_input.danbooru_api_key,
+    image_search_engine = SauceNao(
+        local_temp_path=user_input.local_temp_path,
+        api_key=user_input.saucenao_api_key
     )
+    # danbooru = Danbooru(
+    #     danbooru_user    = user_input.danbooru_user,
+    #     danbooru_api_key = user_input.danbooru_api_key,
+    # )
 
     # Get post ids and pages from input query
     post_ids, total = api.get_post_ids(user_input.query)
+    post_ready = []
+    blacklist_extensions = ['mp4', 'webm', 'mkv']
 
     # If posts were found, start tagging
-    if int(total) > 0:
-        blacklist_extensions = ['mp4', 'webm', 'mkv']
+    for post_id in tqdm(post_ids, ncols=80, position=0, leave=False):
+        post = api.get_post_old(post_id)
 
-        if user_input.sankaku_url:
-            if user_input.query.isnumeric():
-                post = api.get_post(post_ids[0], user_input.local_temp_path, user_input.sankaku_url)
-                post.tags, post.rating = get_metadata_sankaku(user_input.sankaku_url)
-                post.source = user_input.sankaku_url
+        is_blacklisted = False
+        for extension in blacklist_extensions:
+            if extension in post.image_url:
+                is_blacklisted = True
 
-                # Set meta data for the post
-                try:
-                    api.set_meta_data(post)
-                    statistics(1, 0)
-                except Exception as e:
-                    statistics(0, 1)
-                    print(e)
-            else:
-                print('Can only tag a single post if you specify --sankaku_url.')
-        else:
-            for post_id in tqdm(post_ids, ncols=80, position=0, leave=False):
-                post = api.get_post(post_id, local_temp_path=user_input.local_temp_path)
+        if is_blacklisted:
+            statistics(0, 1)
+            continue
 
-                if any(extension in post.image_url for extension in blacklist_extensions):
-                    post.tags = ['tagme']
-                else:
-                    result_url = None
-                    if not danbooru.get_by_md5(post.md5sum):
-                        sauce_results = sauce.from_file(post.image)
-                        for sauce_result in sauce_results:
-                            if sauce_result.urls:
-                                if 'danbooru' in sauce_result.urls[0]:
-                                    result_url = sauce_result.urls[0]
+        tags, source, rating = image_search_engine.get_metadata(post.image_url)
 
-                    if danbooru.result or result_url:
-                        if result_url:
-                            danbooru.get_result(result_url)
-                            post.source = result_url
-                        else:
-                            post.source = danbooru.source
-                        tags = danbooru.get_tags()
-                        post.rating = convert_rating(danbooru.get_rating())
-                        statistics(1, 0)
-                    else:
-                        tags = ['tagme']
-                        statistics(0, 1)
+        new_tags = collect_tags(
+            tags,
+            post.tags
+        )
+        if not len(new_tags):
+            new_tags.append('tagme')
 
-                    if post.tags and 'tagme' in tags:
-                        post.tags.append(tags[0])
-                    else:
-                        post.tags = tags
+        list_source_scraped = source.splitlines()
+        list_source_post = post.source.splitlines()
+        new_source = collect_sources(
+            *list_source_scraped,
+            *list_source_post
+        )
 
-                # Set meta data for the post
-                try:
-                    api.set_meta_data(post)
-                except Exception as e:
-                    print(e)
+        new_rating = audit_rating(
+            rating,
+            post.rating
+        )
 
-<<<<<<< HEAD
-                # Sleep 7 seconds so IQDB does not ban us
-                sleep(7)
-=======
-                # Sleep 5 seconds so SauceNAO does not ban us
-                sleep(5)
->>>>>>> 31fd8d79d259c928dbb6cee13ca1775b1cfb3213
+        post.tags = new_tags
+        post.source = new_source
+        post.rating = new_rating
+
+        post_ready.append(post)
+        statistics(1, 0)
+
+        # Sleep 5 seconds so SauceNAO does not ban us
+        sleep(5)
+
+    for p in post_ready:
+        api.set_meta_data(post)
 
     total_tagged, total_untagged = statistics()
     skipped = int(total) - total_tagged - total_untagged
