@@ -41,7 +41,7 @@ def get_image_token(api, image):
         Exception
     """
 
-    post_url = api.booru_api_url + '/uploads'
+    post_url = api.szuru_api_url + '/uploads'
 
     try:
         response    = requests.post(post_url, files={'content': image}, headers=api.headers)
@@ -70,7 +70,7 @@ def check_similarity(api, image_token):
         Exception
     """
 
-    post_url = api.booru_api_url + '/posts/reverse-search'
+    post_url = api.szuru_api_url + '/posts/reverse-search'
     metadata = json.dumps({'contentToken': image_token})
     
     try:
@@ -99,7 +99,7 @@ def upload_file(api, post, file_path):
         Exception
     """
 
-    post_url = api.booru_api_url + '/posts'
+    post_url = api.szuru_api_url + '/posts'
     metadata = json.dumps({'tags': post.tags, 'safety': 'unsafe', 'relations': post.similar_posts, 'contentToken': post.image_token})
 
     try:
@@ -149,7 +149,7 @@ def delete_posts(api, start_id, finish_id):
     """
 
     for id in range(start_id, finish_id + 1):
-        post_url = api.booru_api_url + '/post/' + str(id)
+        post_url = api.szuru_api_url + '/post/' + str(id)
         try:
             response = requests.delete(post_url, headers=api.headers, data=json.dumps({'version': '1'}))
             if 'description' in response.json():
@@ -166,9 +166,9 @@ def main():
     user_input = UserInput()
     user_input.parse_config()
     api        = API(
-        booru_address   = user_input.booru_address,
-        booru_api_token = user_input.booru_api_token,
-        booru_offline   = user_input.booru_offline,
+        szuru_address   = user_input.szuru_address,
+        szuru_api_token = user_input.szuru_api_token,
+        szuru_public    = user_input.szuru_public,
     )
 
     files_to_upload  = get_files(user_input.upload_dir)

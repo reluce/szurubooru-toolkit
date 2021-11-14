@@ -1,81 +1,37 @@
 import os
-import requests
-import bs4
-import re
 import urllib
-from misc.helpers import resize_image, convert_rating, audit_rating, collect_tags, collect_sources, check_similarity
+from misc.helpers import resize_image, convert_rating, audit_rating, collect_tags, collect_sources
+from classes.boorus.danbooru import Danbooru
+from classes.boorus.gelbooru import Gelbooru
+from classes.boorus.pixiv import Pixiv
 from pysaucenao import SauceNao as PySauceNao
 from classes.scraper import Scraper
 from syncer import sync
 
-class SauceNAO:
-    pass
-
-    def __init__(self, preferred_booru, booru_offline, local_temp_path):
-        self.base_url          = 'https://saucenao.com/'
-        self.base_url_download = self.base_url + 'search.php'
-        self.preferred_booru   = preferred_booru
-        self.booru_offline     = booru_offline
-        self.local_temp_path   = local_temp_path
-
-    def get_result(self, post):
-        """
-        If our booru is offline, upload the image to iqdb and return the result HTML page.
-        Otherwise, let iqdb download the image from our szuru instance.
-
-        Args:
-            post: A post object
-            booru_offline: If our booru is online or offline
-            local_temp_path: Directory where images should be saved if booru is offline
-
-        Returns:
-            result_page: The IQDB HTML result page
-        """
-
-        regex = r"(?i)(https?:\/\/[\S]*" + self.preferred_booru + r"[\S]*[\d])"
-
-        if(self.booru_offline == True):
-            # Download temporary image
-            filename = post.image_url.split('/')[-1]
-            local_file_path = urllib.request.urlretrieve(post.image_url, self.local_temp_path + filename)[0]
-
-            # Resize image if it's too big. IQDB limit is 8192KB or 7500x7500px.
-            # Resize images bigger than 3MB to reduce stress on iqdb.
-            image_size = os.path.getsize(local_file_path)
-
-            if image_size > 3000000:
-                resize_image(local_file_path)
-
-            # Upload it to IQDB
-            with open(local_file_path, 'rb') as f:
-                img = f.read()
-
-            files    = {'file': img}
-            response = requests.post(self.base_url_download, files=files).text
-
-            # Remove temporary image
-            if os.path.exists(local_file_path):
-                os.remove(local_file_path)
-        else:
-            data = {"url": post.image_url}
-            response = requests.post(self.base_url_download, data, timeout=20).text
-
-        try:
-            result_url = re.findall(regex, response)[0]
-        except IndexError:
-            result_url = None
-
-        return(result_url)
-
 class SauceNao:
-    def __init__(self, *, local_temp_path, api_key):
-        self.local_temp_path    = local_temp_path
-        self.similarity_cutline = 80
-
-        self.pysaucenao        = PySauceNao(api_key=api_key)
+    def __init__(self, user_input):
+        self.local_temp_path    = user_input.local_temp_path
+        self.pysaucenao         = PySauceNao(
+            api_key=user_input.saucenao_api_key,
+            min_similarity=80.0
+            )
+        self.danbooru = Danbooru(
+            danbooru_user    = user_input.danbooru_user,
+            danbooru_api_key = user_input.danbooru_api_key
+        )
+        self.gelbooru = Gelbooru(
+            gelbooru_user    = user_input.danbooru_user,
+            gelbooru_api_key = user_input.danbooru_api_key
+        )
+        # self.pixiv = Pixiv(
+        #     pixiv_user    = user_input.pixiv_user,
+        #     pixiv_pass    = user_input.pixiv_pass,
+        #     refresh_token = user_input.pixiv_token,
+        # )
+        self.szuru_public       = user_input.szuru_public
 
     @sync
-    async def get_metadata(self, szuru_image_url):
+    async def get_metadata(self, post):
         """
         Scrape and collect tags, sources, and ratings from popular imageboards
         Simply put, it's a wrapper for get_result() and scrape_<image_board>()
@@ -89,99 +45,126 @@ class SauceNao:
             rating: either 'unsafe', 'safe' or 'sketchy'
         """
 
-        # set default values
-        # should not affect scraped data
+        # Set default values
+        # Should not affect scraped data
         metadata_def = dict(
             tags   = [],
             source = '',
             rating = 'safe'
         )
+        metadata_dan = metadata_def.copy()
         metadata_gel = metadata_def.copy()
         metadata_san = metadata_def.copy()
-        metadata_dan = metadata_def.copy()
 
-        results = await self.get_result(szuru_image_url)
-        results_similar = list(filter(
-            lambda x: check_similarity(x, self.similarity_cutline), results
-        ))
+        results = await self.get_result(post.image_url)
 
-        for rs in results_similar:
-            if rs.index == 'Gelbooru':
-                t, s, r = Scraper.scrape_gelbooru(rs.url)
-                metadata_gel['tags'] = t
-                metadata_gel['source'] = s
-                metadata_gel['rating'] = r
-            elif rs.index == 'Sankaku Channel':
+        for rs in results:
+            if rs.url != None and 'danbooru' in rs.url:
+                try:
+                    result = self.danbooru.get_result(rs.url)
+
+                    tags   = self.danbooru.get_tags(result)
+                    rating = convert_rating(self.danbooru.get_rating(result))
+                    source = rs.url
+
+                    metadata_dan['tags'] = tags
+                    metadata_dan['source'] = source
+                    metadata_dan['rating'] = rating
+                except Exception as e:
+                    print(f'Failed to fetch data from Danbooru: {e}')
+            elif rs.url != None and 'gelbooru' in rs.url:
+                try:
+                    result = await self.gelbooru.get_result(rs.url)
+
+                    tags   = self.gelbooru.get_tags(result)
+                    rating = convert_rating(self.gelbooru.get_rating(result))
+                    source = rs.url
+                    
+                    metadata_gel['tags'] = tags
+                    metadata_gel['source'] = source
+                    metadata_gel['rating'] = rating
+                except Exception as e:
+                    print(f'Failed to fetch data from Gelbooru: {e}')
+            elif rs.url != None and 'sankaku' in rs.url:
                 t, s, r = Scraper.scrape_sankaku(rs.url)
                 metadata_san['tags'] = t
                 metadata_san['source'] = s
-                metadata_san['rating'] = r
-            elif rs.index == 'Danbooru':
-                t, s, r = Scraper.scrape_danbooru(rs.url)
-                metadata_dan['tags'] = t
-                metadata_dan['source'] = s
-                metadata_dan['rating'] = r
-            # elif rs.index == 'Pixiv':
-            #     t, s, r = Scraper.scrape_pixiv(rs.url)
-            #     metadata_pix['tags'] = t
-            #     metadata_pix['source'] = s
-            #     metadata_pix['rating'] = r
+            # elif rs.url != None and 'pixiv' in rs.url:
+            #     self.pixiv.get_result(rs.url)
+            #     tags   = self.pixiv.get_tags()
+            #     source = rs.url
+            #     rating = convert_rating(self.pixiv.get_rating())
+            #     metadata_pix['tags'] = tags
+            #     metadata_pix['source'] = source
+            #     metadata_pix['rating'] = rating
+            # metadata_san['rating'] = r
             # elif rs.index == 'E-Hentai':
             #     t, s, r = Scraper.scrape_ehentai(rs.url)
             #     metadata_hen['tags'] = t
             #     metadata_hen['source'] = s
             #     metadata_hen['rating'] = r
 
-        # collect scraped tags
+        # Collect scraped tags
         tags = collect_tags(
             metadata_gel['tags'],
             metadata_san['tags'],
             metadata_dan['tags']
         )
 
-        # collect scraped sources
+        # Collect scraped sources
         source = collect_sources(
             metadata_gel['source'],
             metadata_san['source'],
             metadata_dan['source']
         )
 
-        # audit final rating
+        # Audit final rating
         rating = audit_rating(
             metadata_gel['rating'],
             metadata_san['rating'],
             metadata_dan['rating']
         )
+        
+        limit_short = results.short_remaining
+        limit_long  = results.long_remaining
 
-        return tags, source, rating
+        return tags, source, rating, limit_short, limit_long
 
     async def get_result(self, szuru_image_url):
         """
-        Get search results from SauceNao with given image URL
+        If szurubooru is public, let SauceNAO fetch the image from supplied URL.
+        If not not, download the image to our temporary path and upload it to SauceNAO.
 
         Arguments:
-            szuru_image_url: image URL from the local Szurubooru server
+            szuru_image_url: image URL from the szurubooru server
 
         Returns:
             results: pysaucenao search results
         """
-        try:
-            results = await self.pysaucenao.from_url(szuru_image_url)
-        except:
-            filename = szuru_image_url.split('/')[-1]
-            local_file_path = urllib.request.urlretrieve(szuru_image_url, self.local_temp_path + filename)[0]
+        if self.szuru_public == True:
+            try:
+                results = await self.pysaucenao.from_url(szuru_image_url)
+            except Exception as e:
+                results = None
+                print(f'Could not get result from SauceNAO with image URL: {e}')
+        else:
+            try:
+                filename = szuru_image_url.split('/')[-1]
+                local_file_path = urllib.request.urlretrieve(szuru_image_url, self.local_temp_path + filename)[0]
 
-            # Resize image if it's too big. IQDB limit is 8192KB or 7500x7500px.
-            # Resize images bigger than 3MB to reduce stress on iqdb.
-            image_size = os.path.getsize(local_file_path)
+                # Resize images larger than 3MB to reduce load on servers
+                image_size = os.path.getsize(local_file_path)
 
-            if image_size > 3000000:
-                resize_image(local_file_path)
+                if image_size > 3000000:
+                    resize_image(local_file_path)
 
-            results = await self.pysaucenao.from_file(local_file_path)
+                results = await self.pysaucenao.from_file(local_file_path)
 
-            # Remove temporary image
-            if os.path.exists(local_file_path):
-                os.remove(local_file_path)
+                # Remove temporary image
+                if os.path.exists(local_file_path):
+                    os.remove(local_file_path)
+            except Exception as e:
+                results = None
+                print(f'Could not get result from SauceNAO with uploaded image: {e}')
 
         return results

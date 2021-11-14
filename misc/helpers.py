@@ -55,10 +55,10 @@ def statistics(tagged=0, untagged=0):
     return total_tagged, total_untagged
 
 def audit_rating(*ratings):
-    '''
+    """
     Return the highest among the scraped ratings
     Returns 'safe' if ratings is an empty list
-    '''
+    """
 
     verdict = 'safe'
     weight = {
@@ -73,18 +73,8 @@ def audit_rating(*ratings):
             verdict = r
     return verdict
 
-def check_similarity(result, cutline):
-    '''
-    Allow results that are more similar than configured cutline
-    '''
-
-    is_similar = False
-    if result.similarity > cutline:
-        is_similar = True
-    return is_similar
-
 def remove_tag_whitespace(tags_whitespace):
-    '''
+    """
     Self descriptive
     Szurubooru does not allow whitespaces in tagnames
 
@@ -93,7 +83,7 @@ def remove_tag_whitespace(tags_whitespace):
 
     Returns:
         tags_: list of tags with underscores
-    '''
+    """
     tags_underscore = []
     for tw in tags_whitespace:
         tu = tw.replace(' ', '_')
@@ -102,7 +92,7 @@ def remove_tag_whitespace(tags_whitespace):
     return tags_underscore
 
 def collect_tags(*list_tags):
-    '''
+    """
     Collect tags and remove duplicates
     Retuns an empty list if tags is an empty list
 
@@ -112,7 +102,7 @@ def collect_tags(*list_tags):
     Returns:
         tags_collected: self descriptive
             duplicates are removed
-    '''
+    """
 
     tags_collected = []
     for lt in list_tags:
@@ -127,7 +117,7 @@ def collect_tags(*list_tags):
     return tags_collected
 
 def collect_sources(*sources):
-    '''
+    """
     Collect sources in a single string separated by newline characters
     Returns an empty string if sources is an empty list
 
@@ -137,7 +127,7 @@ def collect_sources(*sources):
     Returns:
         source_collected: Collection of sources in a string
             separated by newline character
-    '''
+    """
 
     source_valid = []
     # remove empty sources

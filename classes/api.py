@@ -7,12 +7,12 @@ from .post import Post
 from misc.helpers import resize_image
 
 class API:
-    def __init__(self, booru_address, booru_api_token, booru_offline):
-        self.booru_address   = booru_address
-        self.booru_offline   = booru_offline
-        self.booru_api_url   = self.booru_address + '/api'
-        self.booru_api_token = booru_api_token
-        self.headers     = {'Accept':'application/json', 'Authorization':'Token ' + booru_api_token}
+    def __init__(self, szuru_address, szuru_api_token, szuru_public):
+        self.szuru_address   = szuru_address
+        self.szuru_public    = szuru_public
+        self.szuru_api_url   = self.szuru_address + '/api'
+        self.szuru_api_token = szuru_api_token
+        self.headers         = {'Accept':'application/json', 'Authorization':'Token ' + szuru_api_token}
 
     def get_post_ids(self, query):
         """
@@ -33,7 +33,7 @@ class API:
             query = 'id:' + query
 
         try:
-            query_url     = self.booru_api_url + '/posts/?query=' + query
+            query_url     = self.szuru_api_url + '/posts/?query=' + query
             response      = requests.get(query_url, headers=self.headers)
 
             total         = str(response.json()['total'])
@@ -49,7 +49,7 @@ class API:
 
                 if pages > 1:
                     for page in range(1, pages + 1):
-                        query_url = self.booru_api_url + '/posts/?offset=' + str(page) + '00&query=' + query
+                        query_url = self.szuru_api_url + '/posts/?offset=' + str(page) + '00&query=' + query
                         posts     = requests.get(query_url, headers=self.headers).json()['results']
 
                         for post in posts:
@@ -63,9 +63,9 @@ class API:
         except Exception as e:
             print(f'Could not process your query: {e}.')
 
-    def get_post(self, post_id, local_temp_path=None, sankaku_url=None):
+    def get_post(self, post_id):
         """
-        Returns a boilerplate post object with post_id, image_url and version.
+        Returns a boilerplate post object with post_id, image_url, version and already set tags.
 
         Args:
             post_id: The id from the post
@@ -78,13 +78,11 @@ class API:
         """
 
         try:
-            blacklist_extensions = ['mp4', 'webm', 'mkv']
-            query_url   = self.booru_api_url + '/post/' + post_id
+            query_url   = self.szuru_api_url + '/post/' + post_id
             response    = requests.get(query_url, headers=self.headers)
 
             content_url = response.json()['contentUrl']
-            image_url   = self.booru_address + '/' + content_url
-            md5sum      = response.json()['checksumMD5']
+            image_url   = self.szuru_address + '/' + content_url
             version     = response.json()['version']
             tags        = response.json()['tags']
             tag_list    = []
@@ -92,64 +90,8 @@ class API:
             for tag in tags:
                 tag_list.append(tag['names'][0])
 
-            # Download image and add it to the post object
-            # ToDo: Don't do that if the booru is accessible over the internet
-            if not any(extension in content_url for extension in blacklist_extensions):
-                filename = content_url.split('/')[-1]
-                local_file_path = urllib.request.urlretrieve(image_url, local_temp_path + filename)[0]
+            post = Post(post_id, image_url, version, tag_list)
 
-                # Resize image if it's too big. IQDB limit is 8192KB or 7500x7500px.
-                # Resize images bigger than 3MB to reduce stress on iqdb.
-                image_size = os.path.getsize(local_file_path)
-
-                if image_size > 3000000:
-                    resize_image(local_file_path)
-
-                with open(local_file_path, 'rb') as f:
-                    image = f.read()
-
-                # Remove temporary image
-                if os.path.exists(local_file_path):
-                    os.remove(local_file_path)
-            else:
-                image = None
-
-            post = Post(md5sum, post_id, image_url, image, version, tag_list)
-
-            return post
-        except Exception as e:
-            print(f'Could not get image url: {e}')
-
-    def get_post_old(self, post_id):
-        """
-        Returns a boilerplate post object with post_id, image_url and version.
-
-        Args:
-            post_id: The id from the post
-
-        Returns:
-            post: A post object
-
-        Raises:
-            Exception
-        """
-
-        try:
-            query_url   = self.booru_api_url + '/post/' + post_id
-            response    = requests.get(query_url, headers=self.headers)
-
-            content_url = response.json()['contentUrl']
-            image_url   = self.booru_address + '/' + content_url
-            version     = response.json()['version']
-            tags        = response.json()['tags']
-            tag_list    = []
-
-            for tag in tags:
-                tag_list.append(tag['names'][0])
-
-            md5sum = None
-            image = None
-            post = Post(md5sum, post_id, image_url, image, version, tag_list)
             return post
         except Exception as e:
             print(f'Could not get image url: {e}')
@@ -165,7 +107,7 @@ class API:
             Exception
         """
 
-        query_url = self.booru_api_url + '/post/' + post.id
+        query_url = self.szuru_api_url + '/post/' + post.id
         meta_data = json.dumps({"version": post.version, "tags": post.tags, "source": post.source, "safety": post.rating})
 
         try:
@@ -173,4 +115,4 @@ class API:
             if 'description' in response.json():
                 raise Exception(response.json()['description'])
         except Exception as e:
-            print(f'Could not upload your post: {e}')
+            print(f'Could not edit your post: {e}')

@@ -5,11 +5,11 @@ from distutils.util import strtobool
 
 class UserInput:
     def __init__(self):
-        self.booru_address   = ''
-        self.booru_api_token = ''
-        self.booru_api_url   = ''
-        self.booru_offline   = ''
-        self.booru_headers   = ''
+        self.szuru_address   = ''
+        self.szuru_api_token = ''
+        self.szuru_api_url   = ''
+        self.szuru_public    = ''
+        self.szuru_headers   = ''
         self.sankaku_url     = ''
         self.query           = ''
         self.preferred_booru = ''
@@ -41,39 +41,28 @@ class UserInput:
         """
         Parse the user config and set the object attributes accordingly.
         """
-        # with open('config.json') as f:
-        #     config = json.load(f)
-        #
-        # self.booru_address     = config['szurubooru']['url']
-        # self.booru_api_url     = self.booru_address + '/api'
-        # self.booru_api_token   = config['szurubooru']['api_token']
-        # self.booru_headers     = {'Accept': 'application/json', 'Authorization': 'Token ' + self.booru_api_token}
-        # self.booru_offline     = strtobool(config['szurubooru']['external'])
-        # self.preferred_booru   = config['auto_tagger'].get('preferred_booru', 'danbooru')
-        # self.fallback_booru    = config['auto_tagger'].get('fallback_booru', 'sankaku')
-        # self.local_temp_path   = config['auto_tagger'].get('local_temp_path', '/tmp/')
-        # self.saucenao_api_key  = config['auto_tagger']['saucenao_api_key']
-        # self.danbooru_user     = config['auto_tagger']['boorus']['danbooru']['user']
-        # self.danbooru_api_key  = config['auto_tagger']['boorus']['danbooru']['api_key']
-        # self.konachan_user     = config['auto_tagger']['boorus']['konachan']['user']
-        # self.konachan_pass     = config['auto_tagger']['boorus']['konachan']['password']
-        # self.yandere_user      = config['auto_tagger']['boorus']['yandere']['user']
-        # self.yandere_pass      = config['auto_tagger']['boorus']['yandere']['password']
-        # self.tagger_progress   = strtobool(config['auto_tagger'].get('show_progress', 'True'))
-        # self.uploader_progress = strtobool(config['upload_images'].get('show_progress', 'True'))
-        # self.upload_dir        = config['upload_images']['upload_dir']
-        # self.tags              = config['upload_images']['tags']
-
-        # resurrected configparser to illustrate working SauceNao class
-        config = configparser.ConfigParser()
-        config.read('config.ini')
-
-        self.booru_address    = config['szurubooru']['address']
-        self.booru_api_url    = self.booru_address + '/api'
-        self.booru_api_token  = config['szurubooru']['api_token']
-        self.booru_headers    = {'Accept': 'application/json', 'Authorization': 'Token ' + self.booru_api_token}
-        self.booru_offline    = strtobool(config['szurubooru']['offline'])
-        self.preferred_booru  = config['options'].get('preferred_booru', 'danbooru')
-        self.fallback_booru   = config['options'].get('fallback_booru', 'sankaku')
-        self.local_temp_path  = config['options'].get('local_temp_path', 'tmp/')
-        self.saucenao_api_key = config['options']['saucenao_api_key']
+        with open('config.json') as f:
+            config = json.load(f)
+        
+        self.szuru_address     = config['szurubooru']['url']
+        self.szuru_api_url     = self.szuru_address + '/api'
+        self.szuru_api_token   = config['szurubooru']['api_token']
+        self.szuru_headers     = {'Accept': 'application/json', 'Authorization': 'Token ' + self.szuru_api_token}
+        self.szuru_public      = strtobool(config['szurubooru']['public'])
+        self.preferred_booru   = config['auto_tagger'].get('preferred_booru', 'danbooru')
+        self.fallback_booru    = config['auto_tagger'].get('fallback_booru', 'sankaku')
+        self.local_temp_path   = config['auto_tagger'].get('local_temp_path', '/tmp/')
+        self.saucenao_api_key  = config['auto_tagger']['saucenao_api_key']
+        self.danbooru_user     = config['auto_tagger']['boorus']['danbooru'].get('user', 'None')
+        self.danbooru_api_key  = config['auto_tagger']['boorus']['danbooru'].get('api_key', 'None')
+        self.konachan_user     = config['auto_tagger']['boorus']['konachan'].get('user', 'None')
+        self.konachan_pass     = config['auto_tagger']['boorus']['konachan'].get('password', 'None')
+        self.yandere_user      = config['auto_tagger']['boorus']['yandere'].get('user', 'None')
+        self.yandere_pass      = config['auto_tagger']['boorus']['yandere'].get('password', 'None')
+        self.pixiv_user        = config['auto_tagger']['boorus']['pixiv'].get('user', 'None')
+        self.pixiv_pass        = config['auto_tagger']['boorus']['pixiv'].get('password', 'None')
+        self.pixiv_token       = config['auto_tagger']['boorus']['pixiv'].get('token', 'None')
+        self.tagger_progress   = strtobool(config['auto_tagger'].get('show_progress', 'True'))
+        self.uploader_progress = strtobool(config['upload_images'].get('show_progress', 'True'))
+        self.upload_dir        = config['upload_images']['upload_dir']
+        self.tags              = config['upload_images']['tags']

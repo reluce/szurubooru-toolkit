@@ -11,21 +11,21 @@ class IQDB:
         self.base_url_download = self.base_url + '?url='
         self.results           = False
 
-    def get_result(self, post, booru_offline, local_temp_path):
+    def get_result(self, post, szuru_public, local_temp_path):
         """
         If our booru is offline, upload the image to iqdb and return the result HTML page.
         Otherwise, let iqdb download the image from our szuru instance.
 
         Args:
             post: A post object
-            booru_offline: If our booru is online or offline
+            szuru_public: If our booru is online or offline
             local_temp_path: Directory where images should be saved if booru is offline
 
         Returns:
             result_page: The IQDB HTML result page
         """
 
-        if(booru_offline == True):
+        if(szuru_public == True):
             # Download temporary image
             filename = post.image_url.split('/')[-1]
             local_file_path = urllib.request.urlretrieve(post.image_url, local_temp_path + filename)[0]
