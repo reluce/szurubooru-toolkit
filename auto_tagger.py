@@ -1,10 +1,10 @@
 from tqdm import tqdm
 from time import sleep
 from classes.api import API
-from classes.iqdb import IQDB
 from classes.saucenao import SauceNao
+from classes.deepbooru import DeepBooru
 from classes.user_input import UserInput
-from misc.helpers import get_metadata_sankaku, statistics, convert_rating, audit_rating, collect_tags, collect_sources
+from misc.helpers import get_metadata_sankaku, statistics, audit_rating, collect_tags, collect_sources
 
 def main():
     """
@@ -21,6 +21,7 @@ def main():
         szuru_public     = user_input.szuru_public,
     )
     image_search_engine  = SauceNao(user_input)
+    deepbooru            = DeepBooru(user_input.deepbooru_model)
 
     # Get post ids and pages from input query
     post_ids, total      = api.get_post_ids(user_input.query)
@@ -36,10 +37,10 @@ def main():
             # Set meta data for the post
             try:
                 api.set_meta_data(post)
-                statistics(1, 0)
+                statistics(tagged=1)
             except Exception as e:
-                statistics(0, 1)
-                print(e)
+                statistics(untagged=1)
+                print(f'Could not tag post with Sankaku: {e}')
         else:
             print('Can only tag a single post if you specify --sankaku_url.')
     # Otherwise begin to get tags from SauceNAO
@@ -56,7 +57,7 @@ def main():
                     is_blacklisted = True
 
             if is_blacklisted:
-                statistics(0, 1)
+                statistics(skipped=1)
                 continue
 
             tags, source, rating, limit_short, limit_long = image_search_engine.get_metadata(post)
@@ -66,14 +67,30 @@ def main():
                 post.tags
             )
 
+            # Fallback to DeepBooru if no tags were found
             if not len(tags):
-                if 'tagme' not in final_tags:
-                    final_tags.append('tagme')
-                statistics(0, 1)
+                if user_input.deepbooru_enabled:
+                    post.source = 'DeepBooru'
+                    post.rating, tags  = deepbooru.tag_image(
+                        user_input.local_temp_path,
+                        post.image_url,
+                        user_input.threshold)
+                    final_tags = final_tags + tags
+                    if not len(tags):
+                        if not 'tagme' in final_tags:
+                            final_tags.append('tagme')
+                        statistics(untagged=1)
+                    elif 'tagme' in final_tags:
+                        final_tags.remove('tagme')
+                        statistics(deepbooru=1)
+                else:
+                    if 'tagme' not in final_tags:
+                        final_tags.append('tagme')
+                        statistics(untagged=1)
             else:
                 if 'tagme' in final_tags:
                     final_tags.remove('tagme')
-                statistics(1, 0)
+                statistics(tagged=1)
 
             list_source_scraped = source.splitlines()
             list_source_post = post.source.splitlines()
@@ -101,15 +118,15 @@ def main():
                 print('Your daily SauceNAO limit has been reached. Consider upgrading your account.')
                 break
 
-    total_tagged, total_untagged = statistics()
-    skipped = int(total) - total_tagged - total_untagged
+    total_tagged, total_deepbooru, total_untagged, total_skipped = statistics()
 
     print()
     print('Script has finished tagging.')
-    print(f'Total:    {total}')
-    print(f'Tagged:   {str(total_tagged)}')
-    print(f'Untagged: {str(total_untagged)}')
-    print(f'Skipped:  {str(skipped)}')
+    print(f'Total:     {total}')
+    print(f'Tagged:    {str(total_tagged)}')
+    print(f'DeepBooru: {str(total_deepbooru)}')
+    print(f'Untagged:  {str(total_untagged)}')
+    print(f'Skipped:   {str(total_skipped)}')
 
 if __name__ == '__main__':
     main()

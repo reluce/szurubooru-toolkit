@@ -2,8 +2,10 @@ import bs4
 import requests
 from PIL import Image
 
-total_tagged = 0
-total_untagged = 0
+total_tagged    = 0
+total_deepbooru = 0
+total_untagged  = 0
+total_skipped   = 0
 
 def resize_image(local_image_path):
     with Image.open(local_image_path) as image:
@@ -22,7 +24,10 @@ def convert_rating(rating):
         'Questionable': 'sketchy',
         'q': 'sketchy',
         'Explicit': 'unsafe',
-        'e': 'unsafe'
+        'e': 'unsafe',
+        'rating:safe': 'safe',
+        'rating:questionable': 'sketchy',
+        'rating:explicit': 'unsafe'
     }
 
     return switch.get(rating)
@@ -45,14 +50,18 @@ def get_metadata_sankaku(sankaku_url):
 
     return tags, rating
 
-def statistics(tagged=0, untagged=0):
+def statistics(tagged=0, deepbooru=0, untagged=0, skipped=0):
     global total_tagged
+    global total_deepbooru
     global total_untagged
+    global total_skipped
 
-    total_tagged   += tagged
-    total_untagged += untagged
+    total_tagged      += tagged
+    total_deepbooru   += deepbooru
+    total_untagged    += untagged
+    total_skipped     += skipped
 
-    return total_tagged, total_untagged
+    return total_tagged, total_deepbooru, total_untagged, total_skipped
 
 def audit_rating(*ratings):
     """

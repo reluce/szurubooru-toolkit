@@ -17,7 +17,6 @@ class UserInput:
         self.upload_dir      = ''
         self.tags            = []
         self.local_temp_path = ''
-        self.use_saucenao    = True,
 
     def parse_input(self):
         """
@@ -49,9 +48,10 @@ class UserInput:
         self.szuru_api_token   = config['szurubooru']['api_token']
         self.szuru_headers     = {'Accept': 'application/json', 'Authorization': 'Token ' + self.szuru_api_token}
         self.szuru_public      = strtobool(config['szurubooru']['public'])
-        self.preferred_booru   = config['auto_tagger'].get('preferred_booru', 'danbooru')
-        self.fallback_booru    = config['auto_tagger'].get('fallback_booru', 'sankaku')
         self.local_temp_path   = config['auto_tagger'].get('local_temp_path', '/tmp/')
+        self.deepbooru_enabled = strtobool(config['auto_tagger']['deepbooru_enabled'])
+        self.deepbooru_model   = config['auto_tagger']['deepbooru_model']
+        self.threshold         = config['auto_tagger']['deepbooru_threshold']
         self.saucenao_api_key  = config['auto_tagger']['saucenao_api_key']
         self.danbooru_user     = config['auto_tagger']['boorus']['danbooru'].get('user', 'None')
         self.danbooru_api_key  = config['auto_tagger']['boorus']['danbooru'].get('api_key', 'None')
