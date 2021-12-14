@@ -1,0 +1,43 @@
+{
+    "szurubooru": {
+        "url": "https://szuru.example.com",
+        "api_token": "my_api_token",
+        "public": "False"
+    },
+    "auto_tagger": {
+        "saucenao_api_key": "my_sauce_api_token",
+        "show_progress": "True",
+        "local_tmp_path": "/tmp/",
+        "deepbooru_enabled": "False",
+        "deepbooru_model": "/local/path/to/model",
+        "deepbooru_threshold": "0.7",
+        "boorus": {
+            "danbooru": {
+                "user": "None",
+                "api_key": "None"
+            },
+            "gelbooru": {
+                "user": "None",
+                "api_key": "None"
+            },
+            "konachan": {
+                "user": "None",
+                "password": "None"
+            },
+            "yandere": {
+                "user": "None",
+                "password": "None"
+            },
+            "pixiv": {
+                "user": "None",
+                "password": "None",
+                "token": "None"
+            }
+        }
+    },
+    "upload_images": {
+        "upload_dir": "/local/path/to/upload/dir",
+        "show_progress": "True",
+        "tags": ["tagme"]
+    }
+}
