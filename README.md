@@ -7,6 +7,18 @@ A python3 release and the required modules. Install those with:
 
 `python3 -m pip install requirements.txt`
 
+## User configuration
+Make your changes to the supplied `config_sample.json` file and rename it to `config.json` afterwards.
+
+If you want so specify multiple tags for your upload, separate each of the tags by a comma: ["tag1","tag2","tagN"]
+
+We can generate our szuru API token with following command:
+`echo -n username:token | base64`
+
+Creating an account on SauceNAO and getting an API key is recommended.
+Please consider supporting the SauceNAO team as well by upgrading your plan.
+With a free plan, you can request up to 200 posts in 24h.
+
 ## Scripts
 
 ### upload_images
@@ -42,18 +54,6 @@ Alternatively, we can tag a single post and specify `--sankaku_url` to fetch the
 `python3 auto_tagger.py --sankaku_url https://chan.sankakucomplex.com/post/show/<id> 100`
 
 This is especially useful since Sankaku has changed their API and aggregator sites like SauceNAO don't have the latest results there.
-
-## User configuration
-Make your changes to the supplied `config_sample.json` file and rename it to `config.json` afterwards.
-
-If you want so specify multiple tags for your upload, separate each of the tags by a comma: ["tag1","tag2","tagN"]
-
-We can generate our szuru API token with following command:
-`echo -n username:token | base64`
-
-Creating an account on SauceNAO and getting an API key is recommended.
-Please consider supporting the SauceNAO team as well by upgrading your plan.
-With a free plan, you can request up to 200 posts in 24h.
 
 ## ToDo's
 * Handle user input better
