@@ -33,6 +33,34 @@ After editing the config file, we can just execute the script:
 
 `python3 upload_images.py`
 
+### create_tags.py
+This script reads the file `./misc/tags/tags.txt`, parses its contents and creates the tags in your szurubooru.
+
+If the tag already exists, it will get updated with your changes.
+
+You can use tools like [Grabber](https://github.com/Bionus/imgbrd-grabber) to download a tag list from common boorus.
+
+The file has to be in following format:
+
+```
+<tag_a>,<category_number>
+<tag_b>,<category_number>
+<tag_..n>,<category_number>
+```
+
+|Category|Number|
+|---|---|
+|default|0|
+|artist|1|
+|series|2|
+|character|3|
+|meta|4|
+
+#### Usage
+After editing the file `./misc/tags/tags.txt`, we can just execute the script:
+
+`python3 create_tags.py`
+
 ### auto_tagger
 This script accepts a szurubooru query as a user input, fetches all posts returned by it and attempts to tag it using SauceNAO.
 
