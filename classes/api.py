@@ -116,3 +116,58 @@ class API:
                 raise Exception(response.json()['description'])
         except Exception as e:
             print(f'Could not edit your post: {e}')
+
+    def create_tags(self):
+        """
+        Create or update existing tags with the supplied tags
+
+        Args:
+            post: A post object
+
+        Raises:
+            Exception
+        """
+
+        with open("./misc/tags/tags.txt") as tags_stream:
+            for _, tag in enumerate(tags_stream):
+                tag = tag.split(',')
+                tag[1] = tag[-1].strip()
+
+                if tag[1] == '0':
+                    tag[1] = 'default'
+                elif tag[1] == '1':
+                    tag[1] = 'artist'
+                elif tag[1] == '3':
+                    tag[1] = 'series'
+                elif tag[1] == '4':
+                    tag[1] = 'character'
+                elif tag[1] == '5':
+                    tag[1] = 'meta'
+                    
+                try:
+                    query_url = self.szuru_api_url + '/tags'
+                    meta_data = json.dumps({"names": tag[0], "category": tag[1]})
+                    response = requests.post(query_url, headers=self.headers, data=meta_data)
+
+                    if not response.json()['description'] == None:
+                        raise Exception(response.json()['description'])
+                    else:
+                        print(f'Created tag {tag[0]} with category {tag[1]}')
+                except Exception as e:
+                    try:
+                        query_url = self.szuru_api_url + '/tag/' + tag[0]
+                        response_tag = requests.get(query_url, headers=self.headers)
+
+                        if not response_tag.json()['category'] == tag[1]:
+                            meta_data = json.dumps({
+                                "version": response_tag.json()['version'],
+                                "names": tag[0],
+                                "category": tag[1]})
+                            print(meta_data)
+                            response = requests.put(query_url, headers=self.headers, data=meta_data)
+                            print()
+                            print(response.json())
+                            if not response.json()['description'] == None:
+                                raise Exception(response.json()['description'])
+                    except Exception as e:
+                        print(f'Could not update tag: {e}')
