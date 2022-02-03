@@ -7,6 +7,13 @@ A python3 release and the required modules. Install those with:
 
 `python3 -m pip install requirements.txt`
 
+Note that this will install Tensorflow which does take up some disk space.
+If you do not want to use auto tagging with DeepBooru, you can remove following packages:
+
+* tensorflow
+* keras
+* numpy
+
 ## User configuration
 Make your changes to the supplied `config_sample.json` file and rename it to `config.json` afterwards.
 
@@ -21,6 +28,7 @@ With a free plan, you can request up to 200 posts in 24h.
 
 For DeepBooru support, download the current release [here](https://github.com/KichangKim/DeepDanbooru/releases/tag/v3-20211112-sgd-e28) (v3-20211112-sgd-e28) and extract the contents of the zip file to misc/deepbooru.
 If needed, change the variable `deepbooru_model` in your config to the path of the model.
+Please note that you have to set `deepbooru_enabled` if you want to use it.
 
 ## Scripts
 
