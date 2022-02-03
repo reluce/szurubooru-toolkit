@@ -83,6 +83,8 @@ def main():
                     elif 'tagme' in final_tags:
                         final_tags.remove('tagme')
                         statistics(deepbooru=1)
+                    else:
+                        statistics(deepbooru=1)
                 else:
                     if 'tagme' not in final_tags:
                         final_tags.append('tagme')

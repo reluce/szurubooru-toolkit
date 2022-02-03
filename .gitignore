@@ -131,3 +131,5 @@ dmypy.json
 # Personal config file
 config
 config.json
+misc/deepboru/*
+misc/tags/*

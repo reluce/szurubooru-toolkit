@@ -19,6 +19,9 @@ Creating a SauceNAO account and an API key is recommended.
 Please consider supporting the SauceNAO team as well by upgrading your plan.
 With a free plan, you can request up to 200 posts in 24h.
 
+For DeepBooru support, download the current release [here](https://github.com/KichangKim/DeepDanbooru/releases/tag/v3-20211112-sgd-e28) (v3-20211112-sgd-e28) and extract the contents of the zip file to misc/deepbooru.
+If needed, change the variable `deepbooru_model` in your config to the path of the model.
+
 ## Scripts
 
 ### upload_images

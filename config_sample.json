@@ -9,7 +9,7 @@
         "show_progress": "True",
         "local_tmp_path": "/tmp/",
         "deepbooru_enabled": "False",
-        "deepbooru_model": "/local/path/to/model",
+        "deepbooru_model": "./misc/deepbooru/model-resnet_custom_v3.h5",
         "deepbooru_threshold": "0.7",
         "boorus": {
             "danbooru": {
