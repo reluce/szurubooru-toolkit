@@ -111,9 +111,9 @@ def main():
             api.set_meta_data(post)
 
             if not limit_long == 0:
-                # Sleep 30 seconds after short limit has been reached
+                # Sleep 35 seconds after short limit has been reached
                 if limit_short == 0:
-                    sleep(30)
+                    sleep(35)
             else:
                 print('Your daily SauceNAO limit has been reached. Consider upgrading your account.')
                 break

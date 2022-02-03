@@ -56,53 +56,68 @@ class SauceNao:
         metadata_gel = metadata_def.copy()
         metadata_san = metadata_def.copy()
 
+        limit_short = 1
+        limit_long  = 10
+
         results = await self.get_result(post.image_url)
 
-        for rs in results:
-            if rs.url != None and 'danbooru' in rs.url:
+        if results.results:
+            for rs in results:
                 try:
-                    result = self.danbooru.get_result(rs.url)
+                    if rs.url != None and 'danbooru' in rs.url:
+                        try:
+                            result = self.danbooru.get_result(rs.url)
 
-                    tags   = self.danbooru.get_tags(result)
-                    rating = convert_rating(self.danbooru.get_rating(result))
-                    source = rs.url
+                            tags   = self.danbooru.get_tags(result)
+                            rating = convert_rating(self.danbooru.get_rating(result))
+                            source = rs.url
 
-                    metadata_dan['tags'] = tags
-                    metadata_dan['source'] = source
-                    metadata_dan['rating'] = rating
-                except Exception as e:
-                    print(f'Failed to fetch data from Danbooru: {e}')
-            elif rs.url != None and 'gelbooru' in rs.url:
-                try:
-                    result = await self.gelbooru.get_result(rs.url)
+                            metadata_dan['tags']   = tags
+                            metadata_dan['source'] = source
+                            metadata_dan['rating'] = rating
+                        except Exception as e:
+                            print()
+                            print(f'Failed to fetch data from Danbooru for post {post.id}: {e}')
+                            print(f'URL: {rs.url}')
+                    elif rs.url != None and 'gelbooru' in rs.url:
+                        try:
+                            result = await self.gelbooru.get_result(rs.url)
 
-                    tags   = self.gelbooru.get_tags(result)
-                    rating = convert_rating(self.gelbooru.get_rating(result))
-                    source = rs.url
-                    
-                    metadata_gel['tags'] = tags
-                    metadata_gel['source'] = source
-                    metadata_gel['rating'] = rating
-                except Exception as e:
-                    print(f'Failed to fetch data from Gelbooru: {e}')
-            elif rs.url != None and 'sankaku' in rs.url:
-                t, s, r = Scraper.scrape_sankaku(rs.url)
-                metadata_san['tags'] = t
-                metadata_san['source'] = s
-            # elif rs.url != None and 'pixiv' in rs.url:
-            #     self.pixiv.get_result(rs.url)
-            #     tags   = self.pixiv.get_tags()
-            #     source = rs.url
-            #     rating = convert_rating(self.pixiv.get_rating())
-            #     metadata_pix['tags'] = tags
-            #     metadata_pix['source'] = source
-            #     metadata_pix['rating'] = rating
-            # metadata_san['rating'] = r
-            # elif rs.index == 'E-Hentai':
-            #     t, s, r = Scraper.scrape_ehentai(rs.url)
-            #     metadata_hen['tags'] = t
-            #     metadata_hen['source'] = s
-            #     metadata_hen['rating'] = r
+                            tags   = self.gelbooru.get_tags(result)
+                            rating = convert_rating(self.gelbooru.get_rating(result))
+                            source = rs.url
+                            
+                            metadata_gel['tags']   = tags
+                            metadata_gel['source'] = source
+                            metadata_gel['rating'] = rating
+                        except Exception as e:
+                            print()
+                            print(f'Failed to fetch data from Gelbooru for post {post.id}: {e}')
+                            print(f'URL: {rs.url}')
+                    elif rs.url != None and 'sankaku' in rs.url:
+                        t, s, r                = Scraper.scrape_sankaku(rs.url)
+                        metadata_san['tags']   = t
+                        metadata_san['source'] = s
+                    # elif rs.url != None and 'pixiv' in rs.url:
+                    #     self.pixiv.get_result(rs.url)
+                    #     tags   = self.pixiv.get_tags()
+                    #     source = rs.url
+                    #     rating = convert_rating(self.pixiv.get_rating())
+                    #     metadata_pix['tags'] = tags
+                    #     metadata_pix['source'] = source
+                    #     metadata_pix['rating'] = rating
+                    # metadata_san['rating'] = r
+                    # elif rs.index == 'E-Hentai':
+                    #     t, s, r = Scraper.scrape_ehentai(rs.url)
+                    #     metadata_hen['tags'] = t
+                    #     metadata_hen['source'] = s
+                    #     metadata_hen['rating'] = r
+                except TypeError as e:
+                    print()
+                    print(f'Could not tag post {post.id}: {e}')
+
+            limit_short = results.short_remaining
+            limit_long  = results.long_remaining
 
         # Collect scraped tags
         tags = collect_tags(
@@ -124,9 +139,6 @@ class SauceNao:
             metadata_san['rating'],
             metadata_dan['rating']
         )
-        
-        limit_short = results.short_remaining
-        limit_long  = results.long_remaining
 
         return tags, source, rating, limit_short, limit_long
 
