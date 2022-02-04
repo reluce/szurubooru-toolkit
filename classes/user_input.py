@@ -49,6 +49,7 @@ class UserInput:
         self.szuru_headers     = {'Accept': 'application/json', 'Authorization': 'Token ' + self.szuru_api_token}
         self.szuru_public      = strtobool(config['szurubooru']['public'])
         self.local_temp_path   = config['auto_tagger'].get('local_temp_path', '/tmp/')
+        self.use_saucenao      = strtobool(config['auto_tagger']['use_saucenao'])
         self.deepbooru_enabled = strtobool(config['auto_tagger']['deepbooru_enabled'])
         self.deepbooru_model   = config['auto_tagger']['deepbooru_model']
         self.threshold         = config['auto_tagger']['deepbooru_threshold']

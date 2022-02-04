@@ -8,6 +8,7 @@
         "saucenao_api_key": "my_sauce_api_token",
         "show_progress": "True",
         "local_tmp_path": "/tmp/",
+        "use_saucenao": "True",
         "deepbooru_enabled": "False",
         "deepbooru_model": "./misc/deepbooru/model-resnet_custom_v3.h5",
         "deepbooru_threshold": "0.7",

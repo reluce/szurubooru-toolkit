@@ -74,7 +74,8 @@ This script accepts a szurubooru query as a user input, fetches all posts return
 
 If no matches from SauceNAO were found, the script keeps the previously set tags of the post and additionally appends the tag `tagme`.
 
-You can set "deepbooru_enabled" to "True" in your config.json file. In that case, the script falls back to tag posts with the supplied DeepBooru model.
+You can set `deepbooru_enabled` to `True` in your config.json file. In that case, the script falls back to tag posts with the supplied DeepBooru model.
+If you only want to use DeepBooru, set `deepbooru_enabled` to `True` and `use_saucenao` to `False`.
 
 #### Usage
 After editing and renaming the sample config file to config.json, we can just execute the script with our query:

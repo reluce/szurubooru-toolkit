@@ -57,6 +57,7 @@ class DeepBooru():
                 print()
                 print(f'Could not guess rating for image {image_url}. Defaulting to unsafe.')
 
-            tags.append('deepbooru')
+            # Optional: add deepbooru tag. We can always reference source:DeepBooru though.
+            #tags.append('deepbooru')
 
         return rating, tags

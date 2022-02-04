@@ -20,7 +20,7 @@ def main():
         szuru_api_token  = user_input.szuru_api_token,
         szuru_public     = user_input.szuru_public,
     )
-    image_search_engine  = SauceNao(user_input)
+    saucenao             = SauceNao(user_input)
     deepbooru            = DeepBooru(user_input.deepbooru_model)
 
     # Get post ids and pages from input query
@@ -60,65 +60,68 @@ def main():
                 statistics(skipped=1)
                 continue
 
-            tags, source, rating, limit_short, limit_long = image_search_engine.get_metadata(post)
+            if user_input.use_saucenao:
+                tags, source, rating, limit_short, limit_long = saucenao.get_metadata(post)
 
-            final_tags = collect_tags(
-                tags,
-                post.tags
-            )
+                # Get previously set tags and add new tags
+                final_tags = collect_tags(
+                    tags,
+                    post.tags
+                )
 
-            # Fallback to DeepBooru if no tags were found
-            if not len(tags):
-                if user_input.deepbooru_enabled:
-                    post.source = 'DeepBooru'
-                    post.rating, tags  = deepbooru.tag_image(
-                        user_input.local_temp_path,
-                        post.image_url,
-                        user_input.threshold)
-                    final_tags = final_tags + tags
-                    if not len(tags):
-                        if not 'tagme' in final_tags:
-                            final_tags.append('tagme')
-                        statistics(untagged=1)
-                    elif 'tagme' in final_tags:
-                        final_tags.remove('tagme')
-                        statistics(deepbooru=1)
-                    else:
-                        statistics(deepbooru=1)
+                # Get previously set sources and add new sources
+                list_source_scraped = source.splitlines()
+                list_source_post    = post.source.splitlines()
+                post.source         = collect_sources(
+                    *list_source_scraped,
+                    *list_source_post
+                )
+
+                post.rating = audit_rating(
+                    rating,
+                    post.rating
+                )
+
+                if not limit_long == 0:
+                    # Sleep 35 seconds after short limit has been reached
+                    if limit_short == 0:
+                        sleep(35)
                 else:
-                    if 'tagme' not in final_tags:
-                        final_tags.append('tagme')
-                        statistics(untagged=1)
+                    print('Your daily SauceNAO limit has been reached. Consider upgrading your account.')
+                    break
             else:
-                if 'tagme' in final_tags:
+                final_tags = []
+                tags = post.tags
+
+            # Fallback to DeepBooru if no tags were found or use_saucenao is false
+            if (not len(tags) or not user_input.use_saucenao) and user_input.deepbooru_enabled:
+                post.source        = 'DeepBooru'
+                rating, tags       = deepbooru.tag_image(
+                    user_input.local_temp_path,
+                    post.image_url,
+                    user_input.threshold)
+                final_tags         = final_tags + tags
+
+                if not rating == None:
+                    post.rating = rating
+
+                if not len(tags):
+                    if not 'tagme' in final_tags:
+                        final_tags.append('tagme')
+                    statistics(untagged=1)
+                elif 'tagme' in final_tags:
                     final_tags.remove('tagme')
-                statistics(tagged=1)
+                    statistics(deepbooru=1)
+                else:
+                    statistics(deepbooru=1)
+            else:
+                if 'tagme' not in final_tags:
+                    final_tags.append('tagme')
+                    statistics(skipped=1)
 
-            list_source_scraped = source.splitlines()
-            list_source_post = post.source.splitlines()
-            final_source = collect_sources(
-                *list_source_scraped,
-                *list_source_post
-            )
-
-            final_rating = audit_rating(
-                rating,
-                post.rating
-            )
-
-            post.tags   = final_tags
-            post.source = final_source
-            post.rating = final_rating
+            post.tags = final_tags
 
             api.set_meta_data(post)
-
-            if not limit_long == 0:
-                # Sleep 35 seconds after short limit has been reached
-                if limit_short == 0:
-                    sleep(35)
-            else:
-                print('Your daily SauceNAO limit has been reached. Consider upgrading your account.')
-                break
 
     total_tagged, total_deepbooru, total_untagged, total_skipped = statistics()
 
