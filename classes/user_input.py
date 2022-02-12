@@ -63,7 +63,10 @@ class UserInput:
         self.pixiv_user        = config['auto_tagger']['boorus']['pixiv'].get('user', 'None')
         self.pixiv_pass        = config['auto_tagger']['boorus']['pixiv'].get('password', 'None')
         self.pixiv_token       = config['auto_tagger']['boorus']['pixiv'].get('token', 'None')
-        self.tagger_progress   = strtobool(config['auto_tagger'].get('show_progress', 'True'))
-        self.uploader_progress = strtobool(config['upload_images'].get('show_progress', 'True'))
+        self.tagger_progress   = config['auto_tagger'].get('hide_progress', 'False')
+        self.uploader_progress = config['upload_images'].get('hide_progress', 'False')
         self.upload_dir        = config['upload_images']['upload_dir']
         self.tags              = config['upload_images']['tags']
+        
+        self.tagger_progress   = False if self.tagger_progress == 'False' else True
+        self.uploader_progress = False if self.uploader_progress == 'False' else True

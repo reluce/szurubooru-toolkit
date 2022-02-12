@@ -45,7 +45,7 @@ def main():
             print('Can only tag a single post if you specify --sankaku_url.')
     # Otherwise begin to get tags from SauceNAO
     else:
-        for post_id in tqdm(post_ids, ncols=80, position=0, leave=False):
+        for post_id in tqdm(post_ids, ncols=80, position=0, leave=False, disable=user_input.tagger_progress):
             try:
                 post = api.get_post(post_id)
             except Exception as e:

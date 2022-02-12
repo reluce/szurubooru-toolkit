@@ -6,7 +6,7 @@
     },
     "auto_tagger": {
         "saucenao_api_key": "my_sauce_api_token",
-        "show_progress": "True",
+        "hide_progress": "False",
         "local_tmp_path": "/tmp/",
         "use_saucenao": "True",
         "deepbooru_enabled": "False",
@@ -38,7 +38,7 @@
     },
     "upload_images": {
         "upload_dir": "/local/path/to/upload/dir",
-        "show_progress": "True",
+        "hide_progress": "True",
         "tags": ["tagme"]
     }
 }
