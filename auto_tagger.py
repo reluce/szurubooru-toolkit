@@ -26,7 +26,7 @@ def main():
     # Get post ids and pages from input query
     post_ids, total      = api.get_post_ids(user_input.query)
     blacklist_extensions = ['mp4', 'webm', 'mkv']
-
+    
     # Fetch tags from Sankaku if --sankaku_url is supplied
     if user_input.sankaku_url:
         if user_input.query.isnumeric():
@@ -82,6 +82,9 @@ def main():
                     post.rating
                 )
 
+                if len(tags) > 0:
+                    statistics(tagged=1)
+
                 if not limit_long == 0:
                     # Sleep 35 seconds after short limit has been reached
                     if limit_short == 0:
@@ -90,8 +93,8 @@ def main():
                     print('Your daily SauceNAO limit has been reached. Consider upgrading your account.')
                     break
             else:
-                final_tags = []
-                tags = post.tags
+                final_tags = [ post.tags ]
+                tags = []
 
             # Fallback to DeepBooru if no tags were found or use_saucenao is false
             if (not len(tags) or not user_input.use_saucenao) and user_input.deepbooru_enabled:
@@ -115,13 +118,14 @@ def main():
                 else:
                     statistics(deepbooru=1)
             else:
-                if 'tagme' not in final_tags:
-                    final_tags.append('tagme')
-                    statistics(skipped=1)
+                print()
+                print('Nothing to do. Enable either SauceNAO or DeepBooru in your config.')
+                statistics(skipped=1)
 
-            post.tags = final_tags
-
-            api.set_meta_data(post)
+            # If any tags were collected with SauceNAO or DeepBooru, tag the post
+            if len(tags):
+                post.tags = final_tags
+                api.set_meta_data(post)
 
     total_tagged, total_deepbooru, total_untagged, total_skipped = statistics()
 
