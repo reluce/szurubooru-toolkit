@@ -38,7 +38,7 @@
     },
     "upload_images": {
         "upload_dir": "/local/path/to/upload/dir",
-        "hide_progress": "True",
+        "hide_progress": "False",
         "tags": ["tagme"]
     }
 }
