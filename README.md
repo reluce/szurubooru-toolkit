@@ -22,6 +22,9 @@ If you want so specify multiple tags for your upload, separate each of the tags 
 We can generate our szuru API token with following command:
 `echo -n username:token | base64`
 
+Replace `username` with your user and `token` with the login token for that user.
+You can generate a login token in szurubooru under _Account_ > _Login tokens_ > _Create token_.
+
 Creating a SauceNAO account and an API key is recommended.
 Please consider supporting the SauceNAO team as well by upgrading your plan.
 With a free plan, you can request up to 200 posts in 24h.
