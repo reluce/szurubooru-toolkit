@@ -4,7 +4,7 @@ import urllib
 import os
 from math import ceil
 from .post import Post
-from misc.helpers import resize_image
+from misc.helpers import statistics
 
 class API:
     def __init__(self, szuru_address, szuru_api_token, szuru_public):
@@ -116,6 +116,7 @@ class API:
                 raise Exception(response.json()['description'])
         except Exception as e:
             print(f'Could not edit your post: {e}')
+            statistics(untagged=-1)
 
     def create_tags(self):
         """
