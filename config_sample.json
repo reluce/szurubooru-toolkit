@@ -39,6 +39,7 @@
     "upload_images": {
         "upload_dir": "/local/path/to/upload/dir",
         "hide_progress": "False",
+        "cleanup": "False",
         "tags": ["tagme"]
     }
 }

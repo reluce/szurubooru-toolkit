@@ -66,6 +66,7 @@ class UserInput:
         self.tagger_progress   = config['auto_tagger'].get('hide_progress', 'False')
         self.uploader_progress = config['upload_images'].get('hide_progress', 'False')
         self.upload_dir        = config['upload_images']['upload_dir']
+        self.cleanup           = strtobool(config['upload_images']['cleanup'])
         self.tags              = config['upload_images']['tags']
         
         self.tagger_progress   = False if self.tagger_progress == 'False' else True

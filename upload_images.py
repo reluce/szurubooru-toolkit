@@ -208,7 +208,8 @@ def main():
             else:
                 os.remove(file_to_upload)
 
-        cleanup_dirs(user_input.upload_dir)
+        if user_input.cleanup:
+            cleanup_dirs(user_input.upload_dir)
 
         print()
         print('Script has finished uploading.')
