@@ -109,7 +109,8 @@ def main():
 
             # If any tags were collected with SauceNAO or DeepBooru, tag the post
             if len(tags):
-                final_tags.remove('tagme')
+                if 'tagme' in final_tags:
+                    final_tags.remove('tagme')
                 post.tags = final_tags
                 api.set_meta_data(post)
 
