@@ -205,7 +205,7 @@ def main():
                     post.similar_posts.append(entry['post']['id'])
 
                 upload_file(api, post, file_to_upload)
-            else:
+            elif user_input.cleanup:
                 os.remove(file_to_upload)
 
         if user_input.cleanup:
