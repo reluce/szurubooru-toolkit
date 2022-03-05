@@ -8,6 +8,7 @@ from classes.user_input import UserInput
 from classes.api import API
 from classes.post import Post
 
+
 def get_files(upload_dir):
     """
     Reads recursively images/videos from upload_dir.
@@ -20,10 +21,13 @@ def get_files(upload_dir):
     """
 
     allowed_extensions = ['jpg', 'jpeg', 'png', 'mp4', 'webm', 'gif', 'swf']
-    files_raw          = list(filter(None, [glob(upload_dir + '/**/*.' + extension, recursive = True) for extension in allowed_extensions]))
-    files              = [y for x in files_raw for y in x]
-    
+    files_raw = list(
+        filter(None, [glob(upload_dir + '/**/*.' + extension, recursive=True) for extension in allowed_extensions])
+    )
+    files = [y for x in files_raw for y in x]
+
     return files
+
 
 def get_image_token(api, image):
     """
@@ -44,7 +48,7 @@ def get_image_token(api, image):
     post_url = api.szuru_api_url + '/uploads'
 
     try:
-        response    = requests.post(post_url, files={'content': image}, headers=api.headers)
+        response = requests.post(post_url, files={'content': image}, headers=api.headers)
 
         if 'description' in response.json():
             raise Exception(response.json()['description'])
@@ -55,13 +59,14 @@ def get_image_token(api, image):
         print()
         print(f'An error occured while getting the image token: {e}')
 
+
 def check_similarity(api, image_token):
     """
     Do a reverse image search with the temporary uploaded image.
 
     Args:
         image_token: An image token from szurubooru
-    
+
     Returns:
         exact_post: Includes meta data of the post if an exact match was found
         similar_posts: Includes a list with all similar posts
@@ -72,7 +77,7 @@ def check_similarity(api, image_token):
 
     post_url = api.szuru_api_url + '/posts/reverse-search'
     metadata = json.dumps({'contentToken': image_token})
-    
+
     try:
         response = requests.post(post_url, headers=api.headers, data=metadata)
 
@@ -81,10 +86,11 @@ def check_similarity(api, image_token):
         else:
             exact_post = response.json()['exactPost']
             similar_posts = response.json()['similarPosts']
-            return exact_post, similar_posts 
+            return exact_post, similar_posts
     except Exception as e:
         print()
         print(f'An error occured during the similarity check: {e}')
+
 
 def upload_file(api, post, file_path):
     """
@@ -100,7 +106,9 @@ def upload_file(api, post, file_path):
     """
 
     post_url = api.szuru_api_url + '/posts'
-    metadata = json.dumps({'tags': post.tags, 'safety': 'unsafe', 'relations': post.similar_posts, 'contentToken': post.image_token})
+    metadata = json.dumps(
+        {'tags': post.tags, 'safety': 'unsafe', 'relations': post.similar_posts, 'contentToken': post.image_token}
+    )
 
     try:
         response = requests.post(post_url, headers=api.headers, data=metadata)
@@ -108,10 +116,11 @@ def upload_file(api, post, file_path):
         if 'description' in response.json():
             raise Exception(response.json()['description'])
         else:
-           os.remove(file_path)
+            os.remove(file_path)
     except Exception as e:
         print()
         print(f'An error occured during the upload: {e}')
+
 
 def cleanup_dirs(dir):
     """
@@ -127,14 +136,17 @@ def cleanup_dirs(dir):
     for root, dirs, files in os.walk(dir, topdown=False):
         for name in files:
             # Remove Thumbs.db file created by Windows
-            if name == 'Thumbs.db': os.remove(os.path.join(root, name))
+            if name == 'Thumbs.db':
+                os.remove(os.path.join(root, name))
         for name in dirs:
             # Remove @eaDir directory created on Synology systems
-            if name == '@eaDir': shutil.rmtree(os.path.join(root, name))
+            if name == '@eaDir':
+                shutil.rmtree(os.path.join(root, name))
             try:
                 os.rmdir(os.path.join(root, name))
             except OSError:
                 pass
+
 
 def delete_posts(api, start_id, finish_id):
     """
@@ -153,30 +165,33 @@ def delete_posts(api, start_id, finish_id):
         try:
             response = requests.delete(post_url, headers=api.headers, data=json.dumps({'version': '1'}))
             if 'description' in response.json():
-                raise Exception(response.json()['description']) 
+                raise Exception(response.json()['description'])
         except Exception as e:
             print(f'An error occured while deleting posts: {e}')
+
 
 def main():
     """
     Main logic of the script.
     """
 
-    post       = Post()
+    post = Post()
     user_input = UserInput()
     user_input.parse_config()
-    api        = API(
-        szuru_address   = user_input.szuru_address,
-        szuru_api_token = user_input.szuru_api_token,
-        szuru_public    = user_input.szuru_public,
+    api = API(
+        szuru_address=user_input.szuru_address,
+        szuru_api_token=user_input.szuru_api_token,
+        szuru_public=user_input.szuru_public,
     )
 
-    files_to_upload  = get_files(user_input.upload_dir)
+    files_to_upload = get_files(user_input.upload_dir)
 
     if files_to_upload:
         print('Found ' + str(len(files_to_upload)) + ' images. Starting upload...')
 
-        for file_to_upload in tqdm(files_to_upload, ncols=80, position=0, leave=False, disable=user_input.uploader_progress):
+        for file_to_upload in tqdm(
+            files_to_upload, ncols=80, position=0, leave=False, disable=user_input.uploader_progress
+        ):
             with open(file_to_upload, 'rb') as f:
                 post.image = f.read()
 
@@ -185,10 +200,10 @@ def main():
 
             if not post.exact_post:
                 post.tags = user_input.tags
-                post.similar_posts = []        
+                post.similar_posts = []
                 for entry in similar_posts:
                     post.similar_posts.append(entry['post']['id'])
-                    
+
                 upload_file(api, post, file_to_upload)
             else:
                 os.remove(file_to_upload)
@@ -199,6 +214,7 @@ def main():
         print('Script has finished uploading.')
     else:
         print('No images found to upload.')
+
 
 if __name__ == '__main__':
     main()
