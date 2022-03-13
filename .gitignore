@@ -131,3 +131,4 @@ dmypy.json
 # Personal config file
 config
 config.json
+.vscode
