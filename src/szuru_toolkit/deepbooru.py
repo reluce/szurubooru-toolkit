@@ -1,13 +1,17 @@
-import sys
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import urllib
-import tensorflow as tf
-import numpy as np
-import PIL
-from misc.helpers import convert_rating
 
-class DeepBooru():
+from szuru_toolkit.utils import convert_rating
+
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+import numpy as np  # noqa E402
+import PIL  # noqa E402
+import tensorflow as tf  # noqa E402
+
+
+class Deepbooru:
     def __init__(self, model_path):
         self.model = self.load_model(model_path)
 
@@ -17,9 +21,9 @@ class DeepBooru():
         except Exception as e:
             print(e)
             print('Model not found. Download it from https://github.com/KichangKim/DeepDanbooru')
-            sys.exit()
+            exit()
 
-        with open("./misc/deepbooru/tags.txt", 'r') as tags_stream:
+        with open('./misc/deepbooru/tags.txt') as tags_stream:
             self.tags = np.array([tag for tag in (tag.strip() for tag in tags_stream) if tag])
 
         return self.model
@@ -30,7 +34,7 @@ class DeepBooru():
 
         try:
             image = np.array(PIL.Image.open(local_file_path).convert('RGB').resize((512, 512))) / 255.0
-        except IOError:
+        except OSError:
             return 'fail', []
 
         results = self.model.predict(np.array([image])).reshape(self.tags.shape[0])
@@ -43,10 +47,10 @@ class DeepBooru():
         if os.path.exists(local_file_path):
             os.remove(local_file_path)
 
-        tags   = list(result_tags.keys())
+        tags = list(result_tags.keys())
         rating = 'unsafe'
 
-        if not len(tags):
+        if tags:
             print()
             print(f'DeepBooru could not guess tags for image {image_url}')
         else:
@@ -57,7 +61,10 @@ class DeepBooru():
                 print()
                 print(f'Could not guess rating for image {image_url}. Defaulting to unsafe.')
 
-            # Optional: add deepbooru tag. We can always reference source:DeepBooru though.
-            #tags.append('deepbooru')
+            # Optional: add deepbooru tag. We can always reference source:Deepbooru though.
+            # tags.append('deepbooru')
 
-        return rating, tags
+        if rating is None:
+            rating = 'unsafe'
+
+        return tags, rating

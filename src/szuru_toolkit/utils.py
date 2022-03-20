@@ -2,10 +2,12 @@ import bs4
 import requests
 from PIL import Image
 
-total_tagged    = 0
+
+total_tagged = 0
 total_deepbooru = 0
-total_untagged  = 0
-total_skipped   = 0
+total_untagged = 0
+total_skipped = 0
+
 
 def resize_image(local_image_path):
     with Image.open(local_image_path) as image:
@@ -13,10 +15,9 @@ def resize_image(local_image_path):
         image.thumbnail((1000, 1000))
         image.save(local_image_path)
 
+
 def convert_rating(rating):
-    """
-    Map found rating to szuru rating
-    """
+    """Map different ratings to szuru compatible rating."""
 
     switch = {
         'Safe': 'safe',
@@ -27,13 +28,14 @@ def convert_rating(rating):
         'e': 'unsafe',
         'rating:safe': 'safe',
         'rating:questionable': 'sketchy',
-        'rating:explicit': 'unsafe'
+        'rating:explicit': 'unsafe',
     }
 
     return switch.get(rating)
 
+
 def get_metadata_sankaku(sankaku_url):
-    response    = requests.get(sankaku_url)
+    response = requests.get(sankaku_url)
     result_page = bs4.BeautifulSoup(response.text, 'html.parser')
 
     rating_raw = str(result_page.select('#stats li'))
@@ -50,18 +52,18 @@ def get_metadata_sankaku(sankaku_url):
 
     return tags, rating
 
-def statistics(tagged=0, deepbooru=0, untagged=0, skipped=0):
+
+def statistics(tagged=0, deepbooru=0, untagged=0):
     global total_tagged
     global total_deepbooru
     global total_untagged
-    global total_skipped
 
-    total_tagged      += tagged
-    total_deepbooru   += deepbooru
-    total_untagged    += untagged
-    total_skipped     += skipped
+    total_tagged += tagged
+    total_deepbooru += deepbooru
+    total_untagged += untagged
 
-    return total_tagged, total_deepbooru, total_untagged, total_skipped
+    return total_tagged, total_deepbooru, total_untagged
+
 
 def audit_rating(*ratings):
     """
@@ -70,11 +72,7 @@ def audit_rating(*ratings):
     """
 
     verdict = 'safe'
-    weight = {
-        'unsafe' : 2,
-        'sketchy': 1,
-        'safe'   : 0
-    }
+    weight = {'unsafe': 2, 'sketchy': 1, 'safe': 0}
     for r in ratings:
         if not r:
             continue
@@ -82,25 +80,8 @@ def audit_rating(*ratings):
             verdict = r
     return verdict
 
-def remove_tag_whitespace(tags_whitespace):
-    """
-    Self descriptive
-    Szurubooru does not allow whitespaces in tagnames
 
-    Arguments:
-        tags: list of tags possibly with whitespaces
-
-    Returns:
-        tags_: list of tags with underscores
-    """
-    tags_underscore = []
-    for tw in tags_whitespace:
-        tu = tw.replace(' ', '_')
-        tags_underscore.append(tu)
-
-    return tags_underscore
-
-def collect_tags(*list_tags):
+def sanitize_tags(tags: list):
     """
     Collect tags and remove duplicates
     Retuns an empty list if tags is an empty list
@@ -113,17 +94,14 @@ def collect_tags(*list_tags):
             duplicates are removed
     """
 
-    tags_collected = []
-    for lt in list_tags:
-        tu = remove_tag_whitespace(lt)
-        tags_collected.extend(tu)
+    tags_sanitized = []
 
-    for tc in tags_collected:
-        tc.replace(' ', '_')
+    for tag in tags:
+        tag = tag.replace(' ', '_')
+        tags_sanitized.append(tag)
 
-    # remove duplicates
-    tags_collected = list(set(tags_collected))
-    return tags_collected
+    return tags_sanitized
+
 
 def collect_sources(*sources):
     """

@@ -1,10 +1,15 @@
-from tqdm import tqdm
 from time import sleep
+
 from classes.api import API
-from classes.saucenao import SauceNao
 from classes.deepbooru import DeepBooru
+from classes.saucenao import SauceNao
 from classes.user_input import UserInput
-from misc.helpers import get_metadata_sankaku, statistics, audit_rating, collect_tags, collect_sources
+from misc.helpers import audit_rating
+from misc.helpers import collect_sources
+from misc.helpers import collect_tags
+from misc.helpers import get_metadata_sankaku
+from misc.helpers import statistics
+from tqdm import tqdm
 
 
 def main():

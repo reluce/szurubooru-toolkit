@@ -1,0 +1,58 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.1.0
+    hooks:
+    -   id: check-docstring-first
+    -   id: check-yaml
+    -   id: debug-statements
+        description: Check for breakpoints
+    -   id: double-quote-string-fixer
+        description: Replace double quotes with single quotes
+    # -   id: name-tests-test
+    #     description: Check for correct file name of tests
+    #     args: [--django]  # Match test*.py instead of _test.py
+
+-   repo: https://github.com/PyCQA/flake8
+    rev: 4.0.1
+    hooks:
+    -   id: flake8
+        additional_dependencies: [flake8-typing-imports==1.12.0]
+
+-   repo: https://github.com/psf/black
+    rev: 22.1.0
+    hooks:
+    -   id: black
+
+# -   repo: https://github.com/econchick/interrogate
+#     rev: 1.5.0
+#     hooks:
+#     -   id: interrogate
+
+-   repo: https://github.com/asottile/pyupgrade
+    rev: v2.31.1
+    hooks:
+    -   id: pyupgrade
+        args: [--py37-plus]
+
+-   repo: https://github.com/PyCQA/isort
+    rev: 5.10.1
+    hooks:
+    -   id: isort
+
+-   repo: https://github.com/asottile/add-trailing-comma
+    rev: v2.2.1
+    hooks:
+    -   id: add-trailing-comma
+        args: [--py36-plus]
+
+# -   repo: https://github.com/pre-commit/mirrors-mypy
+    # rev: v0.941
+    # hooks:
+    # -   id: mypy
+    #     additional_dependencies: [types-all]
+    #     exclude: ^tests
+
+-   repo: meta
+    hooks:
+    -   id: check-hooks-apply
+    -   id: check-useless-excludes

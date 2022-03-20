@@ -1,6 +1,10 @@
-import requests
-import bs4
 import re
+
+from szuru_toolkit.utils import convert_rating
+
+import bs4
+import requests
+
 
 def scrape_sankaku(sankaku_image_url):
     '''
@@ -25,26 +29,21 @@ def scrape_sankaku(sankaku_image_url):
     html = bs4.BeautifulSoup(response.text, 'html.parser')
 
     # scrape tags
-    tag_sidebar = html.find('ul', {'id' : 'tag-sidebar'})
-    tag_infos = tag_sidebar.find_all('li', {'class' : re.compile('tag-type')})
+    tag_sidebar = html.find('ul', {'id': 'tag-sidebar'})
+    tag_infos = tag_sidebar.find_all('li', {'class': re.compile('tag-type')})
     for ti in tag_infos:
-        tag_href = ti.find('a', {'itemprop' : 'keywords'})
+        tag_href = ti.find('a', {'itemprop': 'keywords'})
         tag = tag_href.text
         tags.append(tag)
 
     # scrape rating
-    stats = html.find('div', {'id' : 'stats'})
+    stats = html.find('div', {'id': 'stats'})
     li_rating = stats.find('li', text=re.compile('Rating'))
     rating_raw = li_rating.text
     # trim unnecessary characters
     rating_raw = rating_raw.replace('Rating: ', '')
     # convert rating Sankaku -> Szurubooru
-    if rating_raw == 'Explicit':
-        rating = 'unsafe'
-    elif rating_raw == 'Safe':
-        rating = 'safe'
-    elif rating_raw == 'Questionable':
-        rating = 'sketchy'
+    rating = convert_rating(rating_raw)
 
     # scrape source
     source = sankaku_image_url

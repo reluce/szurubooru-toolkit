@@ -1,12 +1,13 @@
-import os
 import json
+import os
 import shutil
-import requests
 from glob import glob
-from tqdm import tqdm
-from classes.user_input import UserInput
+
+import requests
 from classes.api import API
 from classes.post import Post
+from classes.user_input import UserInput
+from tqdm import tqdm
 
 
 def get_files(upload_dir):
@@ -22,7 +23,7 @@ def get_files(upload_dir):
 
     allowed_extensions = ['jpg', 'jpeg', 'png', 'mp4', 'webm', 'gif', 'swf']
     files_raw = list(
-        filter(None, [glob(upload_dir + '/**/*.' + extension, recursive=True) for extension in allowed_extensions])
+        filter(None, [glob(upload_dir + '/**/*.' + extension, recursive=True) for extension in allowed_extensions]),
     )
     files = [y for x in files_raw for y in x]
 
@@ -107,7 +108,7 @@ def upload_file(api, post, file_path):
 
     post_url = api.szuru_api_url + '/posts'
     metadata = json.dumps(
-        {'tags': post.tags, 'safety': 'unsafe', 'relations': post.similar_posts, 'contentToken': post.image_token}
+        {'tags': post.tags, 'safety': 'unsafe', 'relations': post.similar_posts, 'contentToken': post.image_token},
     )
 
     try:
@@ -190,7 +191,11 @@ def main():
         print('Found ' + str(len(files_to_upload)) + ' images. Starting upload...')
 
         for file_to_upload in tqdm(
-            files_to_upload, ncols=80, position=0, leave=False, disable=user_input.uploader_progress
+            files_to_upload,
+            ncols=80,
+            position=0,
+            leave=False,
+            disable=user_input.uploader_progress,
         ):
             with open(file_to_upload, 'rb') as f:
                 post.image = f.read()

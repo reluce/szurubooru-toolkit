@@ -1,2 +1,0 @@
-class Konachan:
-    pass
