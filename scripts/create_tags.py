@@ -3,9 +3,7 @@ from classes.user_input import UserInput
 
 
 def main():
-    """
-    Create or update tags
-    """
+    """Create or update tags. TODO with pyszuru package"""
 
     user_input = UserInput()
     user_input.parse_config()

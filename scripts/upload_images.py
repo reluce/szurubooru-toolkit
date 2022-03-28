@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 import json
 import os
 import shutil
 from glob import glob
 
+from szuru_toolkit import Config
+from szuru_toolkit import Post
+from szuru_toolkit import Szurubooru
+from szuru_toolkit import setup_logger
+
 import requests
-from classes.api import API
-from classes.post import Post
-from classes.user_input import UserInput
 from tqdm import tqdm
 
 
@@ -30,26 +34,26 @@ def get_files(upload_dir):
     return files
 
 
-def get_image_token(api, image):
-    """
-    Upload the image to the temporary uploads endpoint.
+def get_image_token(szuru: Szurubooru, image: bytes) -> str:
+    """Upload the image to the temporary uploads endpoint.
+
     We can access our temporary image with the image token.
 
     Args:
-        image: The file object of the image
-        file: The path to the file
+        szuru (Szurubooru):
+        image (bytes): The image file to upload as bytes.
 
     Returns:
-        image_token: An image token from szurubooru
+        str: An image token from szurubooru.
 
     Raises:
         Exception
     """
 
-    post_url = api.szuru_api_url + '/uploads'
+    post_url = szuru.szuru_api_url + '/uploads'
 
     try:
-        response = requests.post(post_url, files={'content': image}, headers=api.headers)
+        response = requests.post(post_url, files={'content': image}, headers=szuru.headers)
 
         if 'description' in response.json():
             raise Exception(response.json()['description'])
@@ -61,9 +65,8 @@ def get_image_token(api, image):
         print(f'An error occured while getting the image token: {e}')
 
 
-def check_similarity(api, image_token):
-    """
-    Do a reverse image search with the temporary uploaded image.
+def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
+    """Do a reverse image search with the temporary uploaded image.
 
     Args:
         image_token: An image token from szurubooru
@@ -76,11 +79,11 @@ def check_similarity(api, image_token):
         Exception
     """
 
-    post_url = api.szuru_api_url + '/posts/reverse-search'
+    post_url = szuru.szuru_api_url + '/posts/reverse-search'
     metadata = json.dumps({'contentToken': image_token})
 
     try:
-        response = requests.post(post_url, headers=api.headers, data=metadata)
+        response = requests.post(post_url, headers=szuru.headers, data=metadata)
 
         if 'description' in response.json():
             raise Exception(response.json()['description'])
@@ -93,42 +96,42 @@ def check_similarity(api, image_token):
         print(f'An error occured during the similarity check: {e}')
 
 
-def upload_file(api, post, file_path):
-    """
-    Uploads/Moves our temporary image to 'production' with similar posts if any were found.
+def upload_file(szuru: Szurubooru, post: Post, file_to_upload: str) -> None:
+    """Uploads/Moves our temporary image to 'production' with similar posts if any were found.
+
     Deletes file after upload has been completed.
 
     Args:
-        image_token: An image token from szurubooru
-        similar_posts: Includes a list with all similar posts
+        szuru (Szurubooru): Szurubooru object to interact with the API.
+        post (Post): Post object with attr `similar_posts` and `image_token`.
+        file_to_upload (str): Local file path of the file to upload.
 
     Raises:
         Exception
     """
 
-    post_url = api.szuru_api_url + '/posts'
+    post_url = szuru.szuru_api_url + '/posts'
     metadata = json.dumps(
         {'tags': post.tags, 'safety': 'unsafe', 'relations': post.similar_posts, 'contentToken': post.image_token},
     )
 
     try:
-        response = requests.post(post_url, headers=api.headers, data=metadata)
+        response = requests.post(post_url, headers=szuru.headers, data=metadata)
 
         if 'description' in response.json():
             raise Exception(response.json()['description'])
         else:
-            os.remove(file_path)
+            os.remove(file_to_upload)
     except Exception as e:
         print()
         print(f'An error occured during the upload: {e}')
 
 
-def cleanup_dirs(dir):
-    """
-    Remove empty directories recursively from bottom to top
+def cleanup_dirs(dir: str) -> None:
+    """Remove empty directories recursively from bottom to top.
 
     Args:
-        dir: The directory under which to cleanup - dir is the root level and won't get deleted.
+        dir (str): The directory under which to cleanup - dir is the root level and won't get deleted.
 
     Raises:
         OSError
@@ -149,9 +152,8 @@ def cleanup_dirs(dir):
                 pass
 
 
-def delete_posts(api, start_id, finish_id):
-    """
-    If some posts unwanted posts were uploaded, you can delete those within the range of start_id to finish_id.
+def delete_posts(szuru: Szurubooru, start_id: int, finish_id: int):
+    """If some posts unwanted posts were uploaded, you can delete those within the range of start_id to finish_id.
 
     Args:
         start_id: Start deleting from this post id
@@ -162,9 +164,9 @@ def delete_posts(api, start_id, finish_id):
     """
 
     for id in range(start_id, finish_id + 1):
-        post_url = api.szuru_api_url + '/post/' + str(id)
+        post_url = szuru.szuru_api_url + '/post/' + str(id)
         try:
-            response = requests.delete(post_url, headers=api.headers, data=json.dumps({'version': '1'}))
+            response = requests.delete(post_url, headers=szuru.headers, data=json.dumps({'version': '1'}))
             if 'description' in response.json():
                 raise Exception(response.json()['description'])
         except Exception as e:
@@ -172,20 +174,14 @@ def delete_posts(api, start_id, finish_id):
 
 
 def main():
-    """
-    Main logic of the script.
-    """
+    """Main logic of the script."""
 
+    config = Config()
+    setup_logger()
     post = Post()
-    user_input = UserInput()
-    user_input.parse_config()
-    api = API(
-        szuru_address=user_input.szuru_address,
-        szuru_api_token=user_input.szuru_api_token,
-        szuru_public=user_input.szuru_public,
-    )
+    szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
 
-    files_to_upload = get_files(user_input.upload_dir)
+    files_to_upload = get_files(config.upload_images['src_path'])
 
     if files_to_upload:
         print('Found ' + str(len(files_to_upload)) + ' images. Starting upload...')
@@ -195,26 +191,26 @@ def main():
             ncols=80,
             position=0,
             leave=False,
-            disable=user_input.uploader_progress,
+            disable=config.upload_images['hide_progress'],
         ):
             with open(file_to_upload, 'rb') as f:
                 post.image = f.read()
 
-            post.image_token = get_image_token(api, post.image)
-            post.exact_post, similar_posts = check_similarity(api, post.image_token)
+            post.image_token = get_image_token(szuru, post.image)
+            post.exact_post, similar_posts = check_similarity(szuru, post.image_token)
 
             if not post.exact_post:
-                post.tags = user_input.tags
+                post.tags = config.upload_images['tags']
                 post.similar_posts = []
                 for entry in similar_posts:
                     post.similar_posts.append(entry['post']['id'])
 
-                upload_file(api, post, file_to_upload)
-            elif user_input.cleanup:
-                os.remove(file_to_upload)
+                upload_file(szuru, post, file_to_upload)
+            elif config.upload_images['cleanup']:
+                os.remove(file_to_upload)  # Remove files first
 
-        if user_input.cleanup:
-            cleanup_dirs(user_input.upload_dir)
+        if config.upload_images['cleanup']:
+            cleanup_dirs(config.upload_images['src_path'])  # Then remove the directory
 
         print()
         print('Script has finished uploading.')
