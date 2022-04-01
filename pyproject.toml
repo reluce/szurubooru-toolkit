@@ -39,7 +39,7 @@ disallow_untyped_defs = true
 
 [tool.poetry]
 name = "szuru-toolkit"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python package and script collection to manage your szurubooru"
 authors = ["Armin Richter <armin@fkosquad.moe>"]
 license = "MIT"
@@ -48,8 +48,13 @@ repository = "https://github.com/reluce/szurubooru-scripts"
 documentation = "https://github.com/reluce/szurubooru-scripts"
 keywords = ["szurubooru", "szuru", "booru"]
 
+[tool.poetry.scripts]
+auto-tagger = 'scripts.auto-tagger:main'
+upload-media = 'scripts.upload-media:main'
+create-tags = 'scripts.create-tags:main'
+
 [tool.poetry.dependencies]
-python = ">=3.7,<3.11"
+python = ">=3.8,<3.11"
 beautifulsoup4="^4.10.0"
 Pillow="^8.4.0"
 Pybooru="^4.2.2"
