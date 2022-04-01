@@ -1,133 +1,226 @@
+import argparse
+import sys
 from time import sleep
 
-from classes.api import API
-from classes.deepbooru import DeepBooru
-from classes.saucenao import SauceNao
-from classes.user_input import UserInput
-from misc.helpers import audit_rating
-from misc.helpers import collect_sources
-from misc.helpers import collect_tags
-from misc.helpers import get_metadata_sankaku
-from misc.helpers import statistics
+from szuru_toolkit import Config
+from szuru_toolkit import Deepbooru
+from szuru_toolkit import SauceNao
+from szuru_toolkit import Szurubooru
+from szuru_toolkit.sankaku import scrape_sankaku
+from szuru_toolkit.utils import collect_sources
+from szuru_toolkit.utils import sanitize_tags
+from szuru_toolkit.utils import setup_logger
+from szuru_toolkit.utils import statistics
+
+from loguru import logger
 from tqdm import tqdm
 
 
-def main():
+sys.tracebacklimit = 0
+
+
+def parse_args() -> tuple:
     """
-    Parse user input and get all post ids based on the input query.
-    After that, start tagging either based on the sankaku_url if specified or IQDB.
+    Parse the input args to the script auto_tagger.py and set the object attributes accordingly.
     """
 
-    user_input = UserInput()
-    user_input.parse_config()
-    user_input.parse_input()
-    api = API(
-        szuru_address=user_input.szuru_address,
-        szuru_api_token=user_input.szuru_api_token,
-        szuru_public=user_input.szuru_public,
+    parser = argparse.ArgumentParser(
+        description='This script will automagically tag your szurubooru posts based on your input query.',
     )
-    saucenao = SauceNao(user_input)
-    deepbooru = DeepBooru(user_input.deepbooru_model)
 
-    # Get post ids and pages from input query
-    post_ids, total = api.get_post_ids(user_input.query)
-    blacklist_extensions = ['mp4', 'webm', 'mkv']
+    parser.add_argument(
+        '--sankaku_url',
+        default=None,
+        help='Fetch tags from specified Sankaku URL instead of searching SauceNAO.',
+    )
+    parser.add_argument(
+        'query',
+        help='Specify a single post id to tag or a szuru query. E.g. "date:today tag-count:0"',
+    )
 
-    # Fetch tags from Sankaku if --sankaku_url is supplied
-    if user_input.sankaku_url:
-        if user_input.query.isnumeric():
-            post = api.get_post(post_ids[0])
-            post.tags, post.rating = get_metadata_sankaku(user_input.sankaku_url)
-            post.source = user_input.sankaku_url
+    parser.add_argument(
+        '--add-tags',
+        default=None,
+        help='Specify tags, separated by a comma, which will be added to all posts matching your query',
+    )
 
-            # Set meta data for the post
+    parser.add_argument(
+        '--remove-tags',
+        default=None,
+        help='Specify tags, separated by a comma, which will be removed from all posts matching your query',
+    )
+
+    args = parser.parse_args()
+
+    sankaku_url = args.sankaku_url
+    logger.debug(f'sankaku_url = {sankaku_url}')
+    query = args.query
+    logger.debug(f'query = {query}')
+
+    add_tags = args.add_tags
+    logger.debug(f'add_tags = {add_tags}')
+    remove_tags = args.remove_tags
+    logger.debug(f'remove_tags = {remove_tags}')
+
+    if add_tags:
+        add_tags = add_tags.split(',')
+    if remove_tags:
+        remove_tags = remove_tags.split(',')
+
+    return sankaku_url, query, add_tags, remove_tags
+
+
+def parse_saucenao_results(sauce: SauceNao, post, config):
+    limit_reached = False
+    tags, source, rating, limit_short, limit_long = sauce.get_metadata(
+        post.content_url,
+        config.szurubooru['public'],
+        config.auto_tagger['tmp_path'],
+    )
+
+    # Get previously set sources and add new sources
+    source = collect_sources(*source.splitlines(), *post.source.splitlines())
+
+    if not limit_long == 0:
+        # Sleep 35 seconds after short limit has been reached
+        if limit_short == 0:
+            logger.warning('Short limit reached for SauceNAO, trying again in 35s...')
+            sleep(35)
+    else:
+        limit_reached = True
+        logger.info('Your daily SauceNAO limit has been reached. Consider upgrading your account.')
+
+    if tags:
+        statistics(tagged=1)
+
+    if limit_reached and config.auto_tagger['deepbooru_enabled']:
+        config.auto_tagger['saucenao_enabled'] = False
+        logger.info('Continuing tagging with Deepbooru only...')
+
+    return sanitize_tags(tags), source, rating, limit_reached
+
+
+@logger.catch
+def main() -> None:
+    """Placeholder"""
+
+    config = Config()
+    setup_logger()
+    logger.info('Initializing script...')
+
+    if not config.auto_tagger['saucenao_enabled'] and not config.auto_tagger['deepbooru_enabled']:
+        logger.info('Nothing to do. Enable either SauceNAO or Deepbooru in your config.')
+        exit()
+
+    sankaku_url, query, add_tags, remove_tags = parse_args()
+
+    szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
+
+    if config.auto_tagger['saucenao_enabled']:
+        sauce = SauceNao(config)
+
+    if config.auto_tagger['deepbooru_enabled']:
+        deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
+
+    logger.success(f'Script initialized. Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
+    posts = szuru.get_posts(query)
+    total_posts = next(posts)
+
+    if sankaku_url:
+        if query.isnumeric():
+            post = szuru.get_posts(query)
+            post.tags, post.rating = scrape_sankaku(sankaku_url)
+            post.source = sankaku_url
+
             try:
-                api.set_meta_data(post)
+                szuru.update_post(post)
                 statistics(tagged=1)
             except Exception as e:
                 statistics(untagged=1)
-                print(f'Could not tag post with Sankaku: {e}')
+                logger.error(f'Could not tag post with Sankaku: {e}')
         else:
-            print('Can only tag a single post if you specify --sankaku_url.')
-    # Otherwise begin to get tags from SauceNAO
+            logger.critical('Can only tag a single post if you specify --sankaku_url.')
     else:
-        for post_id in tqdm(post_ids, ncols=80, position=0, leave=False, disable=user_input.tagger_progress):
-            try:
-                post = api.get_post(post_id)
-            except Exception as e:
-                print(f'Could not fetch post {post_id}: {e}')
+        for index, post in enumerate(
+            tqdm(
+                posts,
+                ncols=80,
+                position=0,
+                leave=False,
+                disable=config.auto_tagger['hide_progress'],
+                total=int(total_posts),
+            ),
+        ):
+            tags = []
 
-            is_blacklisted = False
-            for extension in blacklist_extensions:
-                if extension in post.image_url:
-                    is_blacklisted = True
+            if config.auto_tagger['saucenao_enabled']:
+                tags, post.source, post.safety, limit_reached = parse_saucenao_results(
+                    sauce,
+                    post,
+                    config,
+                )
 
-            if is_blacklisted:
-                statistics(skipped=1)
-                continue
-
-            if user_input.use_saucenao:
-                tags, source, rating, limit_short, limit_long = saucenao.get_metadata(post)
-
-                # Get previously set tags and add new tags
-                final_tags = collect_tags(tags, post.tags)
-
-                # Get previously set sources and add new sources
-                list_source_scraped = source.splitlines()
-                list_source_post = post.source.splitlines()
-                post.source = collect_sources(*list_source_scraped, *list_source_post)
-
-                post.rating = audit_rating(rating, post.rating)
-
-                if len(tags) > 0:
-                    statistics(tagged=1)
-
-                if not limit_long == 0:
-                    # Sleep 35 seconds after short limit has been reached
-                    if limit_short == 0:
-                        sleep(35)
+                if add_tags:
+                    post.tags = list(set().union(post.tags, tags, add_tags))  # Keep previous tags, add user tags
                 else:
-                    print('Your daily SauceNAO limit has been reached. Consider upgrading your account.')
-                    break
-            else:
-                final_tags = [post.tags]
-                tags = []
+                    post.tags = list(set().union(post.tags, tags))  # Keep previous tags, add user tags
 
-            # Fallback to DeepBooru if no tags were found or use_saucenao is false
-            if (not len(tags) or not user_input.use_saucenao) and user_input.deepbooru_enabled:
-                post.source = 'DeepBooru'
-                rating, tags = deepbooru.tag_image(user_input.local_temp_path, post.image_url, user_input.threshold)
-                final_tags = final_tags + tags
+            # if not tags and config.auto_tagger['deepbooru_enabled']:
+            if (not tags and config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']:
+                tags, post.safety = deepbooru.tag_image(
+                    config.auto_tagger['tmp_path'],
+                    post.content_url,
+                    config.auto_tagger['deepbooru_threshold'],
+                )
 
-                if rating is None:
-                    post.rating = 'unsafe'
+                # Copy artist, character and series from relations.
+                # Useful for FANBOX/Fantia sets where the main post is uploaded to a Booru.
+                if post.relations:
+                    for relation in post.relations:
+                        result = szuru.api.getPost(relation['id'])
 
-                if not tags and 'tagme' not in final_tags:
-                    final_tags.append('tagme')
-                    statistics(untagged=1)
+                        for relation_tag in result.tags:
+                            if not relation_tag.category == 'default' or not relation_tag.category == 'meta':
+                                post.tags.append(relation_tag.primary_name)
+
+                if add_tags:
+                    post.tags = list(set().union(post.tags, tags, add_tags))  # Keep previous tags, add user tags
                 else:
+                    post.tags = list(set().union(post.tags, tags))  # Keep previous tags, add user tags
+
+                if 'DeepBooru' in post.source:
+                    post.source = post.source.replace('DeepBooru\n', '')
+                    post.source = post.source.replace('\nDeepBooru', '')
+
+                if 'Deepbooru' not in post.source:
+                    post.source = collect_sources(post.source, 'Deepbooru')
+
+                if tags:
                     statistics(deepbooru=1)
-            elif not user_input.use_saucenao:
-                print()
-                print('Nothing to do. Enable either SauceNAO or DeepBooru in your config.')
-                statistics(skipped=1)
+                else:
+                    statistics(untagged=1)
+            elif not tags:
+                statistics(untagged=1)
 
-            # If any tags were collected with SauceNAO or DeepBooru, tag the post
-            if len(tags):
-                if 'tagme' in final_tags:
-                    final_tags.remove('tagme')
-                post.tags = final_tags
-                api.set_meta_data(post)
+            # If any tags were collected with SauceNAO or Deepbooru, tag the post
+            if remove_tags:
+                [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]
 
-    total_tagged, total_deepbooru, total_untagged, total_skipped = statistics()
+            if tags:
+                [post.tags.remove(tag) for tag in post.tags if tag == 'deepbooru' or tag == 'tagme']
+                szuru.update_post(post)
 
-    print()
-    print('Script has finished tagging.')
-    print(f'Total:     {total}')
-    print(f'Tagged:    {str(total_tagged)}')
-    print(f'DeepBooru: {str(total_deepbooru)}')
-    print(f'Untagged:  {str(total_untagged)}')
-    print(f'Skipped:   {str(total_skipped)}')
+            if limit_reached and not config.auto_tagger['deepbooru_enabled']:
+                statistics(untagged=int(total_posts) - index - 1)  # Index starts at 0
+                break
+
+    total_tagged, total_deepbooru, total_untagged = statistics()
+
+    logger.success('Script has finished tagging.')
+    logger.success(f'Total:     {total_posts}')
+    logger.success(f'Tagged:    {str(total_tagged)}')
+    logger.success(f'Deepbooru: {str(total_deepbooru)}')
+    logger.success(f'Untagged:  {str(total_untagged)}')
 
 
 if __name__ == '__main__':
