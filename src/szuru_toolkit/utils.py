@@ -208,7 +208,6 @@ def setup_logger():
                 colorize=True,
                 level='INFO',
                 filter=lambda record: record['level'].no < 30,
-                enqueue=True,
                 format='<le>[{level}]</le> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg>: {message}',
             ),
             dict(
