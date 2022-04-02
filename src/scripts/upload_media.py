@@ -5,13 +5,13 @@ import os
 import shutil
 from glob import glob
 
+import requests
+from tqdm import tqdm
+
 from szuru_toolkit import Config
 from szuru_toolkit import Post
 from szuru_toolkit import Szurubooru
 from szuru_toolkit import setup_logger
-
-import requests
-from tqdm import tqdm
 
 
 def get_files(upload_dir):
