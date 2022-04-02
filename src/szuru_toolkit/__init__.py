@@ -19,21 +19,16 @@ from .utils import setup_logger  # noqa F401
 from .utils import statistics  # noqa F401
 
 
-logger.configure(
-    handlers=[
-        dict(
-            sink=sys.stderr,
-            backtrace=False,
-            colorize=True,
-            level='ERROR',
-            enqueue=True,
-            diagnose=False,
-            format=''.join(
-                '<lr>[{level}]</lr> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> '
-                '<ly>[{module}.{function}]</ly>: {message}',
-            ),
-        ),
-    ],
+logger.add(
+    sink=sys.stderr,
+    backtrace=False,
+    colorize=True,
+    level='ERROR',
+    enqueue=True,
+    diagnose=False,
+    format=''.join(
+        '<lr>[{level}]</lr> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> ' '<ly>[{module}.{function}]</ly>: {message}',
+    ),
 )
 
 config = Config()
