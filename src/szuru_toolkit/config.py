@@ -69,7 +69,10 @@ class Config:
         for section, options in req_opts.items():
             for option in options:
                 if option not in getattr(self, section):
-                    logger.critical(f'The option {option} was not set in config.toml!')
+                    logger.critical(
+                        f'The option "{option}" in the "{section}" section was not set in config.toml! '
+                        'Check the README for additional information.',
+                    )
                     exit()
 
     def validate_path(self) -> None:
