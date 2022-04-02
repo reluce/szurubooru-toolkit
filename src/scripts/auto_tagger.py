@@ -111,7 +111,6 @@ def main() -> None:
 
     setup_logger()
     config = Config()
-    logger.info('Initializing script...')
 
     if not config.auto_tagger['saucenao_enabled'] and not config.auto_tagger['deepbooru_enabled']:
         logger.info('Nothing to do. Enable either SauceNAO or Deepbooru in your config.')
@@ -129,7 +128,7 @@ def main() -> None:
 
         deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
 
-    logger.success(f'Script initialized. Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
+    logger.info(f'Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
     posts = szuru.get_posts(query)
     total_posts = next(posts)
 
