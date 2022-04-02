@@ -5,6 +5,8 @@ import requests
 from loguru import logger
 from PIL import Image
 
+from szuru_toolkit import Config
+
 
 # Keep track of total tagged posts
 total_tagged = 0
@@ -186,16 +188,15 @@ def collect_sources(*sources: str) -> str:
     return source_collected
 
 
-def setup_logger():
+def setup_logger(config: Config):
     """Setup loguru logging handlers."""
 
     logger.configure(
         handlers=[
             dict(
-                sink='auto-tagger.log',
-                enqueue=True,
-                colorize=True,
-                level='DEBUG',
+                sink=config.logging['log_file'],
+                colorize=config.logging['log_colorized'],
+                level=config.logging['log_level'],
                 diagnose=False,
                 format=''.join(
                     '<lm>[{level}]</lm> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> '
@@ -226,7 +227,6 @@ def setup_logger():
                 backtrace=False,
                 colorize=True,
                 level='ERROR',
-                enqueue=True,
                 format=''.join(
                     '<lr>[{level}]</lr> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> '
                     '<ly>[{module}.{function}]</ly>: {message}',
@@ -234,3 +234,6 @@ def setup_logger():
             ),
         ],
     )
+
+    if not config.logging['log_enabled']:
+        logger.remove(2)  # Assume id 2 is the handler with the log file sink

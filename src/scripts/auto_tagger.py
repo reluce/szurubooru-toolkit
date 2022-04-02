@@ -5,13 +5,12 @@ from time import sleep
 from loguru import logger
 from tqdm import tqdm
 
-from szuru_toolkit import Config
 from szuru_toolkit import SauceNao
 from szuru_toolkit import Szurubooru
+from szuru_toolkit import config
 from szuru_toolkit.sankaku import scrape_sankaku
 from szuru_toolkit.utils import collect_sources
 from szuru_toolkit.utils import sanitize_tags
-from szuru_toolkit.utils import setup_logger
 from szuru_toolkit.utils import statistics
 
 
@@ -108,9 +107,6 @@ def parse_saucenao_results(sauce: SauceNao, post, config):
 @logger.catch
 def main() -> None:
     """Placeholder"""
-
-    setup_logger()
-    config = Config()
 
     if not config.auto_tagger['saucenao_enabled'] and not config.auto_tagger['deepbooru_enabled']:
         logger.info('Nothing to do. Enable either SauceNAO or Deepbooru in your config.')

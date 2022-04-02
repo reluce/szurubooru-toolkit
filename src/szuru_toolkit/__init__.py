@@ -19,6 +19,7 @@ from .utils import setup_logger  # noqa F401
 from .utils import statistics  # noqa F401
 
 
+logger.remove(0)
 logger.add(
     sink=sys.stderr,
     backtrace=False,
@@ -34,6 +35,8 @@ logger.add(
 config = Config()
 if config.auto_tagger['deepbooru_enabled']:
     from .deepbooru import Deepbooru  # noqa F401
+
+setup_logger(config)
 
 __all__ = [
     'Config',
