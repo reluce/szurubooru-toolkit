@@ -35,6 +35,8 @@ class Config:
 
         if self.auto_tagger['deepbooru_enabled']:
             self.validate_deepbooru()
+        else:
+            self.auto_tagger['deepbooru_forced'] = False
 
     def check_attr_set(self) -> None:
         """Check if necessary options in config.toml are set."""

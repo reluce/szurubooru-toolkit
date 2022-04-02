@@ -10,10 +10,11 @@ saucenao_enabled = true  # Set this to false and deepbooru_enabled to true if yo
 deepbooru_enabled = false
 deepbooru_model = "./misc/deepbooru/model-resnet_custom_v3.h5"
 deepbooru_threshold = "0.7"  # Define how accurate the matched tag from DeepBooru has to be
-deepbooru_forced = true  # Always tag with SauceNAO and Deepbooru. Overwrites deepbooru_enabled.
+deepbooru_forced = true  # Always tag with SauceNAO and Deepbooru
 hide_progress = false  # Set this to true to hide the progress bar
 # Local path where media files get downloaded temporarily if you szurubooru is not public.
 # This is necessary so files can get uploaded and tagged with SauceNAO.
+# On Windows, use foward slashes ('/') instead of backslashes
 tmp_path = "/tmp/"
 
 [[danbooru]]
