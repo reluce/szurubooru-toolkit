@@ -8,10 +8,9 @@ from glob import glob
 import requests
 from tqdm import tqdm
 
-from szuru_toolkit import Config
 from szuru_toolkit import Post
 from szuru_toolkit import Szurubooru
-from szuru_toolkit import setup_logger
+from szuru_toolkit import config
 
 
 def get_files(upload_dir):
@@ -176,8 +175,6 @@ def delete_posts(szuru: Szurubooru, start_id: int, finish_id: int):
 def main():
     """Main logic of the script."""
 
-    config = Config()
-    setup_logger()
     post = Post()
     szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
 
