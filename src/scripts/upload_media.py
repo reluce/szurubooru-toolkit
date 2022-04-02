@@ -6,6 +6,7 @@ import shutil
 from glob import glob
 
 import requests
+from loguru import logger
 from tqdm import tqdm
 
 from szuru_toolkit import Post
@@ -60,8 +61,7 @@ def get_image_token(szuru: Szurubooru, image: bytes) -> str:
             image_token = response.json()['token']
             return image_token
     except Exception as e:
-        print()
-        print(f'An error occured while getting the image token: {e}')
+        logger.critical(f'An error occured while getting the image token: {e}')
 
 
 def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
@@ -91,8 +91,7 @@ def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
             similar_posts = response.json()['similarPosts']
             return exact_post, similar_posts
     except Exception as e:
-        print()
-        print(f'An error occured during the similarity check: {e}')
+        logger.critical(f'An error occured during the similarity check: {e}')
 
 
 def upload_file(szuru: Szurubooru, post: Post, file_to_upload: str) -> None:
@@ -122,8 +121,7 @@ def upload_file(szuru: Szurubooru, post: Post, file_to_upload: str) -> None:
         else:
             os.remove(file_to_upload)
     except Exception as e:
-        print()
-        print(f'An error occured during the upload: {e}')
+        logger.critical(f'An error occured during the upload: {e}')
 
 
 def cleanup_dirs(dir: str) -> None:
@@ -169,7 +167,7 @@ def delete_posts(szuru: Szurubooru, start_id: int, finish_id: int):
             if 'description' in response.json():
                 raise Exception(response.json()['description'])
         except Exception as e:
-            print(f'An error occured while deleting posts: {e}')
+            logger.critical(f'An error occured while deleting posts: {e}')
 
 
 def main():
@@ -178,17 +176,17 @@ def main():
     post = Post()
     szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
 
-    files_to_upload = get_files(config.upload_images['src_path'])
+    files_to_upload = get_files(config.upload_media['src_path'])
 
     if files_to_upload:
-        print('Found ' + str(len(files_to_upload)) + ' images. Starting upload...')
+        logger.info('Found ' + str(len(files_to_upload)) + ' images. Starting upload...')
 
         for file_to_upload in tqdm(
             files_to_upload,
             ncols=80,
             position=0,
             leave=False,
-            disable=config.upload_images['hide_progress'],
+            disable=config.upload_media['hide_progress'],
         ):
             with open(file_to_upload, 'rb') as f:
                 post.image = f.read()
@@ -197,22 +195,21 @@ def main():
             post.exact_post, similar_posts = check_similarity(szuru, post.image_token)
 
             if not post.exact_post:
-                post.tags = config.upload_images['tags']
+                post.tags = config.upload_media['tags']
                 post.similar_posts = []
                 for entry in similar_posts:
                     post.similar_posts.append(entry['post']['id'])
 
                 upload_file(szuru, post, file_to_upload)
-            elif config.upload_images['cleanup']:
+            elif config.upload_media['cleanup']:
                 os.remove(file_to_upload)  # Remove files first
 
-        if config.upload_images['cleanup']:
-            cleanup_dirs(config.upload_images['src_path'])  # Then remove the directory
+        if config.upload_media['cleanup']:
+            cleanup_dirs(config.upload_media['src_path'])  # Then remove the directory
 
-        print()
-        print('Script has finished uploading.')
+        logger.success('Script has finished uploading.')
     else:
-        print('No images found to upload.')
+        logger.info('No images found to upload.')
 
 
 if __name__ == '__main__':

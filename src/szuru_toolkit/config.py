@@ -53,7 +53,7 @@ class Config:
                 'hide_progress',
                 'tmp_path',
             ],
-            'upload_images': ['src_path', 'hide_progress', 'cleanup', 'tags'],
+            'upload_media': ['src_path', 'hide_progress', 'cleanup', 'tags'],
             'logging': ['log_enabled', 'log_file', 'log_level', 'log_colorized'],
             'danbooru': ['user', 'api_key'],
             'gelbooru': ['user', 'api_key'],
@@ -88,8 +88,8 @@ class Config:
             logger.critical(f'The tmp_path "{self.auto_tagger["tmp_path"]}" specified in config.toml does not exist!')
             exit()
 
-        if not Path(self.upload_images['src_path']).is_dir():
-            logger.critical(f'The src_path "{self.upload_images["src_path"]}" specified in config.toml does not exist!')
+        if not Path(self.upload_media['src_path']).is_dir():
+            logger.critical(f'The src_path "{self.upload_media["src_path"]}" specified in config.toml does not exist!')
             exit()
 
         if not Path(self.logging['log_file']).parent.is_dir():

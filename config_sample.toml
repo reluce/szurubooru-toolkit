@@ -34,7 +34,7 @@ user = "None"
 password = "None"
 token = "None"
 
-[upload_images]
+[upload_media]
 src_path = "/local/path/to/upload/dir"  # Every valid media file under this dir (recursively) will get uploaded
 hide_progress = false  # Set this to true to hide the progress bar
 cleanup = false  # Set this to true if images in the source directory should be deleted after upload
