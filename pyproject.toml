@@ -20,9 +20,8 @@ ignore-init-method = true
 line_length = 120
 lines_after_imports = 2
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
-default_section = "LOCALFOLDER"
-known_first_party = ["szuru-toolkit"]
-known_local_folder = ["src/szuru-toolkit"]
+known_first_party = ["szuru_toolkit"]
+known_local_folder = ["src/szuru_toolkit"]
 multi_line_output = 3
 force_single_line = true
 
