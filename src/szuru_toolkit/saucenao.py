@@ -3,6 +3,12 @@ import urllib
 from asyncio.exceptions import TimeoutError
 from time import sleep
 
+from aiohttp.client_exceptions import ContentTypeError
+from loguru import logger
+from pybooru.moebooru import Moebooru
+from pysaucenao import SauceNao as PySauceNao
+from syncer import sync
+
 from szuru_toolkit import Danbooru
 from szuru_toolkit import Gelbooru
 from szuru_toolkit import scrape_sankaku
@@ -10,12 +16,6 @@ from szuru_toolkit.utils import audit_rating
 from szuru_toolkit.utils import collect_sources
 from szuru_toolkit.utils import convert_rating
 from szuru_toolkit.utils import resize_image
-
-from aiohttp.client_exceptions import ContentTypeError
-from loguru import logger
-from pybooru.moebooru import Moebooru
-from pysaucenao import SauceNao as PySauceNao
-from syncer import sync
 
 
 class SauceNao:
