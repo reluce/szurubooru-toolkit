@@ -53,8 +53,14 @@ def parse_args() -> tuple:
 
     sankaku_url = args.sankaku_url
     logger.debug(f'sankaku_url = {sankaku_url}')
+
     query = args.query
     logger.debug(f'query = {query}')
+    if '\'' in query:
+        logger.warning(
+            'Your query contains single quotes (\'). '
+            'Consider using double quotes (") if the script doesn\'t behave as intended.',
+        )
 
     add_tags = args.add_tags
     logger.debug(f'add_tags = {add_tags}')
