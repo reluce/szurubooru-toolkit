@@ -2,8 +2,10 @@ import argparse
 import sys
 from time import sleep
 
+from loguru import logger
+from tqdm import tqdm
+
 from szuru_toolkit import Config
-from szuru_toolkit import Deepbooru
 from szuru_toolkit import SauceNao
 from szuru_toolkit import Szurubooru
 from szuru_toolkit.sankaku import scrape_sankaku
@@ -11,9 +13,6 @@ from szuru_toolkit.utils import collect_sources
 from szuru_toolkit.utils import sanitize_tags
 from szuru_toolkit.utils import setup_logger
 from szuru_toolkit.utils import statistics
-
-from loguru import logger
-from tqdm import tqdm
 
 
 sys.tracebacklimit = 0
@@ -120,6 +119,8 @@ def main() -> None:
         sauce = SauceNao(config)
 
     if config.auto_tagger['deepbooru_enabled']:
+        from szuru_toolkit import Deepbooru
+
         deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
 
     logger.success(f'Script initialized. Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
