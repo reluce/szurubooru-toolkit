@@ -41,6 +41,7 @@ cleanup = false  # Set this to true if images in the source directory should be 
 tags = ["tagme"]  # These tags will get set for all uploaded posts
 
 [logging]
-enable_log = false
-log_file = "None"
-log_level = "INFO"
+log_enabled = false
+log_file = "auto_tagger.log"
+log_level = "DEBUG"
+log_colorized = true
