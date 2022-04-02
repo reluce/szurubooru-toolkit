@@ -103,8 +103,8 @@ def parse_saucenao_results(sauce: SauceNao, post, config):
 def main() -> None:
     """Placeholder"""
 
-    config = Config()
     setup_logger()
+    config = Config()
     logger.info('Initializing script...')
 
     if not config.auto_tagger['saucenao_enabled'] and not config.auto_tagger['deepbooru_enabled']:
