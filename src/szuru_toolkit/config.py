@@ -52,6 +52,11 @@ class Config:
                 'tmp_path',
             ],
             'upload_images': ['src_path', 'hide_progress', 'cleanup', 'tags'],
+            'danbooru': ['user', 'api_key'],
+            'gelbooru': ['user', 'api_key'],
+            'konachan': ['user', 'password'],
+            'yandere': ['user', 'password'],
+            'pixiv': ['user', 'password', 'token'],
         }
 
         for section in req_opts:
