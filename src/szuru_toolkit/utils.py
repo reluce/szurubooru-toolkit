@@ -217,7 +217,7 @@ def setup_logger():
                 level='WARNING',
                 filter=lambda record: record['level'].no < 40,
                 format=''.join(
-                    '<fg #eba534>[{level}]</fg #eba534> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> '
+                    '<ly>[{level}]</ly> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> '
                     '<ly>[{module}.{function}]</ly>: {message}',
                 ),
             ),
