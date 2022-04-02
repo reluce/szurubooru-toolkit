@@ -54,6 +54,7 @@ class Config:
                 'tmp_path',
             ],
             'upload_images': ['src_path', 'hide_progress', 'cleanup', 'tags'],
+            'logging': ['log_enabled', 'log_file', 'log_level', 'log_colorized'],
             'danbooru': ['user', 'api_key'],
             'gelbooru': ['user', 'api_key'],
             'konachan': ['user', 'password'],
@@ -78,17 +79,24 @@ class Config:
                     exit()
 
     def validate_path(self) -> None:
-        """Check if the tmp_path and src_path in config.toml exist.
+        """Check if the directories in config.toml exist.
 
-        Both paths have to exist, even if one path is not being actively used.
+        Paths have to exist, even if one is not being actively used.
         """
 
         if not Path(self.auto_tagger['tmp_path']).is_dir():
-            logger.critical(f'Your tmp path "{self.auto_tagger["tmp_path"]}" in config.toml does not exist!')
+            logger.critical(f'The tmp_path "{self.auto_tagger["tmp_path"]}" specified in config.toml does not exist!')
             exit()
 
         if not Path(self.upload_images['src_path']).is_dir():
-            logger.critical(f'Your source dir "{self.upload_images["src_path"]}" in config.toml does not exist!')
+            logger.critical(f'The src_path "{self.upload_images["src_path"]}" specified in config.toml does not exist!')
+            exit()
+
+        if not Path(self.logging['log_file']).parent.is_dir():
+            logger.critical(
+                f'The log_file\'s parent directory "{Path(self.logging["log_file"]).parent}" '
+                'specified in config.toml does not exist!',
+            )
             exit()
 
     def validate_url(self) -> None:
