@@ -1,5 +1,5 @@
 import urllib
-from os import path
+from pathlib import Path
 
 import validators
 from loguru import logger
@@ -81,11 +81,11 @@ class Config:
         Both paths have to exist, even if one path is not being actively used.
         """
 
-        if not path.isdir(self.auto_tagger['tmp_path']):
+        if not Path(self.auto_tagger['tmp_path']).is_dir():
             logger.critical(f'Your tmp path "{self.auto_tagger["tmp_path"]}" in config.toml does not exist!')
             exit()
 
-        if not path.isdir(self.upload_images['src_path']):
+        if not Path(self.upload_images['src_path']).is_dir():
             logger.critical(f'Your source dir "{self.upload_images["src_path"]}" in config.toml does not exist!')
             exit()
 
@@ -115,7 +115,7 @@ class Config:
     def validate_deepbooru(self) -> None:
         """Check if deepbooru_model in config.toml is an existing file."""
 
-        if not path.isfile(self.auto_tagger['deepbooru_model']):
+        if not Path(self.auto_tagger['deepbooru_model']).exists():
             logger.critical(
                 f'Your Deepbooru model "{self.auto_tagger["deepbooru_model"]}" in config.toml does not exist!',
             )

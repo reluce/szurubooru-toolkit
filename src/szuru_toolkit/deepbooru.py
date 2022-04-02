@@ -1,5 +1,6 @@
 import os
 import urllib
+from pathlib import Path
 from time import sleep
 
 from szuru_toolkit.utils import convert_rating
@@ -30,12 +31,12 @@ class Deepbooru:
 
         return self.model
 
-    def tag_image(self, local_temp_path, image_url, threshold=0.6):
+    def tag_image(self, local_temp_path: str, image_url: str, threshold: float = 0.6):
         filename = image_url.split('/')[-1]
 
         for i in range(1, 12):
             try:
-                local_file_path = urllib.request.urlretrieve(image_url, local_temp_path + filename)[0]
+                local_file_path = urllib.request.urlretrieve(image_url, Path(local_temp_path) / filename)[0]
                 break
             except urllib.error.URLError:
                 logger.warning('Could not establish connection to szurubooru, trying again in 5s...')

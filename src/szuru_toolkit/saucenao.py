@@ -1,6 +1,7 @@
 import os
 import urllib
 from asyncio.exceptions import TimeoutError
+from pathlib import Path
 from time import sleep
 
 from aiohttp.client_exceptions import ContentTypeError
@@ -30,7 +31,7 @@ class SauceNao:
         self.konachan = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
 
     @sync
-    async def get_metadata(self, post_url: str, szuru_public: bool, tmp_path):
+    async def get_metadata(self, post_url: str, szuru_public: bool, tmp_path: str):
         """
         Scrape and collect tags, sources, and ratings from popular imageboards
         Simply put, it's a wrapper for get_result() and scrape_<image_board>()
@@ -198,7 +199,7 @@ class SauceNao:
             for _ in range(1, 12):
                 try:
                     filename = post_url.split('/')[-1]
-                    tmp_file = urllib.request.urlretrieve(post_url, tmp_path + filename)[0]
+                    tmp_file = urllib.request.urlretrieve(post_url, Path(tmp_path) / filename)[0]
                     logger.debug(f'Trying to get result from tmp_file: {tmp_file}')
 
                     # Resize images larger than 2MB to reduce load on servers
