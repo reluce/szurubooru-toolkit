@@ -208,11 +208,7 @@ def setup_logger():
                 colorize=True,
                 level='INFO',
                 filter=lambda record: record['level'].no < 30,
-                # format='<le>[{level}]</le> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg>: {message}',
-                format=''.join(
-                    '<fg #eba534>[{level}]</fg #eba534> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> '
-                    '<ly>[{module}.{function}]</ly>: {message}',
-                ),
+                format='<le>[{level}]</le> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg>: {message}',
             ),
             dict(
                 sink=sys.stderr,
