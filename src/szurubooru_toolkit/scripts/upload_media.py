@@ -9,9 +9,9 @@ import requests
 from loguru import logger
 from tqdm import tqdm
 
-from szuru_toolkit import Post
-from szuru_toolkit import Szurubooru
-from szuru_toolkit import config
+from szurubooru_toolkit import Post
+from szurubooru_toolkit import Szurubooru
+from szurubooru_toolkit import config
 
 
 def get_files(upload_dir):

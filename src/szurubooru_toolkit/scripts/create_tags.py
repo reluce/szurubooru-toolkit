@@ -1,8 +1,8 @@
 from loguru import logger
 
-from szuru_toolkit import Config
-from szuru_toolkit import Szurubooru
-from szuru_toolkit import setup_logger
+from szurubooru_toolkit import Config
+from szurubooru_toolkit import Szurubooru
+from szurubooru_toolkit import setup_logger
 
 
 def main():

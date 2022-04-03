@@ -3,7 +3,7 @@ import urllib
 from pathlib import Path
 from time import sleep
 
-from szuru_toolkit.utils import convert_rating
+from szurubooru_toolkit.utils import convert_rating
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'

@@ -5,13 +5,13 @@ from time import sleep
 from loguru import logger
 from tqdm import tqdm
 
-from szuru_toolkit import SauceNao
-from szuru_toolkit import Szurubooru
-from szuru_toolkit import config
-from szuru_toolkit.utils import collect_sources
-from szuru_toolkit.utils import sanitize_tags
-from szuru_toolkit.utils import scrape_sankaku
-from szuru_toolkit.utils import statistics
+from szurubooru_toolkit import SauceNao
+from szurubooru_toolkit import Szurubooru
+from szurubooru_toolkit import config
+from szurubooru_toolkit.utils import collect_sources
+from szurubooru_toolkit.utils import sanitize_tags
+from szurubooru_toolkit.utils import scrape_sankaku
+from szurubooru_toolkit.utils import statistics
 
 
 sys.tracebacklimit = 0
@@ -122,7 +122,7 @@ def main() -> None:
         sauce = SauceNao(config)
 
     if config.auto_tagger['deepbooru_enabled']:
-        from szuru_toolkit import Deepbooru
+        from szurubooru_toolkit import Deepbooru
 
         deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
 

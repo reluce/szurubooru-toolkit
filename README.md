@@ -1,6 +1,6 @@
 <p align="center">
 <img src="https://cdn-icons-png.flaticon.com/512/2581/2581053.png"
-  alt="szuru-toolkit icon"
+  alt="szurubooru-toolkit icon"
   width="128" height="128">
 </p>
 
@@ -15,7 +15,7 @@ You can find a sample config file in the [git repository](https://github.com/rel
 
 ## Installation
 This package is available on [PyPI](https://pypi.org/project/szuru-toolkit/) and can be installed with pip:
-`pip install szuru-toolkit`
+`pip install szurubooru-toolkit`
 
 Alternatively, you can clone the package from GitHub and set everything up with [Poetry](https://python-poetry.org/docs/). In the root directory of this repository, execute `poetry install`.
 
@@ -60,7 +60,7 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | upload_media | cleanup | Set this to true if images in the `src_path` should be deleted after upload | `false` |
 | upload_media | tags | These tags will get set for all uploaded posts. Separate them by a comma. | `["tagme", "tag1", "tag2", "tagN"]` |
 | logging | log_enabled | If logging to a log file should be enabled | `false` |
-| logging | log_file | Specify the path of the log file | `"C:/Users/Foo/Desktop/szuru_toolkit.log"` |
+| logging | log_file | Specify the path of the log file | `"C:/Users/Foo/Desktop/szurubooru_toolkit.log"` |
 | logging | log_level | Specify the log level. `DEBUG` logs the most information | `"DEBUG"\|"INFO"\|"WARNING"\|"ERROR"\|"CRITICAL"` |
 | logging | log_colorized | If the log file should be colorized. Requires compatible viewer (e.g. `less -r <log_file>`). | `true` |
 </details>

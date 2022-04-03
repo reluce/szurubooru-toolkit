@@ -5,7 +5,7 @@ import requests
 from loguru import logger
 from PIL import Image
 
-from szuru_toolkit import Config
+from szurubooru_toolkit import Config
 
 
 # Keep track of total tagged posts

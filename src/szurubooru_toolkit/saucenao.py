@@ -10,13 +10,13 @@ from pybooru.moebooru import Moebooru
 from pysaucenao import SauceNao as PySauceNao
 from syncer import sync
 
-from szuru_toolkit import Danbooru
-from szuru_toolkit import Gelbooru
-from szuru_toolkit.utils import audit_rating
-from szuru_toolkit.utils import collect_sources
-from szuru_toolkit.utils import convert_rating
-from szuru_toolkit.utils import resize_image
-from szuru_toolkit.utils import scrape_sankaku
+from szurubooru_toolkit import Danbooru
+from szurubooru_toolkit import Gelbooru
+from szurubooru_toolkit.utils import audit_rating
+from szurubooru_toolkit.utils import collect_sources
+from szurubooru_toolkit.utils import convert_rating
+from szurubooru_toolkit.utils import resize_image
+from szurubooru_toolkit.utils import scrape_sankaku
 
 
 class SauceNao:

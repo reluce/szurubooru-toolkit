@@ -20,8 +20,8 @@ ignore-init-method = true
 line_length = 120
 lines_after_imports = 2
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
-known_first_party = ["szuru_toolkit"]
-known_local_folder = ["src/szuru_toolkit"]
+known_first_party = ["szurubooru_toolkit"]
+known_local_folder = ["src/szurubooru_toolkit"]
 multi_line_output = 3
 force_single_line = true
 
@@ -37,20 +37,20 @@ disallow_untyped_defs = true
 
 
 [tool.poetry]
-name = "szuru-toolkit"
-version = "0.2.0"
-description = "Python package and script collection to manage szurubooru"
+name = "szurubooru-toolkit"
+version = "0.3.0"
+description = "Python package and script collection to manage szurubooru."
 authors = ["reluce <reluce@fkosquad.moe>"]
 license = "GPL-3.0-only"
 readme = "README.md"
-repository = "https://github.com/reluce/szurubooru-scripts"
-documentation = "https://github.com/reluce/szurubooru-scripts"
-keywords = ["szurubooru", "szuru", "booru"]
+repository = "https://github.com/reluce/szurubooru-toolkit"
+documentation = "https://github.com/reluce/szurubooru-toolkit"
+keywords = ["szurubooru", "szuru", "booru", "saucenao", "deepbooru"]
 
 [tool.poetry.scripts]
-auto-tagger = 'szuru_toolkit.scripts.auto_tagger:main'
-upload-media = 'szuru_toolkit.scripts.upload_media:main'
-create-tags = 'szuru_toolkit.scripts.create_tags:main'
+auto-tagger = 'szurubooru_toolkit.scripts.auto_tagger:main'
+upload-media = 'szurubooru_toolkit.scripts.upload_media:main'
+create-tags = 'szurubooru_toolkit.scripts.create_tags:main'
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
