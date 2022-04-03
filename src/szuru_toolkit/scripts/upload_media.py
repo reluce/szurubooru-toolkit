@@ -179,7 +179,7 @@ def main():
     files_to_upload = get_files(config.upload_media['src_path'])
 
     if files_to_upload:
-        logger.info('Found ' + str(len(files_to_upload)) + ' images. Starting upload...')
+        logger.info('Found ' + str(len(files_to_upload)) + ' files. Starting upload...')
 
         for file_to_upload in tqdm(
             files_to_upload,
@@ -209,7 +209,7 @@ def main():
 
         logger.success('Script has finished uploading.')
     else:
-        logger.info('No images found to upload.')
+        logger.info('No files found to upload.')
 
 
 if __name__ == '__main__':
