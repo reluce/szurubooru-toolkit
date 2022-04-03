@@ -4,17 +4,17 @@
   width="128" height="128">
 </p>
 
-# szuru-toolkit
+# szurubooru-toolkit
 Python package and script collection to manage your [szurubooru](https://github.com/rr-/szurubooru) image board.
 
 ## Requirements
 In order to run the included scripts, a Python release `>=3.8` and the configuratrion file `config.toml` is required.
 
 The `config.toml` file needs to be present in your current working directory.
-You can find a sample config file in the [git repository](https://github.com/reluce/szuru-toolkit) of this package.
+You can find a sample config file in the [git repository](https://github.com/reluce/szurubooru-toolkit) of this package.
 
 ## Installation
-This package is available on [PyPI](https://pypi.org/project/szuru-toolkit/) and can be installed with pip:
+This package is available on [PyPI](https://pypi.org/project/szurubooru-toolkit/) and can be installed with pip:
 `pip install szurubooru-toolkit`
 
 Alternatively, you can clone the package from GitHub and set everything up with [Poetry](https://python-poetry.org/docs/). In the root directory of this repository, execute `poetry install`.
