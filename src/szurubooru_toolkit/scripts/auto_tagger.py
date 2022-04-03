@@ -74,12 +74,13 @@ def parse_args() -> tuple:
     return sankaku_url, query, add_tags, remove_tags
 
 
-def parse_saucenao_results(sauce: SauceNao, post, config):
+def parse_saucenao_results(sauce: SauceNao, post, config, tmp_media_path):
     limit_reached = False
     tags, source, rating, limit_short, limit_long = sauce.get_metadata(
         post.content_url,
         config.szurubooru['public'],
         config.auto_tagger['tmp_path'],
+        tmp_media_path,
     )
 
     # Get previously set sources and add new sources
@@ -105,16 +106,30 @@ def parse_saucenao_results(sauce: SauceNao, post, config):
 
 
 @logger.catch
-def main() -> None:
+def main(post_id: str = None, tmp_media_path: str = None) -> None:  # noqa C901
     """Placeholder"""
 
-    logger.info('Initializing script...')
+    # If this script/function was called from the upload-media script,
+    # change output and behaviour of this script
+    from_upload_media = True if post_id else False
+
+    if not from_upload_media:
+        logger.info('Initializing script...')
+    else:
+        config.auto_tagger['hide_progress'] = True
 
     if not config.auto_tagger['saucenao_enabled'] and not config.auto_tagger['deepbooru_enabled']:
         logger.info('Nothing to do. Enable either SauceNAO or Deepbooru in your config.')
         exit()
 
-    sankaku_url, query, add_tags, remove_tags = parse_args()
+    # If posts are being tagged directly from upload-media script
+    if not post_id:
+        sankaku_url, query, add_tags, remove_tags = parse_args()
+    else:
+        sankaku_url = None
+        query = post_id
+        add_tags = None
+        remove_tags = None
 
     szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
 
@@ -126,9 +141,14 @@ def main() -> None:
 
         deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
 
-    logger.info(f'Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
+    if not from_upload_media:
+        logger.info(f'Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
+
     posts = szuru.get_posts(query)
     total_posts = next(posts)
+
+    if not from_upload_media:
+        logger.info(f'Found {total_posts} posts. Start tagging...')
 
     blacklist_extensions = ['mp4', 'webm', 'mkv']
 
@@ -173,6 +193,7 @@ def main() -> None:
                     sauce,
                     post,
                     config,
+                    tmp_media_path,
                 )
 
                 if add_tags:
@@ -229,14 +250,15 @@ def main() -> None:
                 statistics(untagged=int(total_posts) - index - 1)  # Index starts at 0
                 break
 
-    total_tagged, total_deepbooru, total_untagged, total_skipped = statistics()
+    if not from_upload_media:
+        total_tagged, total_deepbooru, total_untagged, total_skipped = statistics()
 
-    logger.success('Script has finished tagging.')
-    logger.success(f'Total:     {total_posts}')
-    logger.success(f'Tagged:    {str(total_tagged)}')
-    logger.success(f'Deepbooru: {str(total_deepbooru)}')
-    logger.success(f'Untagged:  {str(total_untagged)}')
-    logger.success(f'Skipped:   {str(total_skipped)}')
+        logger.success('Script has finished tagging.')
+        logger.success(f'Total:     {total_posts}')
+        logger.success(f'Tagged:    {str(total_tagged)}')
+        logger.success(f'Deepbooru: {str(total_deepbooru)}')
+        logger.success(f'Untagged:  {str(total_untagged)}')
+        logger.success(f'Skipped:   {str(total_skipped)}')
 
 
 if __name__ == '__main__':

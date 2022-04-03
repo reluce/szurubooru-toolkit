@@ -12,6 +12,7 @@ from tqdm import tqdm
 from szurubooru_toolkit import Post
 from szurubooru_toolkit import Szurubooru
 from szurubooru_toolkit import config
+from szurubooru_toolkit.scripts.auto_tagger import main as auto_tagger
 
 
 def get_files(upload_dir):
@@ -119,7 +120,7 @@ def upload_file(szuru: Szurubooru, post: Post, file_to_upload: str) -> None:
         if 'description' in response.json():
             raise Exception(response.json()['description'])
         else:
-            os.remove(file_to_upload)
+            return response.json()['id']
     except Exception as e:
         logger.critical(f'An error occured during the upload: {e}')
 
@@ -179,7 +180,7 @@ def main():
     files_to_upload = get_files(config.upload_media['src_path'])
 
     if files_to_upload:
-        logger.info('Found ' + str(len(files_to_upload)) + ' files. Starting upload...')
+        logger.info('Found ' + str(len(files_to_upload)) + ' file(s). Starting upload...')
 
         for file_to_upload in tqdm(
             files_to_upload,
@@ -200,12 +201,20 @@ def main():
                 for entry in similar_posts:
                     post.similar_posts.append(entry['post']['id'])
 
-                upload_file(szuru, post, file_to_upload)
+                post_id = upload_file(szuru, post, file_to_upload)
+
+                if config.upload_media['auto_tag']:
+                    auto_tagger(str(post_id), file_to_upload)
+
+                if config.upload_media['cleanup']:
+                    if os.path.exists(file_to_upload):
+                        os.remove(file_to_upload)
             elif config.upload_media['cleanup']:
-                os.remove(file_to_upload)  # Remove files first
+                if os.path.exists(file_to_upload):
+                    os.remove(file_to_upload)
 
         if config.upload_media['cleanup']:
-            cleanup_dirs(config.upload_media['src_path'])  # Then remove the directory
+            cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
 
         logger.success('Script has finished uploading.')
     else:

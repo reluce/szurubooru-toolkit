@@ -61,8 +61,6 @@ class Szurubooru:
             logger.debug(f'Searching across {pages} pages')
 
             if results:
-                logger.info(f'Found {total} posts. Start tagging...')
-
                 yield total
 
                 for result in results:

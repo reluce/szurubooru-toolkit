@@ -39,6 +39,7 @@ src_path = "/local/path/to/upload/dir"  # Every valid media file under this dir 
 hide_progress = false  # Set this to true to hide the progress bar
 cleanup = false  # Set this to true if images in the source directory should be deleted after upload
 tags = ["tagme"]  # These tags will get set for all uploaded posts
+auto_tag = false  # Set this to true if you want your post to be automatically tagged after upload
 
 [logging]
 log_enabled = false

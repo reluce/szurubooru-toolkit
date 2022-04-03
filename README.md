@@ -59,6 +59,7 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | upload_media | hide_progress | Set this to true to hide the progress bar | `false` |
 | upload_media | cleanup | Set this to true if images in the `src_path` should be deleted after upload | `false` |
 | upload_media | tags | These tags will get set for all uploaded posts. Separate them by a comma. | `["tagme", "tag1", "tag2", "tagN"]` |
+| upload_media | auto_tag | Set this to true if you want your post to be automatically tagged after upload | `false` |
 | logging | log_enabled | If logging to a log file should be enabled | `false` |
 | logging | log_file | Specify the path of the log file | `"C:/Users/Foo/Desktop/szurubooru_toolkit.log"` |
 | logging | log_level | Specify the log level. `DEBUG` logs the most information | `"DEBUG"\|"INFO"\|"WARNING"\|"ERROR"\|"CRITICAL"` |

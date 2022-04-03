@@ -53,7 +53,7 @@ class Config:
                 'hide_progress',
                 'tmp_path',
             ],
-            'upload_media': ['src_path', 'hide_progress', 'cleanup', 'tags'],
+            'upload_media': ['src_path', 'hide_progress', 'cleanup', 'tags', 'auto_tag'],
             'logging': ['log_enabled', 'log_file', 'log_level', 'log_colorized'],
             'danbooru': ['user', 'api_key'],
             'gelbooru': ['user', 'api_key'],
