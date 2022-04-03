@@ -21,6 +21,9 @@ Make your changes in the `config_sample.toml` file provided in the git repo and 
 
 Note that path names have to be specified with forward slashes (/) if you're using Windows.
 
+<details>
+  <summary>config.toml reference</summary>
+
 | Section | Option | Description | Examples/Default |
 |---------|--------|-------------|-----------------|
 | szurubooru | url | The URL of your szurubooru | `"https://szuru.example.com"` |
@@ -54,6 +57,7 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | logging | log_file | Specify the path of the log file | `"C:/Users/Foo/Desktop/szuru_toolkit.log"` |
 | logging | log_level | Specify the log level. `DEBUG` logs the most information | `"DEBUG"\|"INFO"\|"WARNING"\|"ERROR"\|"CRITICAL"` |
 | logging | log_colorized | If the log file should be colorized. Requires compatible viewer (e.g. `less -r <log_file>`). | `true` |
+</details>
 
 Creating a SauceNAO account and an API key is recommended.
 Please consider supporting the SauceNAO team as well by upgrading your plan.
@@ -72,9 +76,8 @@ If no matches from SauceNAO were found, the script keeps the previously set tags
 You can set `deepbooru_enabled` to `true` in your config.toml file. In that case, the script falls back to tag posts with the supplied Deepbooru model.
 If you only want to use Deepbooru, set `deepbooru_enabled` to `true` and `saucenao_enabled` to `false`. If you want to use SauceNAO and Deepbooru, set following options to `true`: `saucenao_enabled`, `deepbooru_enabled` and `deepbooru_forced`.
 
-#### Usage
+__Usage__
 
-##### pip
 After editing and renaming the sample config file to config.toml, we can just execute the script with our query:
 
 * `auto-tagger "date:today tag-count:0"`
@@ -92,19 +95,16 @@ Alternatively, we can tag a single post and specify `--sankaku_url` to fetch the
 
 This is especially useful since Sankaku has changed their API and aggregator sites like SauceNAO don't have the latest results there.
 
-##### GitHub repo
 If you cloned the repo from GitHub, prefix the above commands with `poetry run`, e.g. `poetry run auto-tagger "date:today"`. Note that your current working directory has to be the the root of the GitHub project.
 
 ### upload-media
 This script searches through your specified upload folder in the config file for any image/video files and uploads them to your szurubooru.
 
-#### Usage
+__Usage__
 After editing the config file, we can just execute the script.
 
-##### pip
 If you installed it with pip, execute `upload-media`. Note that `config.toml` has to be in your current working directory.
 
-##### GitHub repo
 If you cloned the repo from GitHub, execute `poetry run upload-media`. Note that your current working directory has to be the the root of the GitHub project.
 
 ### create-tags (Currently not working, WIP)
@@ -130,11 +130,10 @@ The file has to be in following format:
 |character|3|
 |meta|4|
 
-#### Usage
+__Usage__
+
 After editing the config file, we can just execute the script.
 
-##### pip
 If you installed it with pip, execute `create-tags`. Note that `config.toml` has to be in your current working directory.
 
-##### GitHub repo
 If you cloned the repo from GitHub, execute `poetry run create-tags`. Note that your current working directory has to be the the root of the GitHub project.
