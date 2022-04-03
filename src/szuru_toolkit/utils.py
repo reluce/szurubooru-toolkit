@@ -77,7 +77,7 @@ def get_metadata_sankaku(sankaku_url):
     return tags, rating
 
 
-def statistics(tagged=0, deepbooru=0, untagged=0) -> tuple:
+def statistics(tagged=0, deepbooru=0, untagged=0, skipped=0) -> tuple:
     """Keep track of how posts were tagged.
 
     Input values will get added to previously set value.
@@ -94,12 +94,14 @@ def statistics(tagged=0, deepbooru=0, untagged=0) -> tuple:
     global total_tagged
     global total_deepbooru
     global total_untagged
+    global total_skipped
 
     total_tagged += tagged
     total_deepbooru += deepbooru
     total_untagged += untagged
+    total_skipped += skipped
 
-    return total_tagged, total_deepbooru, total_untagged
+    return total_tagged, total_deepbooru, total_untagged, total_skipped
 
 
 def audit_rating(*ratings: str) -> str:

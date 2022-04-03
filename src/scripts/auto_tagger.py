@@ -108,6 +108,8 @@ def parse_saucenao_results(sauce: SauceNao, post, config):
 def main() -> None:
     """Placeholder"""
 
+    logger.info('Initializing script...')
+
     if not config.auto_tagger['saucenao_enabled'] and not config.auto_tagger['deepbooru_enabled']:
         logger.info('Nothing to do. Enable either SauceNAO or Deepbooru in your config.')
         exit()
@@ -127,6 +129,8 @@ def main() -> None:
     logger.info(f'Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
     posts = szuru.get_posts(query)
     total_posts = next(posts)
+
+    blacklist_extensions = ['mp4', 'webm', 'mkv']
 
     if sankaku_url:
         if query.isnumeric():
@@ -154,6 +158,15 @@ def main() -> None:
             ),
         ):
             tags = []
+
+            is_blacklisted = False
+            for extension in blacklist_extensions:
+                if extension in post.content_url:
+                    is_blacklisted = True
+
+            if is_blacklisted:
+                statistics(skipped=1)
+                continue
 
             if config.auto_tagger['saucenao_enabled']:
                 tags, post.source, post.safety, limit_reached = parse_saucenao_results(
@@ -216,13 +229,14 @@ def main() -> None:
                 statistics(untagged=int(total_posts) - index - 1)  # Index starts at 0
                 break
 
-    total_tagged, total_deepbooru, total_untagged = statistics()
+    total_tagged, total_deepbooru, total_untagged, total_skipped = statistics()
 
     logger.success('Script has finished tagging.')
     logger.success(f'Total:     {total_posts}')
     logger.success(f'Tagged:    {str(total_tagged)}')
     logger.success(f'Deepbooru: {str(total_deepbooru)}')
     logger.success(f'Untagged:  {str(total_untagged)}')
+    logger.success(f'Skipped:   {str(total_skipped)}')
 
 
 if __name__ == '__main__':
