@@ -17,6 +17,7 @@ hide_progress = false  # Set this to true to hide the progress bar
 # On Windows, use foward slashes ('/') instead of backslashes
 tmp_path = "/tmp/"
 
+# Leave those options as "None" if you have no accounts on these sites
 [[danbooru]]
 user = "None"
 api_key = "None"
@@ -43,6 +44,6 @@ auto_tag = false  # Set this to true if you want your post to be automatically t
 
 [logging]
 log_enabled = false
-log_file = "auto_tagger.log"
+log_file = "szurubooru_toolkit.log"  # If no full path is specified, the log file gets created in the current working directory
 log_level = "DEBUG"
-log_colorized = true
+log_colorized = true  # Set this to false if your log viewer has trouble parsing the file. less -r or tail -f works just fine.
