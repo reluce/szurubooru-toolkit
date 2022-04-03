@@ -1,8 +1,11 @@
-# szuru-toolkit
-Python package and script collection to manage your [szurubooru](https://github.com/rr-/szurubooru) image board.
+<p align="center">
 <img src="https://cdn-icons-png.flaticon.com/512/2581/2581053.png"
   alt="szuru-toolkit icon"
-  width="156" height="156" align="right">
+  width="128" height="128">
+</p>
+
+# szuru-toolkit
+Python package and script collection to manage your [szurubooru](https://github.com/rr-/szurubooru) image board.
 
 ## Requirements
 In order to run the included scripts, a Python release `>=3.8` and the configuratrion file `config.toml` is required.
@@ -143,4 +146,4 @@ If you installed it with pip, execute `create-tags`. Note that `config.toml` has
 If you cloned the repo from GitHub, execute `poetry run create-tags`. Note that your current working directory has to be the the root of the GitHub project.
 
 ## Image credit
-<a href="https://www.flaticon.com/free-icons/code" title="code icons">Code icons created by Smashicons - Flaticon</a>
+GitHub repo icon: <a href="https://www.flaticon.com/free-icons/code" title="code icons">Code icons created by Smashicons - Flaticon</a>
