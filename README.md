@@ -68,7 +68,7 @@ Please note that you have to set `deepbooru_enabled` if you want to use it.
 
 ## Scripts
 
-### auto_tagger
+### auto-tagger
 This script accepts a szurubooru query as a user input, fetches all posts returned by it and attempts to tag it using SauceNAO/Deepbooru.
 
 If no matches from SauceNAO were found, the script keeps the previously set tags of the post and additionally appends the tag `tagme`.
@@ -101,6 +101,7 @@ If you cloned the repo from GitHub, prefix the above commands with `poetry run`,
 This script searches through your specified upload folder in the config file for any image/video files and uploads them to your szurubooru.
 
 __Usage__
+
 After editing the config file, we can just execute the script.
 
 If you installed it with pip, execute `upload-media`. Note that `config.toml` has to be in your current working directory.
