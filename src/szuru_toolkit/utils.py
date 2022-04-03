@@ -58,21 +58,21 @@ def convert_rating(rating: str) -> str:
     return new_rating
 
 
-def get_metadata_sankaku(sankaku_url):
+def scrape_sankaku(sankaku_url):
     response = requests.get(sankaku_url)
     result_page = bs4.BeautifulSoup(response.text, 'html.parser')
 
     rating_raw = str(result_page.select('#stats li'))
-    rating_mixed = rating_raw.partition('Rating: ')[2]
-    rating_sankaku = rating_mixed.replace('</li>]', '')
+    rating_sankaku = rating_raw.partition('Rating: ')[2]
+    rating_sankaku = rating_sankaku.replace('</li>]', '')
     rating = convert_rating(rating_sankaku)
 
     tags_raw = str(result_page.title.string)
-    tags_mixed = tags_raw.replace(' | Sankaku Channel', '')
-    tags_stirred = tags_mixed.replace(' ', '_')
-    tags_fried = tags_stirred.replace(',_', ' ')
+    tags = tags_raw.replace(' | Sankaku Channel', '')
+    tags = tags.replace(' ', '_')
+    tags = tags.replace(',_', ' ')
 
-    tags = tags_fried.split()
+    tags = tags.split()
 
     return tags, rating
 

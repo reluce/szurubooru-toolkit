@@ -12,11 +12,11 @@ from syncer import sync
 
 from szuru_toolkit import Danbooru
 from szuru_toolkit import Gelbooru
-from szuru_toolkit import scrape_sankaku
 from szuru_toolkit.utils import audit_rating
 from szuru_toolkit.utils import collect_sources
 from szuru_toolkit.utils import convert_rating
 from szuru_toolkit.utils import resize_image
+from szuru_toolkit.utils import scrape_sankaku
 
 
 class SauceNao:

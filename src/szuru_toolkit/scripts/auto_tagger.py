@@ -8,9 +8,9 @@ from tqdm import tqdm
 from szuru_toolkit import SauceNao
 from szuru_toolkit import Szurubooru
 from szuru_toolkit import config
-from szuru_toolkit.sankaku import scrape_sankaku
 from szuru_toolkit.utils import collect_sources
 from szuru_toolkit.utils import sanitize_tags
+from szuru_toolkit.utils import scrape_sankaku
 from szuru_toolkit.utils import statistics
 
 
@@ -134,8 +134,8 @@ def main() -> None:
 
     if sankaku_url:
         if query.isnumeric():
-            post = szuru.get_posts(query)
-            post.tags, post.rating = scrape_sankaku(sankaku_url)
+            post = next(posts)
+            post.tags, post.safety = scrape_sankaku(sankaku_url)
             post.source = sankaku_url
 
             try:
