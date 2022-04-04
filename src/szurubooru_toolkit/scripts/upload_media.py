@@ -112,9 +112,18 @@ def upload_file(szuru: Szurubooru, post: Post, file_to_upload: str) -> None:
         Exception
     """
 
+    safety = post.safety if post.safety else 'unsafe'
+    source = post.source if post.source else ''
+
     post_url = szuru.szuru_api_url + '/posts'
     metadata = json.dumps(
-        {'tags': post.tags, 'safety': 'unsafe', 'relations': post.similar_posts, 'contentToken': post.image_token},
+        {
+            'tags': post.tags,
+            'safety': safety,
+            'source': source,
+            'relations': post.similar_posts,
+            'contentToken': post.image_token,
+        },
     )
 
     try:
@@ -174,7 +183,7 @@ def delete_posts(szuru: Szurubooru, start_id: int, finish_id: int):
             logger.critical(f'An error occured while deleting posts: {e}')
 
 
-def upload_post(file_to_upload: str, tags: list = None):
+def upload_post(file_to_upload: str, metadata: dict = None):
     post = Post()
     with open(file_to_upload, 'rb') as f:
         post.image = f.read()
@@ -183,10 +192,14 @@ def upload_post(file_to_upload: str, tags: list = None):
     post.exact_post, similar_posts = check_similarity(szuru, post.image_token)
 
     if not post.exact_post:
-        if not tags:
+        if not metadata:
             post.tags = config.upload_media['tags']
+            post.safety = None
+            post.source = None
         else:
-            post.tags = tags
+            post.tags = metadata['tags']
+            post.safety = metadata['safety']
+            post.source = metadata['source']
 
         post.similar_posts = []
         for entry in similar_posts:
@@ -194,18 +207,18 @@ def upload_post(file_to_upload: str, tags: list = None):
 
         post_id = upload_file(szuru, post, file_to_upload)
 
-        if config.upload_media['auto_tag'] and not tags:
+        if config.upload_media['auto_tag'] and not metadata:
             auto_tagger(str(post_id), file_to_upload)
 
-        if config.upload_media['cleanup'] or tags:
+        if config.upload_media['cleanup'] or metadata:
             if os.path.exists(file_to_upload):
                 os.remove(file_to_upload)
-    elif config.upload_media['cleanup'] or tags:
+    elif config.upload_media['cleanup'] or metadata:
         if os.path.exists(file_to_upload):
             os.remove(file_to_upload)
 
 
-def main(file_to_upload: str = None, tags: list = None) -> int:
+def main(file_to_upload: str = None, metadata: dict = None) -> int:
     """Main logic of the script."""
 
     if not file_to_upload:
@@ -235,7 +248,7 @@ def main(file_to_upload: str = None, tags: list = None) -> int:
             if not from_import_from:
                 logger.success('Script has finished uploading.')
         else:
-            upload_post(file_to_upload, tags)
+            upload_post(file_to_upload, metadata)
 
     else:
         logger.info('No files found to upload.')
