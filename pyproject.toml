@@ -38,7 +38,7 @@ disallow_untyped_defs = true
 
 [tool.poetry]
 name = "szurubooru-toolkit"
-version = "0.4.2"
+version = "0.4.4"
 description = "Python package and script collection to manage szurubooru."
 authors = ["reluce <reluce@fkosquad.moe>"]
 license = "GPL-3.0-only"
@@ -51,6 +51,7 @@ keywords = ["szurubooru", "szuru", "booru", "saucenao", "deepbooru"]
 auto-tagger = 'szurubooru_toolkit.scripts.auto_tagger:main'
 upload-media = 'szurubooru_toolkit.scripts.upload_media:main'
 create-tags = 'szurubooru_toolkit.scripts.create_tags:main'
+import-from = 'szurubooru_toolkit.scripts.import_from:main'
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
