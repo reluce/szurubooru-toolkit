@@ -15,6 +15,9 @@ from szurubooru_toolkit import config
 from szurubooru_toolkit.scripts.auto_tagger import main as auto_tagger
 
 
+szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
+
+
 def get_files(upload_dir):
     """
     Reads recursively images/videos from upload_dir.
@@ -171,52 +174,69 @@ def delete_posts(szuru: Szurubooru, start_id: int, finish_id: int):
             logger.critical(f'An error occured while deleting posts: {e}')
 
 
-def main():
+def upload_post(file_to_upload: str, tags: list = None):
+    post = Post()
+    with open(file_to_upload, 'rb') as f:
+        post.image = f.read()
+
+    post.image_token = get_image_token(szuru, post.image)
+    post.exact_post, similar_posts = check_similarity(szuru, post.image_token)
+
+    if not post.exact_post:
+        if not tags:
+            post.tags = config.upload_media['tags']
+        else:
+            post.tags = tags
+
+        post.similar_posts = []
+        for entry in similar_posts:
+            post.similar_posts.append(entry['post']['id'])
+
+        post_id = upload_file(szuru, post, file_to_upload)
+
+        if config.upload_media['auto_tag'] and not tags:
+            auto_tagger(str(post_id), file_to_upload)
+
+        if config.upload_media['cleanup'] or tags:
+            if os.path.exists(file_to_upload):
+                os.remove(file_to_upload)
+    elif config.upload_media['cleanup'] or tags:
+        if os.path.exists(file_to_upload):
+            os.remove(file_to_upload)
+
+
+def main(tags: list, file_to_upload: str = None) -> int:
     """Main logic of the script."""
 
-    post = Post()
-    szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
-
-    files_to_upload = get_files(config.upload_media['src_path'])
+    if not file_to_upload:
+        files_to_upload = get_files(config.upload_media['src_path'])
+        from_import_from = False
+    else:
+        files_to_upload = file_to_upload
+        from_import_from = True
+        config.upload_media['hide_progress'] = True
 
     if files_to_upload:
-        logger.info('Found ' + str(len(files_to_upload)) + ' file(s). Starting upload...')
+        if not from_import_from:
+            logger.info('Found ' + str(len(files_to_upload)) + ' file(s). Starting upload...')
 
-        for file_to_upload in tqdm(
-            files_to_upload,
-            ncols=80,
-            position=0,
-            leave=False,
-            disable=config.upload_media['hide_progress'],
-        ):
-            with open(file_to_upload, 'rb') as f:
-                post.image = f.read()
+            for file_to_upload in tqdm(
+                files_to_upload,
+                ncols=80,
+                position=0,
+                leave=False,
+                disable=config.upload_media['hide_progress'],
+            ):
+                upload_post(file_to_upload)
 
-            post.image_token = get_image_token(szuru, post.image)
-            post.exact_post, similar_posts = check_similarity(szuru, post.image_token)
+            if config.upload_media['cleanup']:
+                cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
 
-            if not post.exact_post:
-                post.tags = config.upload_media['tags']
-                post.similar_posts = []
-                for entry in similar_posts:
-                    post.similar_posts.append(entry['post']['id'])
+            if not from_import_from:
+                logger.success('Script has finished uploading.')
+        else:
+            upload_post(file_to_upload, tags)
 
-                post_id = upload_file(szuru, post, file_to_upload)
-
-                if config.upload_media['auto_tag']:
-                    auto_tagger(str(post_id), file_to_upload)
-
-                if config.upload_media['cleanup']:
-                    if os.path.exists(file_to_upload):
-                        os.remove(file_to_upload)
-            elif config.upload_media['cleanup']:
-                if os.path.exists(file_to_upload):
-                    os.remove(file_to_upload)
-
-        if config.upload_media['cleanup']:
-            cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
-
-        logger.success('Script has finished uploading.')
     else:
         logger.info('No files found to upload.')
 
