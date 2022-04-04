@@ -11,6 +11,7 @@ from szurubooru_toolkit import Danbooru
 from szurubooru_toolkit import Gelbooru
 from szurubooru_toolkit import config
 from szurubooru_toolkit.scripts import upload_media
+from szurubooru_toolkit.utils import convert_rating
 
 
 sys.tracebacklimit = 0
@@ -66,21 +67,20 @@ def upload_post_from_danbooru(post):
         file_url = 'https://danbooru.donmai.us' + post['source']
 
     filename = file_url.split('/')[-1]
-    dest_path = Path(config.auto_tagger['tmp_path']) / filename
+    file_path = Path(config.auto_tagger['tmp_path']) / filename  # Where the file gets temporarily saved to
 
     try:
-        urllib.request.urlretrieve(file_url, dest_path)
+        urllib.request.urlretrieve(file_url, file_path)
     except Exception as e:
         logger.warning(e)
         return
 
-    tags = post['tag_string_general'].split()
-    tags.extend(post['tag_string_character'].split())
-    tags.extend(post['tag_string_copyright'].split())
-    tags.extend(post['tag_string_artist'].split())
-    tags.extend(post['tag_string_meta'].split())
+    tags = post['tag_string'].split()
+    safety = convert_rating(post['rating'])
+    source = 'https://gelbooru.com/index.php?page=post&s=view&id=' + str(post['id'])
+    metadata = {'tags': tags, 'safety': safety, 'source': source}
 
-    upload_media.main(tags, str(dest_path))
+    upload_media.main(file_path, metadata)
 
 
 async def get_posts_from_gelbooru(gelbooru: Gelbooru, query: str) -> list:
