@@ -205,7 +205,7 @@ def upload_post(file_to_upload: str, tags: list = None):
             os.remove(file_to_upload)
 
 
-def main(tags: list, file_to_upload: str = None) -> int:
+def main(file_to_upload: str = None, tags: list = None) -> int:
     """Main logic of the script."""
 
     if not file_to_upload:
