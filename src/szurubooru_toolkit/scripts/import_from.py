@@ -4,10 +4,11 @@ import urllib
 from pathlib import Path
 
 from loguru import logger
+from pybooru.danbooru import Danbooru
 from pybooru.moebooru import Moebooru
+from syncer import sync
 from tqdm import tqdm
 
-from szurubooru_toolkit import Danbooru
 from szurubooru_toolkit import Gelbooru
 from szurubooru_toolkit import config
 from szurubooru_toolkit.scripts import upload_media
@@ -27,9 +28,9 @@ def parse_args() -> tuple:
     )
 
     parser.add_argument(
-        '--booru',
-        default=None,
-        help='Specify the Booru which you want to query',
+        'booru',
+        choices=['danbooru', 'gelbooru', 'konachan', 'yandere', 'all'],
+        help='Specify the Booru which you want to query. Use all to query all Boorus.',
     )
     parser.add_argument(
         'query',
@@ -52,19 +53,27 @@ def parse_args() -> tuple:
     return booru, query
 
 
-def get_posts_from_danbooru(danbooru: Danbooru, query: str) -> list:
-    results = danbooru.client.post_list(limit=100, tags=query)
+def get_posts_from_booru(booru, query: str):
+    """Placeholder"""
+
+    if isinstance(booru, Gelbooru):
+        results = sync(booru.client.search_posts(tags=query.split()))
+    else:
+        exclude_tags = ' -pixel-perfect-duplicate -duplicate'
+        results = booru.post_list(limit=100, tags=query + exclude_tags)
 
     yield len(results)
-
     yield from results
 
 
-def upload_post_from_danbooru(post):
+def import_post(booru, post) -> None:
+    """Placeholder"""
+
     try:
-        file_url = post['file_url']
-    except IndexError:
-        file_url = 'https://danbooru.donmai.us' + post['source']
+        file_url = post.file_url if booru == 'gelbooru' else post['file_url']
+    except KeyError:
+        logger.warning('Could not find file url for post. It got probably removed from the site.')
+        return
 
     filename = file_url.split('/')[-1]
     file_path = Path(config.auto_tagger['tmp_path']) / filename  # Where the file gets temporarily saved to
@@ -75,39 +84,26 @@ def upload_post_from_danbooru(post):
         logger.warning(e)
         return
 
-    tags = post['tag_string'].split()
-    safety = convert_rating(post['rating'])
-    source = 'https://gelbooru.com/index.php?page=post&s=view&id=' + str(post['id'])
+    if booru == 'gelbooru':
+        tags = post.tags
+        safety = convert_rating(post.rating)
+        source = 'https://gelbooru.com/index.php?page=post&s=view&id=' + str(post.id)
+    elif booru == 'danbooru':
+        tags = post['tag_string'].split()
+        source = 'https://danbooru.donmai.us/posts/' + str(post['id'])
+    elif booru == 'yandere':
+        tags = post['tags'].split()
+        source = 'https://yande.re/post/show/' + str(post['id'])
+    elif booru == 'konachan':
+        tags = post['tags'].split()
+        source = 'https://konachan.com/post/show/' + str(post['id'])
+
+    if not booru == 'gelbooru':
+        safety = convert_rating(post['rating'])
+
     metadata = {'tags': tags, 'safety': safety, 'source': source}
 
     upload_media.main(file_path, metadata)
-
-
-async def get_posts_from_gelbooru(gelbooru: Gelbooru, query: str) -> list:
-    results = await gelbooru.client.search_posts(tags=query)
-
-    for post in results:
-        yield post
-
-
-def upload_post_from_gelbooru(post):
-    pass
-
-
-def get_posts_from_konachan(konachan: Moebooru, query: str) -> list:
-    pass
-
-
-def upload_post_from_konachan(post):
-    pass
-
-
-def get_posts_from_yandere(yandere: Moebooru, query: str) -> list:
-    pass
-
-
-def upload_post_from_yandere(post):
-    pass
 
 
 @logger.catch
@@ -118,40 +114,37 @@ def main() -> None:
 
     booru, query = parse_args()
 
-    logger.info(f'Retrieving posts from {booru} with query "{query}"...')
+    if booru == 'all':
+        boorus = ['danbooru', 'gelbooru', 'yandere', 'konachan']
+    else:
+        boorus = [booru]
 
-    if booru == 'danbooru':
-        danbooru = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
-        posts = get_posts_from_danbooru(danbooru, query)
-    elif booru == 'gelbooru':
-        gelbooru = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
-        posts = get_posts_from_danbooru(gelbooru, query)
-    elif booru == 'konachan':
-        konachan = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
-        posts = get_posts_from_konachan(konachan, query)
-    elif booru == 'yandere':
-        yandere = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
-        posts = get_posts_from_yandere(yandere, query)
+    for booru in boorus:
+        logger.info(f'Retrieving posts from {booru} with query "{query}"...')
 
-    total_posts = next(posts)
-    logger.info(f'Found {total_posts} posts. Start importing...')
-
-    for post in tqdm(
-        posts,
-        ncols=80,
-        position=0,
-        leave=False,
-        total=int(total_posts),
-        disable=config.auto_tagger['hide_progress'],
-    ):
         if booru == 'danbooru':
-            upload_post_from_danbooru(post)
+            booru_client = Danbooru('danbooru', config.danbooru['user'], config.danbooru['api_key'])
         elif booru == 'gelbooru':
-            upload_post_from_gelbooru(post)
+            booru_client = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
         elif booru == 'konachan':
-            upload_post_from_konachan(post)
+            booru_client = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
         elif booru == 'yandere':
-            upload_post_from_yandere(post)
+            booru_client = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
+
+        posts = get_posts_from_booru(booru_client, query)
+
+        total_posts = next(posts)
+        logger.info(f'Found {total_posts} posts. Start importing...')
+
+        for post in tqdm(
+            posts,
+            ncols=80,
+            position=0,
+            leave=False,
+            total=int(total_posts),
+            disable=config.auto_tagger['hide_progress'],
+        ):
+            import_post(booru, post)
 
     logger.success('Script finished importing!')
 
