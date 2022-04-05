@@ -191,6 +191,10 @@ def upload_post(file_to_upload: str, metadata: dict = None):
     post.image_token = get_image_token(szuru, post.image)
     post.exact_post, similar_posts = check_similarity(szuru, post.image_token)
 
+    for entry in similar_posts:
+        if entry['distance'] < 0.1 and not post.exact_post:
+            post.exact_post = True
+
     if not post.exact_post:
         if not metadata:
             post.tags = config.upload_media['tags']
