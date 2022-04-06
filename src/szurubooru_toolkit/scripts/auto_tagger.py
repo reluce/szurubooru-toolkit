@@ -200,6 +200,8 @@ def main(post_id: str = None, tmp_media_path: str = None) -> None:  # noqa C901
                     post.tags = list(set().union(post.tags, tags, add_tags))  # Keep previous tags, add user tags
                 else:
                     post.tags = list(set().union(post.tags, tags))  # Keep previous tags, add user tags
+            else:
+                limit_reached = False
 
             # if not tags and config.auto_tagger['deepbooru_enabled']:
             if (not tags and config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']:
