@@ -211,7 +211,7 @@ def upload_post(file_to_upload: str, metadata: dict = None):
 
         post_id = upload_file(szuru, post, file_to_upload)
 
-        if config.upload_media['auto_tag'] and not metadata:
+        if config.upload_media['auto_tag']:
             auto_tagger(str(post_id), file_to_upload)
 
         if config.upload_media['cleanup'] or metadata:

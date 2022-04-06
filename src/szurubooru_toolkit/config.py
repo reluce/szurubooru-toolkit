@@ -54,6 +54,7 @@ class Config:
                 'tmp_path',
             ],
             'upload_media': ['src_path', 'hide_progress', 'cleanup', 'tags', 'auto_tag'],
+            'import_from_booru': ['deepbooru_enabled'],
             'logging': ['log_enabled', 'log_file', 'log_level', 'log_colorized'],
             'danbooru': ['user', 'api_key'],
             'gelbooru': ['user', 'api_key'],

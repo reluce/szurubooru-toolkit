@@ -1,6 +1,7 @@
 import argparse
 import sys
 import urllib
+from math import ceil
 from pathlib import Path
 
 from loguru import logger
@@ -56,10 +57,21 @@ def parse_args() -> tuple:
 def get_posts_from_booru(booru, query: str):
     """Placeholder"""
 
+    exclude_tags = ' -pixel-perfect-duplicate -duplicate'
+
     if isinstance(booru, Gelbooru):
         results = sync(booru.client.search_posts(tags=query.split()))
+    elif isinstance(booru, Danbooru):
+        total = booru.count_posts(tags=query + exclude_tags)['counts']['posts']
+        pages = ceil(int(total) / 100)  # Max posts per pages is 100
+        results = []
+
+        if pages > 1:
+            for page in range(1, pages + 1):
+                results.append(booru.post_list(limit=100, page=page, raw=True, tags=query + exclude_tags))
+
+        results = [result for result in results for result in result]
     else:
-        exclude_tags = ' -pixel-perfect-duplicate -duplicate'
         results = booru.post_list(limit=100, tags=query + exclude_tags)
 
     yield len(results)
@@ -113,6 +125,13 @@ def main() -> None:
     logger.info('Initializing script...')
 
     booru, query = parse_args()
+
+    if config.import_from_booru['deepbooru_enabled']:
+        config.upload_media['auto_tag'] = True
+        config.auto_tagger['saucenao_enabled'] = False
+        config.auto_tagger['deepbooru_enabled'] = True
+    else:
+        config.upload_media['auto_tag'] = False
 
     if booru == 'all':
         boorus = ['danbooru', 'gelbooru', 'yandere', 'konachan']
