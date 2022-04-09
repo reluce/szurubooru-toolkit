@@ -24,7 +24,7 @@ class Szurubooru:
         # Use the api object to interact with pyszuru module
         self.api = pyszuru.API(base_url=szuru_url, username=szuru_user, token=szuru_token)
 
-    def get_posts(self, query):
+    def get_posts(self, query: str):
         """
         Return the found post ids of the supplied query.
         Args:
@@ -41,7 +41,7 @@ class Szurubooru:
             logger.debug(f'Modified input query to "{query}"')
 
         try:
-            query_url = self.szuru_api_url + '/posts/?query=' + query
+            query_url = self.szuru_api_url + '/posts/?query=' + query + ' type:image,animation'  # Ignore mp4 and webms
             logger.debug(f'Getting post from query_url: {query_url}')
 
             response_json = requests.get(query_url, headers=self.headers)
@@ -73,8 +73,6 @@ class Szurubooru:
 
                         for result in results:
                             yield self.parse_post(result)
-
-                # return posts, total
             else:
                 logger.info('No posts were found for your query!')
                 exit()
