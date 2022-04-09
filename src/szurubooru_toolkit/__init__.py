@@ -11,10 +11,10 @@ from .szurubooru import Szurubooru
 from .utils import audit_rating  # noqa F401
 from .utils import collect_sources  # noqa F401
 from .utils import convert_rating  # noqa F401
-from .utils import resize_image  # noqa F401
 from .utils import sanitize_tags  # noqa F401
 from .utils import scrape_sankaku  # noqa F401
 from .utils import setup_logger  # noqa F401
+from .utils import shrink_img  # noqa F401
 from .utils import statistics  # noqa F401
 
 
@@ -36,6 +36,8 @@ if config.auto_tagger['deepbooru_enabled']:
     from .deepbooru import Deepbooru  # noqa F401
 
 setup_logger(config)
+
+szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
 
 __all__ = [
     'Config',

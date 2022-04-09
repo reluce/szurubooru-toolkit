@@ -1,4 +1,6 @@
 import sys
+import warnings
+from pathlib import Path
 
 import bs4
 import requests
@@ -14,15 +16,14 @@ total_deepbooru = 0
 total_untagged = 0
 total_skipped = 0
 
-# Increase the limit so DecompressionBomb warnings don't appear that often
-Image.MAX_IMAGE_PIXELS = 100000000
+warnings.simplefilter('error', Image.DecompressionBombWarning)
+warnings.filterwarnings('ignore', '.*Palette images with Transparency.*', module='PIL')
 
 
-def resize_image(local_image_path):
-    with Image.open(local_image_path) as image:
-        image = Image.open(local_image_path)
-        image.thumbnail((1200, 1200))
-        image.save(local_image_path)
+def shrink_img(tmp_path: Path, tmp_file: Path):
+    with Image.open(tmp_file) as image:
+        image.thumbnail((1000, 1000))
+        image.save(str(tmp_path / tmp_file))
 
 
 def convert_rating(rating: str) -> str:
