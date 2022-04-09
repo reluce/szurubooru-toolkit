@@ -1,7 +1,7 @@
 import os
-import urllib
 from pathlib import Path
-from time import sleep
+
+from PIL import Image
 
 from szurubooru_toolkit.utils import convert_rating
 
@@ -9,14 +9,15 @@ from szurubooru_toolkit.utils import convert_rating
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import numpy as np  # noqa E402
-import PIL  # noqa E402
 import tensorflow as tf  # noqa E402
 from loguru import logger  # noqa E402
+from tensorflow.python.ops.numpy_ops import np_config  # noqa E402
 
 
 class Deepbooru:
     def __init__(self, model_path):
         self.model = self.load_model(model_path)
+        np_config.enable_numpy_behavior()
 
     def load_model(self, model_path):
         try:
@@ -31,24 +32,15 @@ class Deepbooru:
 
         return self.model
 
-    def tag_image(self, local_temp_path: str, image_url: str, threshold: float = 0.6):
-        filename = image_url.split('/')[-1]
-
-        for i in range(1, 12):
-            try:
-                local_file_path = urllib.request.urlretrieve(image_url, Path(local_temp_path) / filename)[0]
-                break
-            except urllib.error.URLError:
-                logger.warning('Could not establish connection to szurubooru, trying again in 5s...')
-                sleep(5)
-
+    def tag_image(self, tmp_file: Path, threshold: float = 0.6):
         try:
-            image = np.array(PIL.Image.open(local_file_path).convert('RGB').resize((512, 512))) / 255.0
-        except OSError as e:
-            logger.warning(e, 'Image URL: ', image_url)
-            return [], 'unsafe'  # Keep script running
+            image = np.array(Image.open(tmp_file).convert('RGB').resize((512, 512))) / 255.0
+        except Exception:
+            logger.warning(f'Failed to convert {tmp_file} to Deepbooru format')
+            return
 
-        results = self.model.predict(np.array([image])).reshape(self.tags.shape[0])
+        results = self.model(np.array([image])).reshape(self.tags.shape[0])
+
         result_tags = {}
         for i in range(len(self.tags)):
             if results[i] > float(threshold):
@@ -60,23 +52,19 @@ class Deepbooru:
         rating = 'unsafe'
 
         if not tags:
-            logger.warning(f'Deepbooru could not guess tags for image {image_url}')
+            logger.warning(f'Deepbooru could not guess tags for image {tmp_file}')
         else:
             try:
                 rating = convert_rating(tags[-1])
                 logger.debug(f'Guessed rating {rating}')
                 del tags[-1]
             except IndexError:
-                logger.warning(f'Could not guess rating for image {image_url}. Defaulting to unsafe.')
+                logger.warning(f'Could not guess rating for image {tmp_file}. Defaulting to unsafe.')
 
             # Optional: add deepbooru tag. We can always reference source:Deepbooru though.
             # tags.append('deepbooru')
 
         if rating is None:
             rating = 'unsafe'
-
-        # Remove temporary image
-        if os.path.exists(local_file_path):
-            os.remove(local_file_path)
 
         return tags, rating
