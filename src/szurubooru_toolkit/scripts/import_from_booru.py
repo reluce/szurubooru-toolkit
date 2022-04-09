@@ -29,16 +29,26 @@ def parse_args() -> tuple:
     )
 
     parser.add_argument(
+        '--limit',
+        type=int,
+        default=100,
+        help='The amount of search results to be returned (default/max: 100).',
+    )
+
+    parser.add_argument(
         'booru',
         choices=['danbooru', 'gelbooru', 'konachan', 'yandere', 'all'],
         help='Specify the Booru which you want to query. Use all to query all Boorus.',
     )
+
     parser.add_argument(
         'query',
-        help='Specify the query for the posts you want to download and tag',
+        help='The search query for the posts you want to download and tag',
     )
 
     args = parser.parse_args()
+
+    limit = args.limit
 
     booru = args.booru
     logger.debug(f'booru = {booru}')
@@ -51,10 +61,10 @@ def parse_args() -> tuple:
             'Consider using double quotes (") if the script doesn\'t behave as intended.',
         )
 
-    return booru, query
+    return booru, query, limit
 
 
-def get_posts_from_booru(booru, query: str):
+def get_posts_from_booru(booru, query: str, limit: int):
     """Placeholder"""
 
     exclude_tags = ' -pixel-perfect-duplicate -duplicate'
@@ -62,15 +72,18 @@ def get_posts_from_booru(booru, query: str):
     if isinstance(booru, Gelbooru):
         results = sync(booru.client.search_posts(tags=query.split()))
     elif isinstance(booru, Danbooru):
-        total = booru.count_posts(tags=query + exclude_tags)['counts']['posts']
-        pages = ceil(int(total) / 100)  # Max posts per pages is 100
-        results = []
+        if not limit:
+            total = booru.count_posts(tags=query + exclude_tags)['counts']['posts']
+            pages = ceil(int(total) / 100)  # Max posts per pages is 100
+            results = []
 
-        if pages > 1:
-            for page in range(1, pages + 1):
-                results.append(booru.post_list(limit=100, page=page, raw=True, tags=query + exclude_tags))
+            if pages > 1:
+                for page in range(1, pages + 1):
+                    results.append(booru.post_list(limit=100, page=page, tags=query + exclude_tags))
 
-        results = [result for result in results for result in result]
+            results = [result for result in results for result in result]
+        else:
+            results = booru.post_list(limit=limit, tags=query + exclude_tags)
     else:
         results = booru.post_list(limit=100, tags=query + exclude_tags)
 
@@ -124,7 +137,7 @@ def main() -> None:
 
     logger.info('Initializing script...')
 
-    booru, query = parse_args()
+    booru, query, limit = parse_args()
 
     if config.import_from_booru['deepbooru_enabled']:
         config.upload_media['auto_tag'] = True
@@ -150,7 +163,7 @@ def main() -> None:
         elif booru == 'yandere':
             booru_client = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
 
-        posts = get_posts_from_booru(booru_client, query)
+        posts = get_posts_from_booru(booru_client, query, limit)
 
         total_posts = next(posts)
         logger.info(f'Found {total_posts} posts. Start importing...')
