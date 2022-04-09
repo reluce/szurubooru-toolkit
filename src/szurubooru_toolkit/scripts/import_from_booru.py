@@ -4,7 +4,9 @@ import urllib
 from math import ceil
 from pathlib import Path
 
+import requests
 from loguru import logger
+from lxml import etree
 from pybooru.danbooru import Danbooru
 from pybooru.moebooru import Moebooru
 from syncer import sync
@@ -32,7 +34,7 @@ def parse_args() -> tuple:
         '--limit',
         type=int,
         default=100,
-        help='The amount of search results to be returned (default/max: 100).',
+        help='Limit the search results to be returned (default: 100)',
     )
 
     parser.add_argument(
@@ -69,23 +71,42 @@ def get_posts_from_booru(booru, query: str, limit: int):
 
     exclude_tags = ' -pixel-perfect-duplicate -duplicate'
 
-    if isinstance(booru, Gelbooru):
-        results = sync(booru.client.search_posts(tags=query.split()))
-    elif isinstance(booru, Danbooru):
-        if not limit:
-            total = booru.count_posts(tags=query + exclude_tags)['counts']['posts']
-            pages = ceil(int(total) / 100)  # Max posts per pages is 100
-            results = []
+    if not limit:
+        # Get the total count of posts for the query first
+        if isinstance(booru, Gelbooru):
+            api_url = 'https://gelbooru.com/index.php?page=dapi&s=post&q=index'
+            xml_result = requests.get(f'{api_url}&tags={query}')
+            root = etree.fromstring(xml_result.content)
+            total = root.attrib['count']
+        elif isinstance(booru, Danbooru):
+            if not limit:
+                total = booru.count_posts(tags=query + exclude_tags)['counts']['posts']
+        else:  # Moebooru (Yandere + Konachan)
+            xml_result = requests.get(f'{booru.site_url}/post.xml?tags={query}')
+            root = etree.fromstring(xml_result.content)
+            total = root.attrib['count']
 
-            if pages > 1:
-                for page in range(1, pages + 1):
-                    results.append(booru.post_list(limit=100, page=page, tags=query + exclude_tags))
+        pages = ceil(int(total) / 100)  # Max results per page are 100 for every Booru
+        results = []
+
+        if pages > 1:
+            for page in range(1, pages + 1):
+                if isinstance(booru, Gelbooru):
+                    results.append(sync(booru.client.search_posts(page=page, tags=query.split())))
+                else:
+                    results.append(booru.post_list(page=page, tags=query + exclude_tags))
 
             results = [result for result in results for result in result]
         else:
-            results = booru.post_list(limit=limit, tags=query + exclude_tags)
+            if isinstance(booru, Gelbooru):
+                results = sync(booru.client.search_posts(tags=query.split()))
+            else:
+                results = booru.post_list(tags=query + exclude_tags)
     else:
-        results = booru.post_list(limit=100, tags=query + exclude_tags)
+        if isinstance(booru, Gelbooru):
+            results = sync(booru.client.search_posts(limit=limit, tags=query.split()))
+        else:
+            results = booru.post_list(limit=limit, tags=query + exclude_tags)
 
     yield len(results)
     yield from results
