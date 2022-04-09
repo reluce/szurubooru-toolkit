@@ -175,7 +175,7 @@ def main(post_id: str = None, tmp_media_path: str = None) -> None:  # noqa C901
     if not from_upload_media:
         logger.info(f'Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
 
-    posts = szuru.get_posts(query, from_upload_media)
+    posts = szuru.get_posts(query)
     total_posts = next(posts)
 
     if not from_upload_media:
