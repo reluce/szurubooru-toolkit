@@ -41,6 +41,7 @@ hide_progress = false  # Set this to true to hide the progress bar
 cleanup = false  # Set this to true if images in the source directory should be deleted after upload
 tags = ["tagme"]  # These tags will get set for all uploaded posts
 auto_tag = false  # Set this to true if you want your post to be automatically tagged after upload
+max_similarity = "0.99"  # 1.00 being basically the same image. Skip everything above similarity threshold.
 
 [logging]
 log_enabled = false

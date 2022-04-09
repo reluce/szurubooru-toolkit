@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 from glob import glob
+from pathlib import Path
 
 import requests
 from loguru import logger
@@ -190,10 +191,12 @@ def upload_post(file_to_upload: str, metadata: dict = None):
 
     post.image_token = get_image_token(szuru, post.image)
     post.exact_post, similar_posts = check_similarity(szuru, post.image_token)
+    threshold = 1 - float(config.upload_media['max_similarity'])
 
     for entry in similar_posts:
-        if entry['distance'] < 0.1 and not post.exact_post:
+        if entry['distance'] < threshold and not post.exact_post:
             post.exact_post = True
+            break
 
     if not post.exact_post:
         if not metadata:
@@ -212,7 +215,8 @@ def upload_post(file_to_upload: str, metadata: dict = None):
         post_id = upload_file(szuru, post, file_to_upload)
 
         if config.upload_media['auto_tag']:
-            auto_tagger(str(post_id), file_to_upload)
+            if Path(file_to_upload).suffix not in ['.mp4', '.webm']:
+                auto_tagger(str(post_id), file_to_upload)
 
         if config.upload_media['cleanup'] or metadata:
             if os.path.exists(file_to_upload):
