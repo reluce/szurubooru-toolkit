@@ -1,20 +1,22 @@
+from __future__ import annotations
+
 import argparse
-import sys
+import os
+import urllib
+from pathlib import Path
 from time import sleep
 
 from loguru import logger
 from tqdm import tqdm
 
 from szurubooru_toolkit import SauceNao
-from szurubooru_toolkit import Szurubooru
 from szurubooru_toolkit import config
+from szurubooru_toolkit import szuru
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import sanitize_tags
 from szurubooru_toolkit.utils import scrape_sankaku
+from szurubooru_toolkit.utils import shrink_img
 from szurubooru_toolkit.utils import statistics
-
-
-sys.tracebacklimit = 0
 
 
 def parse_args() -> tuple:
@@ -55,6 +57,11 @@ def parse_args() -> tuple:
 
     query = args.query
     logger.debug(f'query = {query}')
+
+    if 'type:' in query:
+        logger.critical('Search token "type" is not allowed in queries!')
+        exit()
+
     if '\'' in query:
         logger.warning(
             'Your query contains single quotes (\'). '
@@ -74,13 +81,12 @@ def parse_args() -> tuple:
     return sankaku_url, query, add_tags, remove_tags
 
 
-def parse_saucenao_results(sauce: SauceNao, post, config, tmp_media_path):
+def parse_saucenao_results(sauce: SauceNao, post, tmp_media_path):
     limit_reached = False
     tags, source, rating, limit_short, limit_long = sauce.get_metadata(
-        post.content_url,
         config.szurubooru['public'],
-        config.auto_tagger['tmp_path'],
-        tmp_media_path,
+        post.content_url,
+        str(tmp_media_path),
     )
 
     # Get previously set sources and add new sources
@@ -105,6 +111,33 @@ def parse_saucenao_results(sauce: SauceNao, post, config, tmp_media_path):
     return sanitize_tags(tags), source, rating, limit_reached
 
 
+def download_media(tmp_media_path: str | None, content_url: str) -> str:
+    if not tmp_media_path:
+        filename = content_url.split('/')[-1]
+        tmp_file = urllib.request.urlretrieve(content_url, Path(config.auto_tagger['tmp_path']) / filename)[0]
+    else:
+        tmp_file = tmp_media_path
+
+    # Shrink files >2MB
+    if os.path.getsize(tmp_file) > 2000000:
+        shrink_img(Path(config.auto_tagger['tmp_path']), Path(tmp_file))
+
+    logger.debug(f'Trying to get result from tmp_file: {tmp_file}')
+
+    return tmp_file
+
+
+def set_tags_from_relations(post) -> None:
+    # Copy artist, character and series from relations.
+    # Useful for FANBOX/Fantia sets where the main post is uploaded to a Booru.
+    for relation in post.relations:
+        result = szuru.api.getPost(relation['id'])
+
+        for relation_tag in result.tags:
+            if not relation_tag.category == 'default' or not relation_tag.category == 'meta':
+                post.tags.append(relation_tag.primary_name)
+
+
 @logger.catch
 def main(post_id: str = None, tmp_media_path: str = None) -> None:  # noqa C901
     """Placeholder"""
@@ -123,15 +156,13 @@ def main(post_id: str = None, tmp_media_path: str = None) -> None:  # noqa C901
         exit()
 
     # If posts are being tagged directly from upload-media script
-    if not post_id:
+    if not from_upload_media:
         sankaku_url, query, add_tags, remove_tags = parse_args()
     else:
         sankaku_url = None
         query = post_id
         add_tags = None
         remove_tags = None
-
-    szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
 
     if config.auto_tagger['saucenao_enabled']:
         sauce = SauceNao(config)
@@ -144,13 +175,11 @@ def main(post_id: str = None, tmp_media_path: str = None) -> None:  # noqa C901
     if not from_upload_media:
         logger.info(f'Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
 
-    posts = szuru.get_posts(query)
+    posts = szuru.get_posts(query, from_upload_media)
     total_posts = next(posts)
 
     if not from_upload_media:
         logger.info(f'Found {total_posts} posts. Start tagging...')
-
-    blacklist_extensions = ['mp4', 'webm', 'mkv']
 
     if sankaku_url:
         if query.isnumeric():
@@ -179,21 +208,16 @@ def main(post_id: str = None, tmp_media_path: str = None) -> None:  # noqa C901
         ):
             tags = []
 
-            is_blacklisted = False
-            for extension in blacklist_extensions:
-                if extension in post.content_url:
-                    is_blacklisted = True
-
-            if is_blacklisted:
-                statistics(skipped=1)
-                continue
+            if not config.szurubooru['public'] or config.auto_tagger['deepbooru_enabled']:
+                tmp_file = download_media(tmp_media_path, post.content_url)
+            else:
+                tmp_file = None
 
             if config.auto_tagger['saucenao_enabled']:
                 tags, post.source, post.safety, limit_reached = parse_saucenao_results(
                     sauce,
                     post,
-                    config,
-                    tmp_media_path,
+                    tmp_file,
                 )
 
                 if add_tags:
@@ -203,28 +227,16 @@ def main(post_id: str = None, tmp_media_path: str = None) -> None:  # noqa C901
             else:
                 limit_reached = False
 
-            # if not tags and config.auto_tagger['deepbooru_enabled']:
             if (not tags and config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']:
-                tags, post.safety = deepbooru.tag_image(
-                    config.auto_tagger['tmp_path'],
-                    post.content_url,
-                    config.auto_tagger['deepbooru_threshold'],
-                )
+                tags, post.safety = deepbooru.tag_image(tmp_file, config.auto_tagger['deepbooru_threshold'])
 
-                # Copy artist, character and series from relations.
-                # Useful for FANBOX/Fantia sets where the main post is uploaded to a Booru.
                 if post.relations:
-                    for relation in post.relations:
-                        result = szuru.api.getPost(relation['id'])
-
-                        for relation_tag in result.tags:
-                            if not relation_tag.category == 'default' or not relation_tag.category == 'meta':
-                                post.tags.append(relation_tag.primary_name)
+                    set_tags_from_relations(post)
 
                 if add_tags:
-                    post.tags = list(set().union(post.tags, tags, add_tags))  # Keep previous tags, add user tags
+                    post.tags = list(set().union(post.tags, tags, add_tags))  # Keep previous tags and add user tags
                 else:
-                    post.tags = list(set().union(post.tags, tags))  # Keep previous tags, add user tags
+                    post.tags = list(set().union(post.tags, tags))  # Keep previous tags
 
                 if 'DeepBooru' in post.source:
                     post.source = post.source.replace('DeepBooru\n', '')
@@ -240,10 +252,14 @@ def main(post_id: str = None, tmp_media_path: str = None) -> None:  # noqa C901
             elif not tags:
                 statistics(untagged=1)
 
-            # If any tags were collected with SauceNAO or Deepbooru, tag the post
+            # Remove temporary image
+            if os.path.exists(tmp_file):
+                os.remove(tmp_file)
+
             if remove_tags:
                 [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]
 
+            # If any tags were collected with SauceNAO or Deepbooru, tag the post
             if tags:
                 [post.tags.remove(tag) for tag in post.tags if tag == 'deepbooru' or tag == 'tagme']
                 szuru.update_post(post)
