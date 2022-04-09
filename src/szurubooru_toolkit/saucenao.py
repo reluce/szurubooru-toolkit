@@ -1,7 +1,4 @@
-import os
-import urllib
 from asyncio.exceptions import TimeoutError
-from pathlib import Path
 from time import sleep
 
 from aiohttp.client_exceptions import ContentTypeError
@@ -15,7 +12,6 @@ from szurubooru_toolkit import Gelbooru
 from szurubooru_toolkit.utils import audit_rating
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import convert_rating
-from szurubooru_toolkit.utils import resize_image
 from szurubooru_toolkit.utils import scrape_sankaku
 
 
@@ -31,7 +27,7 @@ class SauceNao:
         self.konachan = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
 
     @sync
-    async def get_metadata(self, post_url: str, szuru_public: bool, tmp_path: str, tmp_media_path: str = None):
+    async def get_metadata(self, szuru_public: bool, content_url: str, tmp_media_path: str = None):
         """
         Scrape and collect tags, sources, and ratings from popular imageboards
         Simply put, it's a wrapper for get_result() and scrape_<image_board>()
@@ -57,7 +53,7 @@ class SauceNao:
         limit_short = 1
         limit_long = 10
 
-        response = await self.get_result(post_url, szuru_public, tmp_path, tmp_media_path)
+        response = await self.get_result(szuru_public, content_url, tmp_media_path)
 
         # Sometimes multiple results from the same Booru are found.
         # Results are sorted by their similiarity (highest first).
@@ -171,7 +167,7 @@ class SauceNao:
 
         return tags, source, rating, limit_short, limit_long
 
-    async def get_result(self, post_url: str, szuru_public: bool, tmp_path: str, tmp_media_path: str = None):
+    async def get_result(self, szuru_public: bool, content_url: str, tmp_media_path: str = None):
         """
         If szurubooru is public, let SauceNAO fetch the image from supplied URL.
         If not not, download the image to our temporary path and upload it to SauceNAO.
@@ -186,39 +182,20 @@ class SauceNao:
         if szuru_public:
             for _ in range(1, 12):
                 try:
-                    logger.debug(f'Trying to get result from post_url: {post_url}')
-                    response = await self.pysaucenao.from_url(post_url)
+                    logger.debug(f'Trying to get result from content_url: {content_url}')
+                    response = await self.pysaucenao.from_url(content_url)
                 except (ContentTypeError, TimeoutError):
                     logger.warning('Could not establish connection to SauceNAO, trying again in 5s...')
                     sleep(5)
                 except Exception as e:
                     response = None
-                    logger.warning(f'Could not get result from SauceNAO with image URL "{post_url}": {e}')
+                    logger.warning(f'Could not get result from SauceNAO with image URL "{content_url}": {e}')
                     break
         else:
             for _ in range(1, 12):
                 try:
-                    if not tmp_media_path:
-                        filename = post_url.split('/')[-1]
-                        tmp_file = urllib.request.urlretrieve(post_url, Path(tmp_path) / filename)[0]
-                    else:
-                        tmp_file = tmp_media_path
-
-                    logger.debug(f'Trying to get result from tmp_file: {tmp_file}')
-
-                    # Resize images larger than 2MB to reduce load on servers
-                    image_size = os.path.getsize(tmp_file)
-
-                    if image_size > 2000000:
-                        resize_image(tmp_file)
-
-                    response = await self.pysaucenao.from_file(tmp_file)
+                    response = await self.pysaucenao.from_file(tmp_media_path)
                     logger.debug(f'Received response {response}')
-
-                    # Remove temporary image if the script was not called from upload-media
-                    if not tmp_media_path:
-                        if os.path.exists(tmp_file):
-                            os.remove(tmp_file)
 
                     break
                 except (ContentTypeError, TimeoutError):
@@ -228,7 +205,7 @@ class SauceNao:
                     if 'Daily Search Limit Exceeded' in e.args[0]:
                         response = 'Limit reached'
                     else:
-                        logger.warning(f'Could not get result from SauceNAO with uploaded image "{post_url}": {e}')
+                        logger.warning(f'Could not get result from SauceNAO with uploaded image "{content_url}": {e}')
                         response = None
                     break
             else:
