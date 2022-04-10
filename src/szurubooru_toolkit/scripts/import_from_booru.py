@@ -1,5 +1,5 @@
 import argparse
-import sys
+import os
 import urllib
 from math import ceil
 from pathlib import Path
@@ -14,11 +14,10 @@ from tqdm import tqdm
 
 from szurubooru_toolkit import Gelbooru
 from szurubooru_toolkit import config
+from szurubooru_toolkit import szuru
 from szurubooru_toolkit.scripts import upload_media
 from szurubooru_toolkit.utils import convert_rating
-
-
-sys.tracebacklimit = 0
+from szurubooru_toolkit.utils import get_md5sum
 
 
 def parse_args() -> tuple:
@@ -112,6 +111,26 @@ def get_posts_from_booru(booru, query: str, limit: int):
     yield from results
 
 
+def download_post(file_url: str, booru, post) -> None:
+    filename = file_url.split('/')[-1]
+    file_path = Path(config.auto_tagger['tmp_path']) / filename  # Where the file gets temporarily saved to
+
+    for _ in range(1, 3):
+        try:
+            urllib.request.urlretrieve(file_url, file_path)
+        except Exception as e:
+            logger.warning(f'Could not download post from {file_url}: {e}')
+
+        md5sum = get_md5sum(file_path)
+
+        if booru == 'gelbooru':
+            if Path(post.filename).stem == md5sum:
+                return file_path
+        else:
+            if post['md5'] == md5sum:
+                return file_path
+
+
 def import_post(booru, post) -> None:
     """Placeholder"""
 
@@ -121,13 +140,10 @@ def import_post(booru, post) -> None:
         logger.warning('Could not find file url for post. It got probably removed from the site.')
         return
 
-    filename = file_url.split('/')[-1]
-    file_path = Path(config.auto_tagger['tmp_path']) / filename  # Where the file gets temporarily saved to
-
     try:
-        urllib.request.urlretrieve(file_url, file_path)
+        file_path = download_post(file_url, booru, post)
     except Exception as e:
-        logger.warning(e)
+        logger.warning(f'Could not download post from {file_url}: {e}')
         return
 
     if booru == 'gelbooru':
@@ -150,6 +166,9 @@ def import_post(booru, post) -> None:
     metadata = {'tags': tags, 'safety': safety, 'source': source}
 
     upload_media.main(file_path, metadata)
+
+    if os.path.exists(str(file_path)):
+        os.remove(str(file_path))
 
 
 @logger.catch
@@ -197,7 +216,18 @@ def main() -> None:
             total=int(total_posts),
             disable=config.auto_tagger['hide_progress'],
         ):
-            import_post(booru, post)
+            # Check by md5 hash if file is already uploaded
+            if booru == 'gelbooru':
+                result = szuru.get_posts(f'md5:{Path(post.filename).stem}')
+            else:
+                result = szuru.api.search_post(f'md5:{post["md5"]}')
+
+            try:
+                next(result)
+                logger.debug(f'Skipping post, already exists: {post}')
+            except StopIteration:
+                import_post(booru, post)
+                logger.debug(f'Importing post: {post}')
 
     logger.success('Script finished importing!')
 
