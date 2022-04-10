@@ -1,3 +1,4 @@
+import hashlib
 import sys
 import warnings
 from pathlib import Path
@@ -20,10 +21,15 @@ warnings.simplefilter('error', Image.DecompressionBombWarning)
 warnings.filterwarnings('ignore', '.*Palette images with Transparency.*', module='PIL')
 
 
-def shrink_img(tmp_path: Path, tmp_file: Path):
+def shrink_img(tmp_path: Path, tmp_file: Path, resize: bool = False, convert: bool = False):
     with Image.open(tmp_file) as image:
-        image.thumbnail((1000, 1000))
-        image.save(str(tmp_path / tmp_file))
+        if resize:
+            image.thumbnail((1000, 1000))
+
+        if convert:
+            image.convert('RGB').save(str(tmp_path / tmp_file.stem) + '.jpg', optimize=True)
+        else:
+            image.save(str(tmp_path / tmp_file.name))
 
 
 def convert_rating(rating: str) -> str:
@@ -240,3 +246,11 @@ def setup_logger(config: Config):
 
     if not config.logging['log_enabled']:
         logger.remove(2)  # Assume id 2 is the handler with the log file sink
+
+
+def get_md5sum(file_path: str) -> str:
+    with open(file_path, 'rb') as f:
+        data = f.read()
+        md5sum = hashlib.md5(data).hexdigest()
+
+    return md5sum
