@@ -41,7 +41,8 @@ class Szurubooru:
             logger.debug(f'Modified input query to "{query}"')
 
         try:
-            query_url = self.szuru_api_url + '/posts/?query=' + query + ' type:image,animation'  # Ignore mp4 and webms
+            # Ignore mp4 and webms
+            query_url = self.szuru_api_url + '/posts/?query=' + query + '%20type:image,animation'
             logger.debug(f'Getting post from query_url: {query_url}')
 
             response_json = requests.get(query_url, headers=self.headers)
@@ -73,9 +74,6 @@ class Szurubooru:
 
                         for result in results:
                             yield self.parse_post(result)
-            else:
-                logger.info('No posts were found for your query!')
-                exit()
         except Exception as e:
             logger.critical(f'Could not process your query: {e}')
             exit()
@@ -90,6 +88,7 @@ class Szurubooru:
         post.content_url = self.szuru_url + '/' + content_url
         post.version = response['version']
         post.relations = response['relations']
+        post.md5 = response['checksumMD5']
 
         tags = response['tags']
         post.tags = []
