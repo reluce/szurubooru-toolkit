@@ -13,6 +13,7 @@ from szurubooru_toolkit import SauceNao
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.utils import collect_sources
+from szurubooru_toolkit.utils import get_md5sum
 from szurubooru_toolkit.utils import sanitize_tags
 from szurubooru_toolkit.utils import scrape_sankaku
 from szurubooru_toolkit.utils import shrink_img
@@ -111,16 +112,23 @@ def parse_saucenao_results(sauce: SauceNao, post, tmp_media_path):
     return sanitize_tags(tags), source, rating, limit_reached
 
 
-def download_media(tmp_media_path: str | None, content_url: str) -> str:
-    if not tmp_media_path:
-        filename = content_url.split('/')[-1]
-        tmp_file = urllib.request.urlretrieve(content_url, Path(config.auto_tagger['tmp_path']) / filename)[0]
-    else:
-        tmp_file = tmp_media_path
+def download_media(content_url: str, md5: str) -> str:
+    filename = content_url.split('/')[-1]
+
+    for _ in range(1, 3):
+        try:
+            tmp_file = urllib.request.urlretrieve(content_url, Path(config.auto_tagger['tmp_path']) / filename)[0]
+        except Exception as e:
+            logger.warning(f'Could not download post from {filename}: {e}')
+
+        md5sum = get_md5sum(tmp_file)
+
+        if md5 == md5sum:
+            break
 
     # Shrink files >2MB
     if os.path.getsize(tmp_file) > 2000000:
-        shrink_img(Path(config.auto_tagger['tmp_path']), Path(tmp_file))
+        shrink_img(Path(config.auto_tagger['tmp_path']), Path(tmp_file), resize=True, convert=True)
 
     logger.debug(f'Trying to get result from tmp_file: {tmp_file}')
 
@@ -139,7 +147,7 @@ def set_tags_from_relations(post) -> None:
 
 
 @logger.catch
-def main(post_id: str = None, tmp_media_path: str = None) -> None:  # noqa C901
+def main(post_id: str = None, file_to_upload: Path = None) -> None:  # noqa C901
     """Placeholder"""
 
     # If this script/function was called from the upload-media script,
@@ -176,7 +184,12 @@ def main(post_id: str = None, tmp_media_path: str = None) -> None:  # noqa C901
         logger.info(f'Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
 
     posts = szuru.get_posts(query)
-    total_posts = next(posts)
+
+    try:
+        total_posts = next(posts)
+    except StopIteration:
+        logger.info(f'Found no posts for your query: {query}')
+        exit()
 
     if not from_upload_media:
         logger.info(f'Found {total_posts} posts. Start tagging...')
@@ -208,10 +221,15 @@ def main(post_id: str = None, tmp_media_path: str = None) -> None:  # noqa C901
         ):
             tags = []
 
-            if not config.szurubooru['public'] or config.auto_tagger['deepbooru_enabled']:
-                tmp_file = download_media(tmp_media_path, post.content_url)
+            # Download the file from Szuru if its not already locally present.
+            # This might be the case if this function was called from upload_media.
+            if not file_to_upload:
+                if not config.szurubooru['public'] or config.auto_tagger['deepbooru_enabled']:
+                    tmp_file = download_media(post.content_url, post.md5)
+                else:
+                    tmp_file = None
             else:
-                tmp_file = None
+                tmp_file = file_to_upload  # Save it as tmp_file so it gets tagged by Deepbooru
 
             if config.auto_tagger['saucenao_enabled']:
                 tags, post.source, post.safety, limit_reached = parse_saucenao_results(
@@ -252,8 +270,9 @@ def main(post_id: str = None, tmp_media_path: str = None) -> None:  # noqa C901
             elif not tags:
                 statistics(untagged=1)
 
-            # Remove temporary image
-            if os.path.exists(tmp_file):
+            # Remove temporary image if it was downloaded from this script.
+            # Leave cleanup to the calling script otherwise (e.g. upload_media).
+            if not file_to_upload and os.path.exists(tmp_file):
                 os.remove(tmp_file)
 
             if remove_tags:
