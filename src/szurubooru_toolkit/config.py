@@ -33,6 +33,9 @@ class Config:
         self.validate_path()
         self.validate_url()
 
+        if self.upload_media['convert_to_jpg']:
+            self.validate_convert_threshold()
+
         if self.auto_tagger['deepbooru_enabled']:
             self.validate_deepbooru()
         else:
@@ -53,7 +56,16 @@ class Config:
                 'hide_progress',
                 'tmp_path',
             ],
-            'upload_media': ['src_path', 'hide_progress', 'cleanup', 'tags', 'auto_tag'],
+            'upload_media': [
+                'src_path',
+                'hide_progress',
+                'cleanup',
+                'tags',
+                'max_similarity',
+                'auto_tag',
+                'convert_to_jpg',
+                'convert_threshold',
+            ],
             'import_from_booru': ['deepbooru_enabled'],
             'logging': ['log_enabled', 'log_file', 'log_level', 'log_colorized'],
             'danbooru': ['user', 'api_key'],
@@ -131,3 +143,19 @@ class Config:
                 f'Your Deepbooru model "{self.auto_tagger["deepbooru_model"]}" in config.toml does not exist!',
             )
             exit()
+
+    def validate_convert_threshold(self) -> None:
+        """Convert the threshold from a human readable to a machine readable size."""
+
+        human_readable = self.upload_media['convert_threshold']
+
+        if not any(x in human_readable for x in ['KB', 'MB']):
+            logger.critical(
+                f'Your convert_threshold "{self.upload_media["convert_threshold"]}" in config.toml is not valid!',
+            )
+            exit()
+
+        if 'KB' in human_readable:
+            self.upload_media['convert_threshold'] = float(human_readable.replace('KB', '')) * 1000
+        elif 'MB' in human_readable:
+            self.upload_media['convert_threshold'] = float(human_readable.replace('MB', '')) * 1000000
