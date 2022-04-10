@@ -13,6 +13,7 @@ from tqdm import tqdm
 from szurubooru_toolkit import Post
 from szurubooru_toolkit import Szurubooru
 from szurubooru_toolkit import config
+from szurubooru_toolkit import shrink_img
 from szurubooru_toolkit.scripts.auto_tagger import main as auto_tagger
 
 
@@ -99,7 +100,7 @@ def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
         logger.critical(f'An error occured during the similarity check: {e}')
 
 
-def upload_file(szuru: Szurubooru, post: Post, file_to_upload: str) -> None:
+def upload_file(szuru: Szurubooru, post: Post) -> None:
     """Uploads/Moves our temporary image to 'production' with similar posts if any were found.
 
     Deletes file after upload has been completed.
@@ -184,10 +185,30 @@ def delete_posts(szuru: Szurubooru, start_id: int, finish_id: int):
             logger.critical(f'An error occured while deleting posts: {e}')
 
 
-def upload_post(file_to_upload: str, metadata: dict = None):
+def upload_post(file_to_upload: Path, metadata: dict = None):
     post = Post()
-    with open(file_to_upload, 'rb') as f:
-        post.image = f.read()
+    tmp_path = Path(config.auto_tagger['tmp_path'])
+
+    # Save JPEG version of the file in the temp path
+    file_size = os.path.getsize(str(file_to_upload))
+    if (
+        config.upload_media['convert_to_jpg']
+        and not file_to_upload.suffix == '.jpg'
+        and file_size > config.upload_media['convert_threshold']
+    ):
+        logger.debug(
+            f'Converting file, size {file_size} > {config.upload_media["convert_threshold"]}: {file_to_upload}',
+        )
+        shrink_img(tmp_path, file_to_upload, convert=True)
+
+        with open(str(tmp_path / file_to_upload.stem) + '.jpg', 'rb') as f:
+            post.image = f.read()
+
+        converted = True
+    else:
+        with open(str(file_to_upload), 'rb') as f:
+            post.image = f.read()
+        converted = False
 
     post.image_token = get_image_token(szuru, post.image)
     post.exact_post, similar_posts = check_similarity(szuru, post.image_token)
@@ -212,21 +233,24 @@ def upload_post(file_to_upload: str, metadata: dict = None):
         for entry in similar_posts:
             post.similar_posts.append(entry['post']['id'])
 
-        post_id = upload_file(szuru, post, file_to_upload)
+        post_id = upload_file(szuru, post)
 
+        # Tag post if enabled
         if config.upload_media['auto_tag']:
-            if Path(file_to_upload).suffix not in ['.mp4', '.webm']:
+            if file_to_upload.suffix not in ['.mp4', '.webm']:
                 auto_tagger(str(post_id), file_to_upload)
 
-        if config.upload_media['cleanup'] or metadata:
-            if os.path.exists(file_to_upload):
-                os.remove(file_to_upload)
-    elif config.upload_media['cleanup'] or metadata:
+    # Always clean up converted jpg files if present
+    if converted:
+        if os.path.exists(str(tmp_path / file_to_upload.stem) + '.jpg'):
+            os.remove(str(tmp_path / file_to_upload.stem) + '.jpg')
+
+    if config.upload_media['cleanup']:
         if os.path.exists(file_to_upload):
             os.remove(file_to_upload)
 
 
-def main(file_to_upload: str = None, metadata: dict = None) -> int:
+def main(file_to_upload: Path = None, metadata: dict = None) -> int:
     """Main logic of the script."""
 
     if not file_to_upload:
@@ -248,7 +272,7 @@ def main(file_to_upload: str = None, metadata: dict = None) -> int:
                 leave=False,
                 disable=config.upload_media['hide_progress'],
             ):
-                upload_post(file_to_upload)
+                upload_post(Path(file_to_upload))
 
             if config.upload_media['cleanup']:
                 cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
