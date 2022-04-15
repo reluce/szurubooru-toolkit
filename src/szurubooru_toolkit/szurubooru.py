@@ -112,6 +112,7 @@ class Szurubooru:
         post.version = response['version']
         post.relations = response['relations']
         post.md5 = response['checksumMD5']
+        post.safety = response['safety']
 
         tags = response['tags']
         post.tags = []
@@ -173,6 +174,7 @@ class Post:
         self.version = None
         self.relations: list = []
         self.tags: list = []
+        self.safety = 'safe'
 
     def __repr__(self) -> str:
         """Returns the current attributes of this object.
@@ -184,7 +186,7 @@ class Post:
         source = str(self.source).replace('\n', '\\n')
         return_str = (
             f'Post(id: {self.id}, source: {source}, content_url: {self.content_url}, '
-            f'version: {self.version}, relations: {self.relations}, tags: {self.tags}'
+            f'version: {self.version}, relations: {self.relations}, tags: {self.tags}, safety: {self.safety}'
         )
 
         return return_str
