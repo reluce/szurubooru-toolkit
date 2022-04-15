@@ -8,6 +8,7 @@ import requests
 from loguru import logger
 from lxml import etree
 from pybooru.danbooru import Danbooru
+from pybooru.exceptions import PybooruHTTPError
 from pybooru.moebooru import Moebooru
 from syncer import sync
 from tqdm import tqdm
@@ -75,7 +76,11 @@ def get_posts_from_booru(booru, query: str, limit: int):
             total = root.attrib['count']
         elif isinstance(booru, Danbooru):
             if not limit:
-                total = booru.count_posts(tags=query)['counts']['posts']
+                try:
+                    total = booru.count_posts(tags=query)['counts']['posts']
+                except PybooruHTTPError:
+                    logger.critical('Importing from Danbooru accepts only a maximum of two tags for you search query!')
+                    exit()
         else:  # Moebooru (Yandere + Konachan)
             xml_result = requests.get(f'{booru.site_url}/post.xml?tags={query}')
             root = etree.fromstring(xml_result.content)
@@ -89,7 +94,13 @@ def get_posts_from_booru(booru, query: str, limit: int):
                 if isinstance(booru, Gelbooru):
                     results.append(sync(booru.client.search_posts(page=page, tags=query.split())))
                 else:
-                    results.append(booru.post_list(page=page, tags=query))
+                    try:
+                        results.append(booru.post_list(page=page, tags=query))
+                    except PybooruHTTPError:
+                        logger.critical(
+                            'Importing from Danbooru accepts only a maximum of two tags for you search query!',
+                        )
+                        exit()
 
             results = [result for result in results for result in result]
         else:
@@ -101,7 +112,11 @@ def get_posts_from_booru(booru, query: str, limit: int):
         if isinstance(booru, Gelbooru):
             results = sync(booru.client.search_posts(limit=limit, tags=query.split()))
         else:
-            results = booru.post_list(limit=limit, tags=query)
+            try:
+                results = booru.post_list(limit=limit, tags=query)
+            except PybooruHTTPError:
+                logger.critical('Importing from Danbooru accepts only a maximum of two tags for you search query!')
+                exit()
 
     yield len(results)
     yield from results
