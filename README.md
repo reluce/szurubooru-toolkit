@@ -89,6 +89,22 @@ You can set `deepbooru_enabled` to `true` in your config.toml file. In that case
 If you only want to use Deepbooru, set `deepbooru_enabled` to `true` and `saucenao_enabled` to `false`. If you want to use SauceNAO and Deepbooru, set following options to `true`: `saucenao_enabled`, `deepbooru_enabled` and `deepbooru_forced`.
 
 __Usage__
+```
+usage: auto-tagger [-h] [--sankaku_url SANKAKU_URL] [--add-tags ADD_TAGS] [--remove-tags REMOVE_TAGS] query
+
+This script will automagically tag your szurubooru posts based on your input query.
+
+positional arguments:
+  query                 Specify a single post id to tag or a szuru query. E.g. "date:today tag-count:0"
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --sankaku_url SANKAKU_URL
+                        Fetch tags from specified Sankaku URL instead of searching SauceNAO.
+  --add-tags ADD_TAGS   Specify tags, separated by a comma, which will be added to all posts matching your query
+  --remove-tags REMOVE_TAGS
+                        Specify tags, separated by a comma, which will be removed from all posts matching your query
+```
 
 After editing and renaming the `config_sample.toml` file to `config.toml`, we can execute the script with our query:
 
@@ -96,6 +112,7 @@ After editing and renaming the `config_sample.toml` file to `config.toml`, we ca
 * `auto-tagger "date:2021-04-07"`
 * `auto-tagger "tagme"`
 * `auto-tagger "id:100,101"`
+* `auto-tagger --add-tags "foo,bar" --remove-tags "baz" "tagme"`
 
 If we want to tag a single post, we can omit the keyword `id` in our query:
 
@@ -116,6 +133,20 @@ In the `config.toml` file, you can set if the post should be additionally tagged
 Since this script is using the `upload-media` script to upload the post, following settings apply from the `upload-media` section: `convert_to_jpg` and `convert_threshold`.
 
 __Usage__
+```
+usage: import-from-booru [-h] [--limit LIMIT] {danbooru,gelbooru,konachan,yandere,all} query
+
+This script downloads and tags posts from various Boorus based on your input query.
+
+positional arguments:
+  {danbooru,gelbooru,konachan,yandere,all}
+                        Specify the Booru which you want to query. Use all to query all Boorus.
+  query                 The search query for the posts you want to download and tag
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --limit LIMIT         Limit the search results to be returned (default: 100)
+```
 
 After editing and renaming the `config_sample.toml` file to `config.toml`, we can execute the script with our query:
 
@@ -125,6 +156,8 @@ After editing and renaming the `config_sample.toml` file to `config.toml`, we ca
 
 Note that if you specify `all` to download from all Boorus, you are limited to two tags because free Danbooru accounts are limited to two tags per query.
 If you have a Gold/Platinum account, set your credentials in `config.toml`. Note that it's currently untested if the script will work with upgraded accounts.
+
+If you cloned the repo from GitHub, prefix the above commands with `poetry run`, e.g. `poetry run import-from-booru danbooru "tag1 tagN"`. Note that your current working directory has to be the the root of the GitHub project.
 
 ### upload-media
 This script searches through your specified upload folder in the `config.toml` file for any image/video files and uploads them to your szurubooru.
