@@ -21,9 +21,7 @@ from szurubooru_toolkit.utils import statistics
 
 
 def parse_args() -> tuple:
-    """
-    Parse the input args to the script auto_tagger.py and set the object attributes accordingly.
-    """
+    """Parse the input args to the script auto_tagger.py and set the variables accordingly."""
 
     parser = argparse.ArgumentParser(
         description='This script will automagically tag your szurubooru posts based on your input query.',
@@ -42,13 +40,13 @@ def parse_args() -> tuple:
     parser.add_argument(
         '--add-tags',
         default=None,
-        help='Specify tags, separated by a comma, which will be added to all posts matching your query',
+        help='Specify tags, separated by a comma, which will be added to all posts matching your query.',
     )
 
     parser.add_argument(
         '--remove-tags',
         default=None,
-        help='Specify tags, separated by a comma, which will be removed from all posts matching your query',
+        help='Specify tags, separated by a comma, which will be removed from all posts matching your query.',
     )
 
     args = parser.parse_args()
