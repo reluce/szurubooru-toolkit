@@ -38,7 +38,7 @@ disallow_untyped_defs = true
 
 [tool.poetry]
 name = "szurubooru-toolkit"
-version = "0.5.0"
+version = "0.5.1"
 description = "Python package and script collection to manage szurubooru."
 authors = ["reluce <reluce@fkosquad.moe>"]
 license = "GPL-3.0-only"
