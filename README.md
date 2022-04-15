@@ -62,7 +62,7 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | upload_media | auto_tag | Set this to true if you want your post to be automatically tagged after upload | `false` |
 | upload_media | max_similarity | Adjust this value to ignore posts if a similar post higher than the threshold has already been uploaded | `"0.99"` |
 | upload_media | convert_to_jpg | Convert images to JPG to save disk space. This won't overwrite the source files and only affects the uploaded image. | `false` |
-| upload_media | convert_threshold | Only images above this threshold will be converted to jpg if convert_to_jpg is True. | `3MB|500KB` |
+| upload_media | convert_threshold | Only images above this threshold will be converted to jpg if `convert_to_jpg` is True. | `"3MB\|500KB"` |
 | import_from_booru | deepbooru_enabled  | Apply Deepbooru tagging additionally besides fetched tags from Booru | `false` |
 | import_from booru | hide_progress | Set this to true to hide the progress bar | `false` |
 | logging | log_enabled | If logging to a log file should be enabled | `false` |
