@@ -60,6 +60,11 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | upload_media | cleanup | Set this to true if images in the `src_path` should be deleted after upload | `false` |
 | upload_media | tags | These tags will get set for all uploaded posts. Separate them by a comma. | `["tagme", "tag1", "tag2", "tagN"]` |
 | upload_media | auto_tag | Set this to true if you want your post to be automatically tagged after upload | `false` |
+| upload_media | max_similarity | Adjust this value to ignore posts if a similar post higher than the threshold has already been uploaded | `"0.99"` |
+| upload_media | convert_to_jpg | Convert images to JPG to save disk space. This won't overwrite the source files and only affects the uploaded image. | `false` |
+| upload_media | convert_threshold | Only images above this threshold will be converted to jpg if convert_to_jpg is True. | `3MB|500KB` |
+| import_from_booru | deepbooru_enabled  | Apply Deepbooru tagging additionally besides fetched tags from Booru | `false` |
+| import_from booru | hide_progress | Set this to true to hide the progress bar | `false` |
 | logging | log_enabled | If logging to a log file should be enabled | `false` |
 | logging | log_file | Specify the path of the log file | `"C:/Users/Foo/Desktop/szurubooru_toolkit.log"` |
 | logging | log_level | Specify the log level. `DEBUG` logs the most information | `"DEBUG"\|"INFO"\|"WARNING"\|"ERROR"\|"CRITICAL"` |
@@ -85,7 +90,7 @@ If you only want to use Deepbooru, set `deepbooru_enabled` to `true` and `saucen
 
 __Usage__
 
-After editing and renaming the sample config file to config.toml, we can just execute the script with our query:
+After editing and renaming the `config_sample.toml` file to `config.toml`, we can execute the script with our query:
 
 * `auto-tagger "date:today tag-count:0"`
 * `auto-tagger "date:2021-04-07"`
@@ -104,12 +109,29 @@ This is especially useful since Sankaku has changed their API and aggregator sit
 
 If you cloned the repo from GitHub, prefix the above commands with `poetry run`, e.g. `poetry run auto-tagger "date:today"`. Note that your current working directory has to be the the root of the GitHub project.
 
-### upload-media
-This script searches through your specified upload folder in the config file for any image/video files and uploads them to your szurubooru.
+### import-from-booru
+This scripts imports posts and their tags from various Boorus that matched your input query.
+
+In the `config.toml` file, you can set if the post should be additionally tagged with Deepbooru and if the progress bar should be shown.
+Since this script is using the `upload-media` script to upload the post, following settings apply from the `upload-media` section: `convert_to_jpg` and `convert_threshold`.
 
 __Usage__
 
-After editing the config file, we can just execute the script.
+After editing and renaming the `config_sample.toml` file to `config.toml`, we can execute the script with our query:
+
+* `import-from-booru danbooru "tag1 tagN"`
+* `import-from-booru yandere "tag1 tag2 -tagN"`
+* `import-from-booru all "tag1 -tagN"`
+
+Note that if you specify `all` to download from all Boorus, you are limited to two tags because free Danbooru accounts are limited to two tags per query.
+If you have a Gold/Platinum account, set your credentials in `config.toml`. Note that it's currently untested if the script will work with upgraded accounts.
+
+### upload-media
+This script searches through your specified upload folder in the `config.toml` file for any image/video files and uploads them to your szurubooru.
+
+__Usage__
+
+After editing and renaming the `config_sample.toml` file to `config.toml`, we can just execute the script.
 
 If you installed it with pip, execute `upload-media`. Note that `config.toml` has to be in your current working directory.
 
