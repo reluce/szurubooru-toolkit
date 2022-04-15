@@ -21,9 +21,7 @@ from szurubooru_toolkit.utils import get_md5sum
 
 
 def parse_args() -> tuple:
-    """
-    Parse the input args to the script auto_tagger.py and set the object attributes accordingly.
-    """
+    """Parse the input args to the script auto_tagger.py and set the object attributes accordingly."""
 
     parser = argparse.ArgumentParser(
         description='This script downloads and tags posts from various Boorus based on your input query.',
@@ -66,7 +64,7 @@ def parse_args() -> tuple:
 
 
 def get_posts_from_booru(booru, query: str, limit: int):
-    """Placeholder"""
+    """Retrieve posts from Boorus based on search query and yields them."""
 
     if not limit:
         # Get the total count of posts for the query first
@@ -110,6 +108,8 @@ def get_posts_from_booru(booru, query: str, limit: int):
 
 
 def download_post(file_url: str, booru, post) -> None:
+    """Downloads the post from `file_url`."""
+
     filename = file_url.split('/')[-1]
     file_path = Path(config.auto_tagger['tmp_path']) / filename  # Where the file gets temporarily saved to
 
@@ -130,7 +130,7 @@ def download_post(file_url: str, booru, post) -> None:
 
 
 def import_post(booru, post) -> None:
-    """Placeholder"""
+    """Download the post, extract its metadata upload it with the `upload-media` script."""
 
     try:
         file_url = post.file_url if booru == 'gelbooru' else post['file_url']
