@@ -243,6 +243,7 @@ def setup_logger(config: Config) -> None:
             dict(
                 sink=sys.stderr,
                 backtrace=False,
+                diagnose=False,
                 colorize=True,
                 level='INFO',
                 filter=lambda record: record['level'].no < 30,
@@ -251,6 +252,7 @@ def setup_logger(config: Config) -> None:
             dict(
                 sink=sys.stderr,
                 backtrace=False,
+                diagnose=False,
                 colorize=True,
                 level='WARNING',
                 filter=lambda record: record['level'].no < 40,
@@ -262,6 +264,7 @@ def setup_logger(config: Config) -> None:
             dict(
                 sink=sys.stderr,
                 backtrace=False,
+                diagnose=False,
                 colorize=True,
                 level='ERROR',
                 format=''.join(
