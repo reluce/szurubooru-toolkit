@@ -2,6 +2,7 @@ import hashlib
 import sys
 import warnings
 from pathlib import Path
+from typing import Tuple
 
 import bs4
 import requests
@@ -21,7 +22,21 @@ warnings.simplefilter('error', Image.DecompressionBombWarning)
 warnings.filterwarnings('ignore', '.*Palette images with Transparency.*', module='PIL')
 
 
-def shrink_img(tmp_path: Path, tmp_file: Path, resize: bool = False, convert: bool = False):
+def shrink_img(tmp_path: Path, tmp_file: Path, resize: bool = False, convert: bool = False) -> None:
+    """Try to shrink the file size of the given `tmp_file`.
+
+    The image will get saved to the `tmp_path`.
+
+    Shrinking measures include to set its max height/width to 1000px (maybe still too high) and to
+    optionally convert it to a JPG file while trying to optimize it (mostly quality 75 setting).
+
+    Args:
+        tmp_path (Path): The path to where the shrunken image gets saved to.
+        tmp_file (Path): The path of the image which should be shrunk.
+        resize (bool, optional): If the image should be resized to max height/width of 1000px. Defaults to False.
+        convert (bool, optional): If the image should be converted to JPG format. Defaults to False.
+    """
+
     with Image.open(tmp_file) as image:
         if resize:
             image.thumbnail((1000, 1000))
@@ -65,7 +80,16 @@ def convert_rating(rating: str) -> str:
     return new_rating
 
 
-def scrape_sankaku(sankaku_url):
+def scrape_sankaku(sankaku_url: str) -> Tuple(list, str):
+    """Scrape the tags and rating from given `sankaku_url`.
+
+    Args:
+        sankaku_url (str): The Sankaku URL of the post.
+
+    Returns:
+        Tuple(list, str): Contains `tags` as a `list` and `rating` as `str` of the post.
+    """
+
     response = requests.get(sankaku_url)
     result_page = bs4.BeautifulSoup(response.text, 'html.parser')
 
@@ -197,8 +221,12 @@ def collect_sources(*sources: str) -> str:
     return source_collected
 
 
-def setup_logger(config: Config):
-    """Setup loguru logging handlers."""
+def setup_logger(config: Config) -> None:
+    """Setup loguru logging handlers.
+
+    Args:
+        config (Config): Config object with user configuration from `config.toml`.
+    """
 
     logger.configure(
         handlers=[
@@ -249,6 +277,15 @@ def setup_logger(config: Config):
 
 
 def get_md5sum(file_path: str) -> str:
+    """Retrieve and return the MD5 checksum from given `file_path`.
+
+    Args:
+        file_path (str): The path to the file.
+
+    Returns:
+        str: The calculated MD5 checksum
+    """
+
     with open(file_path, 'rb') as f:
         data = f.read()
         md5sum = hashlib.md5(data).hexdigest()
