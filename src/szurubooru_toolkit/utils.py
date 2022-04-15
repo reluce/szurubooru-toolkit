@@ -80,14 +80,14 @@ def convert_rating(rating: str) -> str:
     return new_rating
 
 
-def scrape_sankaku(sankaku_url: str) -> Tuple(list, str):
+def scrape_sankaku(sankaku_url: str) -> Tuple[list, str]:
     """Scrape the tags and rating from given `sankaku_url`.
 
     Args:
         sankaku_url (str): The Sankaku URL of the post.
 
     Returns:
-        Tuple(list, str): Contains `tags` as a `list` and `rating` as `str` of the post.
+        Tuple[list, str]: Contains `tags` as a `list` and `rating` as `str` of the post.
     """
 
     response = requests.get(sankaku_url)

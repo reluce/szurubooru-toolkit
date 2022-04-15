@@ -45,7 +45,7 @@ class Deepbooru:
         with open('./misc/deepbooru/tags.txt') as tags_stream:
             self.tags = np.array([tag for tag in (tag.strip() for tag in tags_stream) if tag])
 
-    def tag_image(self, image_path: Path, threshold: float = 0.6) -> Tuple(list, str):
+    def tag_image(self, image_path: Path, threshold: float = 0.6) -> Tuple[list, str]:
         """Guesses the tags and rating of the provided image from `image_path`.
 
         Args:
@@ -53,7 +53,7 @@ class Deepbooru:
             threshhold (float): The accuracy threshold of the guessed tags, 1 being 100%. Defaults to `0.6`.
 
         Returns:
-            Tuple(list, str): A tuple with the guessed tags as a `list` and the rating as a `str`.
+            Tuple[list, str]: A tuple with the guessed tags as a `list` and the rating as a `str`.
         """
 
         try:
