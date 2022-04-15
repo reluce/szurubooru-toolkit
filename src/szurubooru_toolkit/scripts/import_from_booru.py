@@ -68,8 +68,6 @@ def parse_args() -> tuple:
 def get_posts_from_booru(booru, query: str, limit: int):
     """Placeholder"""
 
-    exclude_tags = ' -pixel-perfect-duplicate -duplicate'
-
     if not limit:
         # Get the total count of posts for the query first
         if isinstance(booru, Gelbooru):
@@ -79,7 +77,7 @@ def get_posts_from_booru(booru, query: str, limit: int):
             total = root.attrib['count']
         elif isinstance(booru, Danbooru):
             if not limit:
-                total = booru.count_posts(tags=query + exclude_tags)['counts']['posts']
+                total = booru.count_posts(tags=query)['counts']['posts']
         else:  # Moebooru (Yandere + Konachan)
             xml_result = requests.get(f'{booru.site_url}/post.xml?tags={query}')
             root = etree.fromstring(xml_result.content)
@@ -93,19 +91,19 @@ def get_posts_from_booru(booru, query: str, limit: int):
                 if isinstance(booru, Gelbooru):
                     results.append(sync(booru.client.search_posts(page=page, tags=query.split())))
                 else:
-                    results.append(booru.post_list(page=page, tags=query + exclude_tags))
+                    results.append(booru.post_list(page=page, tags=query))
 
             results = [result for result in results for result in result]
         else:
             if isinstance(booru, Gelbooru):
                 results = sync(booru.client.search_posts(tags=query.split()))
             else:
-                results = booru.post_list(tags=query + exclude_tags)
+                results = booru.post_list(tags=query)
     else:
         if isinstance(booru, Gelbooru):
             results = sync(booru.client.search_posts(limit=limit, tags=query.split()))
         else:
-            results = booru.post_list(limit=limit, tags=query + exclude_tags)
+            results = booru.post_list(limit=limit, tags=query)
 
     yield len(results)
     yield from results
@@ -220,7 +218,10 @@ def main() -> None:
             if booru == 'gelbooru':
                 result = szuru.get_posts(f'md5:{Path(post.filename).stem}')
             else:
-                result = szuru.api.search_post(f'md5:{post["md5"]}')
+                try:
+                    result = szuru.api.search_post(f'md5:{post["md5"]}')
+                except KeyError:
+                    logger.warning('Post has no MD5 attribute, it probably got removed from the site.')
 
             try:
                 next(result)
