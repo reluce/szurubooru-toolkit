@@ -52,6 +52,7 @@ auto-tagger = 'szurubooru_toolkit.scripts.auto_tagger:main'
 upload-media = 'szurubooru_toolkit.scripts.upload_media:main'
 create-tags = 'szurubooru_toolkit.scripts.create_tags:main'
 import-from-booru = 'szurubooru_toolkit.scripts.import_from_booru:main'
+tag-posts= 'szurubooru_toolkit.scripts.tag-posts:main'
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"

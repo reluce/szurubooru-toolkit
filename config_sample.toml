@@ -49,6 +49,9 @@ convert_threshold = "2MB"  # Convert images only if specified threshold has been
 deepbooru_enabled = true  # Apply Deepbooru tagging additionally besides fetched tags from Booru
 hide_progress = false  # Set this to true to hide the progress bar
 
+[tag_posts]
+hide_progress = false  # Set this to true to hide the progress bar
+
 [logging]
 log_enabled = false
 log_file = "szurubooru_toolkit.log"  # If no full path is specified, the log file gets created in the current working directory
