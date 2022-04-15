@@ -85,7 +85,6 @@ def parse_args() -> tuple:
 def parse_saucenao_results(sauce: SauceNao, post, tmp_media_path):
     limit_reached = False
     tags, source, rating, limit_short, limit_long = sauce.get_metadata(
-        config.szurubooru['public'],
         post.content_url,
         str(tmp_media_path),
     )
@@ -117,22 +116,22 @@ def download_media(content_url: str, md5: str) -> str:
 
     for _ in range(1, 3):
         try:
-            tmp_file = urllib.request.urlretrieve(content_url, Path(config.auto_tagger['tmp_path']) / filename)[0]
+            tmp_media_path = urllib.request.urlretrieve(content_url, Path(config.auto_tagger['tmp_path']) / filename)[0]
         except Exception as e:
             logger.warning(f'Could not download post from {filename}: {e}')
 
-        md5sum = get_md5sum(tmp_file)
+        md5sum = get_md5sum(tmp_media_path)
 
         if md5 == md5sum:
             break
 
     # Shrink files >2MB
-    if os.path.getsize(tmp_file) > 2000000:
-        shrink_img(Path(config.auto_tagger['tmp_path']), Path(tmp_file), resize=True, convert=True)
+    if os.path.getsize(tmp_media_path) > 2000000:
+        shrink_img(Path(config.auto_tagger['tmp_path']), Path(tmp_media_path), resize=True, convert=True)
 
-    logger.debug(f'Trying to get result from tmp_file: {tmp_file}')
+    logger.debug(f'Trying to get result from tmp_media_path: {tmp_media_path}')
 
-    return tmp_file
+    return tmp_media_path
 
 
 def set_tags_from_relations(post) -> None:
@@ -225,17 +224,17 @@ def main(post_id: str = None, file_to_upload: Path = None) -> None:  # noqa C901
             # This might be the case if this function was called from upload_media.
             if not file_to_upload:
                 if not config.szurubooru['public'] or config.auto_tagger['deepbooru_enabled']:
-                    tmp_file = download_media(post.content_url, post.md5)
+                    tmp_media_path = download_media(post.content_url, post.md5)
                 else:
-                    tmp_file = None
+                    tmp_media_path = None
             else:
-                tmp_file = file_to_upload  # Save it as tmp_file so it gets tagged by Deepbooru
+                tmp_media_path = file_to_upload  # Save it as tmp_media_path so it gets tagged by Deepbooru
 
             if config.auto_tagger['saucenao_enabled']:
                 tags, post.source, post.safety, limit_reached = parse_saucenao_results(
                     sauce,
                     post,
-                    tmp_file,
+                    tmp_media_path,
                 )
 
                 if add_tags:
@@ -246,7 +245,7 @@ def main(post_id: str = None, file_to_upload: Path = None) -> None:  # noqa C901
                 limit_reached = False
 
             if (not tags and config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']:
-                tags, post.safety = deepbooru.tag_image(tmp_file, config.auto_tagger['deepbooru_threshold'])
+                tags, post.safety = deepbooru.tag_image(tmp_media_path, config.auto_tagger['deepbooru_threshold'])
 
                 if post.relations:
                     set_tags_from_relations(post)
@@ -272,8 +271,8 @@ def main(post_id: str = None, file_to_upload: Path = None) -> None:  # noqa C901
 
             # Remove temporary image if it was downloaded from this script.
             # Leave cleanup to the calling script otherwise (e.g. upload_media).
-            if not file_to_upload and os.path.exists(tmp_file):
-                os.remove(tmp_file)
+            if not file_to_upload and os.path.exists(tmp_media_path):
+                os.remove(tmp_media_path)
 
             if remove_tags:
                 [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]
