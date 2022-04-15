@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from asyncio.exceptions import TimeoutError
 from time import sleep
+from typing import Coroutine  # noqa TYP001
 
 from aiohttp.client_exceptions import ContentTypeError
 from loguru import logger
@@ -7,6 +10,7 @@ from pybooru.moebooru import Moebooru
 from pysaucenao import SauceNao as PySauceNao
 from syncer import sync
 
+from szurubooru_toolkit import Config
 from szurubooru_toolkit import Danbooru
 from szurubooru_toolkit import Gelbooru
 from szurubooru_toolkit.utils import audit_rating
@@ -16,29 +20,42 @@ from szurubooru_toolkit.utils import scrape_sankaku
 
 
 class SauceNao:
-    def __init__(self, config):
+    """Handles everything related to SauceNAO and aggregating the results."""
+
+    def __init__(self, config: Config) -> None:
+        """Initialize the SauceNAO object with Booru clients as attributes.
+
+        Following clients will be set as attributes:
+
+        * `self.danbooru`
+        * `self.gelbooru`
+        * `self.konachan`
+        * `self.pysaucenao`
+        * `self.yandere`
+
+        Args:
+            config (Config): Config object with user configuration from `config.toml`.
+        """
+
         self.pysaucenao = PySauceNao(api_key=config.auto_tagger['saucenao_api_token'], min_similarity=80.0)
         if not config.auto_tagger['saucenao_api_token'] == 'None':
             logger.debug('Using SauceNAO API token')
 
         self.danbooru = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
         self.gelbooru = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
-        self.yandere = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
         self.konachan = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
+        self.yandere = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
 
     @sync
-    async def get_metadata(self, szuru_public: bool, content_url: str, tmp_media_path: str = None):
-        """
-        Scrape and collect tags, sources, and ratings from popular imageboards
-        Simply put, it's a wrapper for get_result() and scrape_<image_board>()
+    async def get_metadata(self, content_url: str, tmp_media_path: str = None) -> tuple:
+        """Retrieve results from SauceNAO and aggregate all metadata.
 
-        Arguments:
-            szuru_image_url: image URL from the local Szurubooru server
+        Args:
+            content_url (str): Image URL where SauceNAO should retrieve the image from.
+            tmp_media_path (str): Local path of the image you want to upload. Defaults to None.
 
         Returns:
-            tags: self descriptive
-            source: URL of the image source
-            rating: either 'unsafe', 'safe' or 'sketchy'
+            tuple: Contains `tags`, `source`, `rating`, `limit_short` and `limit_long`.
         """
 
         # Set default values
@@ -53,7 +70,7 @@ class SauceNao:
         limit_short = 1
         limit_long = 10
 
-        response = await self.get_result(szuru_public, content_url, tmp_media_path)
+        response = await self.get_result(content_url, tmp_media_path)
 
         # Sometimes multiple results from the same Booru are found.
         # Results are sorted by their similiarity (highest first).
@@ -167,31 +184,23 @@ class SauceNao:
 
         return tags, source, rating, limit_short, limit_long
 
-    async def get_result(self, szuru_public: bool, content_url: str, tmp_media_path: str = None):
-        """
-        If szurubooru is public, let SauceNAO fetch the image from supplied URL.
-        If not not, download the image to our temporary path and upload it to SauceNAO.
+    async def get_result(self, content_url: str, tmp_media_path: str = None) -> Coroutine | None:
+        """Fetch results from SauceNAO for supplied URL/image.
 
-        Arguments:
-            post_url: image URL from the szurubooru server
+        If `tmp_media_path` is set, upload the image from that local path to SauceNAO.
+        Otherwise, let SauceNAO retrieve the result from `content_url`.
+
+        If this SauceNAO cannot be reached, try again every five seconds for up to a minute.
+
+        Args:
+            content_url (str): Image URL where SauceNAO should retrieve the image from.
+            tmp_media_path (str): Local path of the image you want to upload. Defaults to None.
 
         Returns:
-            results: pysaucenao search results
+            Coroutine | None: A coroutine with the pysaucenao search results or None in case of search errors.
         """
 
-        if szuru_public:
-            for _ in range(1, 12):
-                try:
-                    logger.debug(f'Trying to get result from content_url: {content_url}')
-                    response = await self.pysaucenao.from_url(content_url)
-                except (ContentTypeError, TimeoutError):
-                    logger.warning('Could not establish connection to SauceNAO, trying again in 5s...')
-                    sleep(5)
-                except Exception as e:
-                    response = None
-                    logger.warning(f'Could not get result from SauceNAO with image URL "{content_url}": {e}')
-                    break
-        else:
+        if tmp_media_path:
             for _ in range(1, 12):
                 try:
                     response = await self.pysaucenao.from_file(tmp_media_path)
@@ -211,5 +220,17 @@ class SauceNao:
             else:
                 logger.warning('Could not establish connection to SauceNAO, trying with next post...')
                 response = None
+        else:
+            for _ in range(1, 12):
+                try:
+                    logger.debug(f'Trying to get result from content_url: {content_url}')
+                    response = await self.pysaucenao.from_url(content_url)
+                except (ContentTypeError, TimeoutError):
+                    logger.warning('Could not establish connection to SauceNAO, trying again in 5s...')
+                    sleep(5)
+                except Exception as e:
+                    response = None
+                    logger.warning(f'Could not get result from SauceNAO with image URL "{content_url}": {e}')
+                    break
 
         return response
