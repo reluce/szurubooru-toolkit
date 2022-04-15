@@ -193,7 +193,7 @@ def upload_post(file_to_upload: Path, metadata: dict = None):
     file_size = os.path.getsize(str(file_to_upload))
     if (
         config.upload_media['convert_to_jpg']
-        and not file_to_upload.suffix == '.jpg'
+        and file_to_upload.suffix == '.png'
         and file_size > config.upload_media['convert_threshold']
     ):
         logger.debug(
