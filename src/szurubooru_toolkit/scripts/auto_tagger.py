@@ -277,10 +277,13 @@ def main(post_id: str = None, file_to_upload: Path = None) -> None:  # noqa C901
             if remove_tags:
                 [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]
 
-            # If any tags were collected with SauceNAO or Deepbooru, tag the post
+            # If any tags were collected with SauceNAO or Deepbooru, remove tagme and deepbooru tag
             if tags:
                 [post.tags.remove(tag) for tag in post.tags if tag == 'deepbooru' or tag == 'tagme']
-                szuru.update_post(post)
+            else:
+                post.tags.append('tagme')
+
+            szuru.update_post(post)
 
             if limit_reached and not config.auto_tagger['deepbooru_enabled']:
                 statistics(untagged=int(total_posts) - index - 1)  # Index starts at 0
