@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Tuple
 
 from PIL import Image
 
@@ -15,11 +16,25 @@ from tensorflow.python.ops.numpy_ops import np_config  # noqa E402
 
 
 class Deepbooru:
-    def __init__(self, model_path):
-        self.model = self.load_model(model_path)
+    """Handles everything related to guessing tags based on machine learning."""
+
+    def __init__(self, model_path: str) -> None:
+        """Initializes a Deepbooru object and loads the `model_path`.
+
+        Args:
+            model_path (str): The local path to the DeepDanbooru model.
+        """
+
+        self.load_model(model_path)
         np_config.enable_numpy_behavior()
 
-    def load_model(self, model_path):
+    def load_model(self, model_path: str) -> None:
+        """Loads the DeepDanbooru model.
+
+        Args:
+            model_path (str): _description_
+        """
+
         try:
             self.model = tf.keras.models.load_model(model_path, compile=False)
         except Exception as e:
@@ -30,13 +45,21 @@ class Deepbooru:
         with open('./misc/deepbooru/tags.txt') as tags_stream:
             self.tags = np.array([tag for tag in (tag.strip() for tag in tags_stream) if tag])
 
-        return self.model
+    def tag_image(self, image_path: Path, threshold: float = 0.6) -> Tuple(list, str):
+        """Guesses the tags and rating of the provided image from `image_path`.
 
-    def tag_image(self, tmp_file: Path, threshold: float = 0.6):
+        Args:
+            image_path (Path): The path to the image which tags and rating should be guessed.
+            threshhold (float): The accuracy threshold of the guessed tags, 1 being 100%. Defaults to `0.6`.
+
+        Returns:
+            Tuple(list, str): A tuple with the guessed tags as a `list` and the rating as a `str`.
+        """
+
         try:
-            image = np.array(Image.open(tmp_file).convert('RGB').resize((512, 512))) / 255.0
+            image = np.array(Image.open(image_path).convert('RGB').resize((512, 512))) / 255.0
         except Exception:
-            logger.warning(f'Failed to convert {tmp_file} to Deepbooru format')
+            logger.warning(f'Failed to convert {image_path} to Deepbooru format')
             return
 
         results = self.model(np.array([image])).reshape(self.tags.shape[0])
@@ -52,14 +75,14 @@ class Deepbooru:
         rating = 'unsafe'
 
         if not tags:
-            logger.warning(f'Deepbooru could not guess tags for image {tmp_file}')
+            logger.warning(f'Deepbooru could not guess tags for image {image_path}')
         else:
             try:
                 rating = convert_rating(tags[-1])
                 logger.debug(f'Guessed rating {rating}')
                 del tags[-1]
             except IndexError:
-                logger.warning(f'Could not guess rating for image {tmp_file}. Defaulting to unsafe.')
+                logger.warning(f'Could not guess rating for image {image_path}. Defaulting to unsafe.')
 
             # Optional: add deepbooru tag. We can always reference source:Deepbooru though.
             # tags.append('deepbooru')
