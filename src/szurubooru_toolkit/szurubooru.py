@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import json
 from base64 import b64encode
 from math import ceil
+from typing import Generator
 
 import pyszuru
 import requests
@@ -8,10 +11,21 @@ from loguru import logger
 
 
 class Szurubooru:
-    """Placeholder"""
+    """Handles everything related to szurubooru.
+
+    Where speed is of concern, use the `requests` module to interact with the API directly,
+    otherwise use the `pyszuru` module where it's more convenient.
+    """
 
     def __init__(self, szuru_url: str, szuru_user: str, szuru_token: str) -> None:
-        """Placeholder"""
+        """Initializes the `szurubooru` and `pyszuru` object with our credentials.
+
+        Args:
+            szuru_url (str): The base URL of the szurubooru instance.
+            szuru_user (str): The szurubooru user which interacts with the API.
+            szuru_token (str): The API token from `szuru_user`.
+        """
+
         logger.debug(f'szuru_user = {szuru_user}')
         self.szuru_url = szuru_url
         logger.debug(f'szuru_url = {self.szuru_url}')
@@ -24,16 +38,16 @@ class Szurubooru:
         # Use the api object to interact with pyszuru module
         self.api = pyszuru.API(base_url=szuru_url, username=szuru_user, token=szuru_token)
 
-    def get_posts(self, query: str):
-        """
-        Return the found post ids of the supplied query.
+    def get_posts(self, query: str) -> Generator[str | Post, None, None]:
+        """Return the found post ids of the supplied query.
+
+        Video files like mp4 or webm will be ignored.
+
         Args:
-            query: The user input query
-        Returns:
-            post_ids: A list of the found post ids
-            total: The total amount of posts found
-        Raises:
-            Exception
+            query: The szurubooru search query.
+
+        Yields:
+            Generator[str | Post, None, None]: Will yield the total amount of search results first, then Post objects.
         """
 
         if query.isnumeric():
@@ -78,7 +92,16 @@ class Szurubooru:
             logger.critical(f'Could not process your query: {e}')
             exit()
 
-    def parse_post(self, response):
+    def parse_post(self, response: dict) -> Post:
+        """Parses the dict response from szurubooru and returns a Post object with only the relevant metadata.
+
+        Args:
+            response (dict): Response from a szurubooru query.
+
+        Returns:
+            Post: Post object with relevant metadata.
+        """
+
         # logger.debug(f'Parsing post with input: {response}')
         post = Post()
 
@@ -99,13 +122,11 @@ class Szurubooru:
 
         return post
 
-    def update_post(self, post):
-        """
-        Set tags on post if any were found. Default source to anonymous and rating to unsafe.
+    def update_post(self, post: Post) -> None:
+        """Update the input Post object in szurubooru with its updated metadata values.
+
         Args:
-            post: A post object
-        Raises:
-            Exception
+            Post: Post object with relevant metadata.
         """
 
         logger.debug(f'Updating following post: {post}')
@@ -125,11 +146,27 @@ class Szurubooru:
 
     @staticmethod
     def encode_auth_headers(user: str, token: str) -> str:
+        """Creates an authentication header from the user and token.
+
+        This header is needed to interact with the szurubooru API.
+
+        Args:
+            szuru_user (str): The szurubooru user which interacts with the API.
+            szuru_token (str): The API token from `szuru_user`.
+
+        Returns:
+            str: The encoded base64 authentication header.
+        """
+
         return b64encode(f'{user}:{token}'.encode()).decode('ascii')
 
 
 class Post:
+    """Boilerlate Post object which contains relevant metadata for a szurubooru post."""
+
     def __init__(self) -> None:
+        """Initializes a Post object with default attributes."""
+
         self.id: str = None
         self.source: str = None
         self.content_url: str = None
@@ -137,7 +174,13 @@ class Post:
         self.relations: list = []
         self.tags: list = []
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Returns the current attributes of this object.
+
+        Returns:
+            str: A formatted string with currently set attributes.
+        """
+
         source = str(self.source).replace('\n', '\\n')
         return_str = (
             f'Post(id: {self.id}, source: {source}, content_url: {self.content_url}, '
@@ -147,9 +190,6 @@ class Post:
         return return_str
 
     def __call__(self):
+        """Calls the repr method on object call."""
+
         return repr(self)
-
-
-class SearchError(Exception):
-    def __init__(self, message) -> None:
-        logger.error(message)
