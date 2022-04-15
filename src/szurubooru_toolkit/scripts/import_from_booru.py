@@ -214,7 +214,7 @@ def main() -> None:
             position=0,
             leave=False,
             total=int(total_posts),
-            disable=config.auto_tagger['hide_progress'],
+            disable=config.import_from_booru['hide_progress'],
         ):
             # Check by md5 hash if file is already uploaded
             if booru == 'gelbooru':
