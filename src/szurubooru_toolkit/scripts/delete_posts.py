@@ -7,7 +7,7 @@ from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 
 
-def parse_args() -> str:
+def parse_args() -> tuple:
     """Parse the input args to the script delete_posts.py and set the variables accordingly."""
 
     parser = argparse.ArgumentParser(
