@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 from loguru import logger
 from tqdm import tqdm
@@ -8,7 +9,7 @@ from szurubooru_toolkit import szuru
 from szurubooru_toolkit.szurubooru import TagExistsError
 
 
-def parse_args() -> str:
+def parse_args() -> Path:
     """Parse the input args to the script create_tags.py and set the variables accordingly."""
 
     parser = argparse.ArgumentParser(
@@ -17,14 +18,14 @@ def parse_args() -> str:
 
     parser.add_argument(
         '--tag-file',
-        default='./misc/tags/tags.txt',
+        default=Path('./misc/tags/tags.txt'),
         help='Specify the local path to the file containing the tags and categories \
             (default: ./misc/tags/tags.txt).',
     )
 
     args = parser.parse_args()
 
-    return args.tag_file
+    return Path(args.tag_file)
 
 
 @logger.catch
