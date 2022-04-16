@@ -70,6 +70,7 @@ class Config:
             'tag_posts': ['hide_progress'],
             'delete_posts': ['hide_progress'],
             'reset_posts': ['hide_progress'],
+            'create_tags': ['hide_progress'],
             'logging': ['log_enabled', 'log_file', 'log_level', 'log_colorized'],
             'danbooru': ['user', 'api_key'],
             'gelbooru': ['user', 'api_key'],

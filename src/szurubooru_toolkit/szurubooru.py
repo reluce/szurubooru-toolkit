@@ -165,6 +165,30 @@ class Szurubooru:
 
         return b64encode(f'{user}:{token}'.encode()).decode('ascii')
 
+    def create_tag(self, tag_name: str, category: str) -> None:
+        """Create tag in szurubooru.
+
+        Args:
+            tag_name (str): The name of the tag to be created.
+            category (str): The tag's category (needs to already exist).
+
+        Raises:
+            Exception: With the error description from the szurubooru API.
+        """
+
+        query_url = self.szuru_api_url + '/tags'
+        logger.debug(f'Using query_url: {query_url}')
+
+        payload = json.dumps({'names': [tag_name], 'category': category})
+        logger.debug(f'Using payload: {payload}')
+
+        response = requests.post(query_url, headers=self.headers, data=payload)
+        if 'description' in response.json():
+            if 'used by another tag' in response.json()['description']:
+                raise TagExistsError(response.json()['description'])
+            else:
+                raise Exception(response.json()['description'])
+
     def delete_post(self, post: Post) -> None:
         """Delete the input Post object in szurubooru. Related posts and tags are kept.
 
@@ -220,3 +244,15 @@ class Post:
         """Calls the repr method on object call."""
 
         return repr(self)
+
+
+class SzurubooruError(Exception):
+    """Base error class which inherits from Exception."""
+
+    pass
+
+
+class TagExistsError(SzurubooruError):
+    """Raise if the tag already exists."""
+
+    pass
