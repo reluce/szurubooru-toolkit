@@ -187,7 +187,7 @@ If you cloned the repo from GitHub, execute `poetry run upload-media`. Note that
 ### tag-posts
 __Usage__
 ```
-usage: tag_posts.py [-h] [--add-tags ADD_TAGS] [--remove-tags REMOVE_TAGS] [--mode {append,overwrite}] query
+usage: tag-posts [-h] [--add-tags ADD_TAGS] [--remove-tags REMOVE_TAGS] [--mode {append,overwrite}] query
 
 This script will tag your szurubooru posts based on your input arguments and mode.
 
@@ -211,7 +211,7 @@ __Examples__
 ### reset-posts
 __Usage__
 ```
-usage: reset_posts.py [-h] [--except-ids EXCEPT_IDS] [--add-tags ADD_TAGS] query
+usage: reset-posts [-h] [--except-ids EXCEPT_IDS] [--add-tags ADD_TAGS] query
 
 This script will remove tags and sources from your szurubooru posts based on your input search query.
 
@@ -234,7 +234,7 @@ __Examples__
 ### delete-posts
 __Usage__
 ```
-usage: delete_posts.py [-h] [--except-ids EXCEPT_IDS] query
+usage: delete-posts [-h] [--except-ids EXCEPT_IDS] query
 
 This script will delete your szurubooru posts based on your input search query.
 
@@ -254,7 +254,7 @@ __Examples__
 ### create-tags
 __Usage__
 ```
-usage: create_tags.py [-h] [--tag-file TAG_FILE]
+usage: create-tags [-h] [--tag-file TAG_FILE]
 
 This script will read the tags from specified file and create them in your szurubooru.
 
