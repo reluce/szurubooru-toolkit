@@ -38,13 +38,16 @@ class Szurubooru:
         # Use the api object to interact with pyszuru module
         self.api = pyszuru.API(base_url=szuru_url, username=szuru_user, token=szuru_token)
 
-    def get_posts(self, query: str) -> Generator[str | Post, None, None]:
+    def get_posts(self, query: str, pagination: bool = True) -> Generator[str | Post, None, None]:
         """Return the found post ids of the supplied query.
 
         Video files like mp4 or webm will be ignored.
 
         Args:
-            query: The szurubooru search query.
+            query (str): The szurubooru search query.
+            pagination (bool): If the offset should be adjusted when searching through pages.
+                Disabling this only makes sense if posts are being deleted.
+                This won't behave like real a search limit!
 
         Yields:
             Generator[str | Post, None, None]: Will yield the total amount of search results first, then Post objects.
@@ -83,7 +86,8 @@ class Szurubooru:
 
                 if pages > 1:
                     for page in range(1, pages + 1):
-                        query_url = self.szuru_api_url + '/posts/?offset=' + str(page) + '00&query=' + query
+                        if pagination:
+                            query_url = self.szuru_api_url + '/posts/?offset=' + str(page) + '00&query=' + query
                         results = requests.get(query_url, headers=self.headers).json()['results']
 
                         for result in results:
@@ -160,6 +164,27 @@ class Szurubooru:
         """
 
         return b64encode(f'{user}:{token}'.encode()).decode('ascii')
+
+    def delete_post(self, post: Post) -> None:
+        """Delete the input Post object in szurubooru. Related posts and tags are kept.
+
+        Args:
+            Post: Post object with relevant metadata.
+        """
+
+        logger.debug(f'Deleting following post: {post}')
+
+        query_url = self.szuru_api_url + '/post/' + post.id
+        logger.debug(f'Using query_url: {query_url}')
+
+        payload = json.dumps({'version': post.version})
+
+        try:
+            response = requests.delete(query_url, headers=self.headers, data=payload)
+            if 'description' in response.json():
+                raise Exception(response.json()['description'])
+        except Exception as e:
+            logger.warning(f'Could not delete your post: {e}')
 
 
 class Post:
