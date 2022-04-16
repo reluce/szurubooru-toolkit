@@ -68,14 +68,14 @@ def parse_args() -> tuple:
         )
 
     add_tags = args.add_tags
-    logger.debug(f'add_tags = {add_tags}')
     remove_tags = args.remove_tags
-    logger.debug(f'remove_tags = {remove_tags}')
 
     if add_tags:
+        logger.debug(f'add_tags = {add_tags}')
         add_tags = add_tags.replace(' ', '').split(',')
     if remove_tags:
         remove_tags = remove_tags.replace(' ', '').split(',')
+        logger.debug(f'remove_tags = {remove_tags}')
 
     return sankaku_url, query, add_tags, remove_tags
 
