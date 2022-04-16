@@ -72,8 +72,6 @@ def parse_args() -> tuple:
 def main() -> None:
     """Retrieve the posts from input query, set post.tags based on mode and update them in szurubooru."""
 
-    logger.info('Initializing script...')
-
     add_tags, remove_tags, mode, query = parse_args()
 
     posts = szuru.get_posts(query)
