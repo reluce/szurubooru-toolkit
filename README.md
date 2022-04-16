@@ -10,8 +10,8 @@ Python package and script collection to manage your [szurubooru](https://github.
 ## Requirements
 In order to run the included scripts, a Python release `>=3.8` and the configuratrion file `config.toml` is required.
 
-The `config.toml` file needs to be present in your current working directory.
-You can find a sample config file in the [git repository](https://github.com/reluce/szurubooru-toolkit) of this package.
+The `config.toml` file needs to be always present in your current working directory from where you are executing the scripts.
+You can find a sample config file in the [GitHub repository](https://github.com/reluce/szurubooru-toolkit) of this package.
 
 ## Installation
 This package is available on [PyPI](https://pypi.org/project/szurubooru-toolkit/) and can be installed with pip:
@@ -65,6 +65,10 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | upload_media | convert_threshold | Only images above this threshold will be converted to jpg if `convert_to_jpg` is True. | `"3MB\|500KB"` |
 | import_from_booru | deepbooru_enabled  | Apply Deepbooru tagging additionally besides fetched tags from Booru | `false` |
 | import_from booru | hide_progress | Set this to true to hide the progress bar | `false` |
+| create_tags | hide_progress | Set this to true to hide the progress bar | `false` |
+| delete_posts booru | hide_progress | Set this to true to hide the progress bar | `false` |
+| reset_posts booru | hide_progress | Set this to true to hide the progress bar | `false` |
+| tag_posts | hide_progress | Set this to true to hide the progress bar | `false` |
 | logging | log_enabled | If logging to a log file should be enabled | `false` |
 | logging | log_file | Specify the path of the log file | `"C:/Users/Foo/Desktop/szurubooru_toolkit.log"` |
 | logging | log_level | Specify the log level. `DEBUG` logs the most information | `"DEBUG"\|"INFO"\|"WARNING"\|"ERROR"\|"CRITICAL"` |
@@ -79,6 +83,21 @@ For Deepbooru support, download the current release [here](https://github.com/Ki
 Please note that you have to set `deepbooru_enabled` if you want to use it.
 
 ## Scripts
+Following scripts are currently available:
+
+* `auto-tagger`: Batch tagging of posts with SauceNAO and Deepbooru
+* `create-tags`: Batch creation of tags with their categories
+* `delete-posts`: Batch delete of posts
+* `import-from-booru`: Batch importing of posts with their tags from various Boorus
+* `reset-posts`: Batch resetting of posts (remove tags and sources)
+* `upload-media`: Batch upload of media files from local source folder
+* `tag-posts`: Manual batch tagging
+
+See the descriptions below on how to use them.
+
+If you installed this package with pip, you can generally just call the scripts from your shell (if your $PATH is set correctly).
+
+If you cloned the repo from GitHub, prefix the above scripts with `poetry run`, e.g. `poetry run auto-tagger "date:today"`. Note that your current working directory has to be the the root of the GitHub project.
 
 ### auto-tagger
 This script accepts a szurubooru query as a user input, fetches all posts returned by it and attempts to tag it using SauceNAO/Deepbooru.
@@ -106,11 +125,11 @@ optional arguments:
                         Specify tags, separated by a comma, which will be removed from all posts matching your query
 ```
 
-After editing and renaming the `config_sample.toml` file to `config.toml`, we can execute the script with our query:
-
+__Examples__
 * `auto-tagger "date:today tag-count:0"`
 * `auto-tagger "date:2021-04-07"`
 * `auto-tagger "tagme"`
+* `auto-tagger "id:100..111"`
 * `auto-tagger "id:100,101"`
 * `auto-tagger --add-tags "foo,bar" --remove-tags "baz" "tagme"`
 
@@ -123,8 +142,6 @@ Alternatively, we can tag a single post and specify `--sankaku_url` to fetch the
 `auto-tagger --sankaku_url https://chan.sankakucomplex.com/post/show/<id> 100`
 
 This is especially useful since Sankaku has changed their API and aggregator sites like SauceNAO don't have the latest results there.
-
-If you cloned the repo from GitHub, prefix the above commands with `poetry run`, e.g. `poetry run auto-tagger "date:today"`. Note that your current working directory has to be the the root of the GitHub project.
 
 ### import-from-booru
 This scripts imports posts and their tags from various Boorus that matched your input query.
@@ -148,16 +165,13 @@ optional arguments:
   --limit LIMIT         Limit the search results to be returned (default: 100)
 ```
 
-After editing and renaming the `config_sample.toml` file to `config.toml`, we can execute the script with our query:
-
+__Examples__
 * `import-from-booru danbooru "tag1 tagN"`
 * `import-from-booru yandere "tag1 tag2 -tagN"`
 * `import-from-booru all "tag1 -tagN"`
 
 Note that if you specify `all` to download from all Boorus, you are limited to two tags because free Danbooru accounts are limited to two tags per query.
 If you have a Gold/Platinum account, set your credentials in `config.toml`. Note that it's currently untested if the script will work with upgraded accounts.
-
-If you cloned the repo from GitHub, prefix the above commands with `poetry run`, e.g. `poetry run import-from-booru danbooru "tag1 tagN"`. Note that your current working directory has to be the the root of the GitHub project.
 
 ### upload-media
 This script searches through your specified upload folder in the `config.toml` file for any image/video files and uploads them to your szurubooru.
@@ -170,10 +184,89 @@ If you installed it with pip, execute `upload-media`. Note that `config.toml` ha
 
 If you cloned the repo from GitHub, execute `poetry run upload-media`. Note that your current working directory has to be the the root of the GitHub project.
 
-### create-tags (Currently not working, WIP)
-This script reads the file `./misc/tags/tags.txt`, parses its contents and creates the tags in your szurubooru.
+### tag-posts
+__Usage__
+```
+usage: tag_posts.py [-h] [--add-tags ADD_TAGS] [--remove-tags REMOVE_TAGS] [--mode {append,overwrite}] query
 
-If the tag already exists, it will get updated with your changes.
+This script will tag your szurubooru posts based on your input arguments and mode.
+
+positional arguments:
+  query                 The search query for the posts you want to tag
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --add-tags ADD_TAGS   Specify tags, separated by a comma, which will be added to all posts matching your query.
+  --remove-tags REMOVE_TAGS
+                        Specify tags, separated by a comma, which will be removed from all posts matching your query.
+  --mode {append,overwrite}
+                        Set mode to overwrite to remove already set tags, set append to keep them (default: append).
+```
+
+__Examples__
+* `tag-posts --add-tags "foo,bar" "date:2021-04-07"`
+* `tag-posts --add-tags "foo,bar" --mode "overwrite" "foo bar"`
+* `tag-posts --add-tags "foo,bar" --remove-tags "baz" "foo"`
+
+### reset-posts
+__Usage__
+```
+usage: reset_posts.py [-h] [--except-ids EXCEPT_IDS] [--add-tags ADD_TAGS] query
+
+This script will remove tags and sources from your szurubooru posts based on your input search query.
+
+positional arguments:
+  query                 The search query for the posts you want to reset.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --except-ids EXCEPT_IDS
+                        Specify the post ids, separated by a comma, which should not be reset. Example: --except-ids "3,4,5"
+  --add-tags ADD_TAGS   Specify tags, separated by a comma, which will be added to all posts matching your query after resetting.
+```
+
+__Examples__
+* `reset-posts "foobar"`
+* `reset-posts --add-tags "tagme" "foobar"`
+* `reset-posts --add-tags "tagme,foo" "foobar"`
+* `reset-posts --except-ids "2,4" --add-tags "tagme,foo" "foobar"`
+
+### delete-posts
+__Usage__
+```
+usage: delete_posts.py [-h] [--except-ids EXCEPT_IDS] query
+
+This script will delete your szurubooru posts based on your input search query.
+
+positional arguments:
+  query                 The search query for the posts you want to delete.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --except-ids EXCEPT_IDS
+                        Specify the post ids, separated by a comma, which should not be deleted. Example: --except-ids "3,4,5
+```
+
+__Examples__
+* `delete-posts "id:10,11,100,23"`
+* `delete-posts --except-ids "12,23,44" "id:10..50"`
+
+### create-tags
+__Usage__
+```
+usage: create_tags.py [-h] [--tag-file TAG_FILE]
+
+This script will read the tags from specified file and create them in your szurubooru.
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --tag-file TAG_FILE  Specify the local path to the file containing the tags and categories (default: ./misc/tags/tags.txt)
+```
+
+This script reads per default the file `./misc/tags/tags.txt`, parses its contents and creates the tags in your szurubooru.
+Alternatively, specify `--tag-file` as an argument with the path to the file containing the tags and categories.
+
+If the tag already exists, it will get skipped.
 
 You can use tools like [Grabber](https://github.com/Bionus/imgbrd-grabber) to download a tag list from common boorus.
 
@@ -192,14 +285,6 @@ The file has to be in following format:
 |series|2|
 |character|3|
 |meta|4|
-
-__Usage__
-
-After editing the config file, we can just execute the script.
-
-If you installed it with pip, execute `create-tags`. Note that `config.toml` has to be in your current working directory.
-
-If you cloned the repo from GitHub, execute `poetry run create-tags`. Note that your current working directory has to be the the root of the GitHub project.
 
 ## Image credit
 GitHub repo icon: <a href="https://www.flaticon.com/free-icons/code" title="code icons">Code icons created by Smashicons - Flaticon</a>
