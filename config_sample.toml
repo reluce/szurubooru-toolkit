@@ -52,6 +52,12 @@ hide_progress = false  # Set this to true to hide the progress bar
 [tag_posts]
 hide_progress = false  # Set this to true to hide the progress bar
 
+[delete_posts]
+hide_progress = false  # Set this to true to hide the progress bar
+
+[reset_posts]
+hide_progress = false  # Set this to true to hide the progress bar
+
 [logging]
 log_enabled = false
 log_file = "szurubooru_toolkit.log"  # If no full path is specified, the log file gets created in the current working directory
