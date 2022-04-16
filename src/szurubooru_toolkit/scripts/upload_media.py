@@ -278,7 +278,7 @@ def main(file_to_upload: Path = None, metadata: dict = None) -> int:
                 cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
 
             if not from_import_from:
-                logger.success('Script has finished uploading.')
+                logger.success('Script has finished uploading!')
         else:
             upload_post(file_to_upload, metadata)
 
