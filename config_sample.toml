@@ -18,19 +18,19 @@ hide_progress = false  # Set this to true to hide the progress bar
 tmp_path = "/tmp/"
 
 # Leave those options as "None" if you have no accounts on these sites
-[[danbooru]]
+[danbooru]
 user = "None"
 api_key = "None"
-[[gelbooru]]
+[gelbooru]
 user = "None"
 api_key = "None"
-[[konachan]]
+[konachan]
 user = "None"
 password = "None"
-[[yandere]]
+[yandere]
 user = "None"
 password = "None"
-[[pixiv]]
+[pixiv]
 user = "None"
 password = "None"
 token = "None"
