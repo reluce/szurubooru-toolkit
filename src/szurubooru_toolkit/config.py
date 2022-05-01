@@ -1,3 +1,4 @@
+import re
 import urllib
 from pathlib import Path
 
@@ -34,12 +35,15 @@ class Config:
         self.validate_url()
 
         if self.upload_media['convert_to_jpg']:
-            self.validate_convert_threshold()
+            self.validate_convert_attrs()
 
         if self.auto_tagger['deepbooru_enabled']:
             self.validate_deepbooru()
         else:
             self.auto_tagger['deepbooru_forced'] = False
+
+        if self.upload_media['shrink']:
+            self.validate_shrink_attrs()
 
     def check_attr_set(self) -> None:
         """Check if necessary options in config.toml are set."""
@@ -65,6 +69,10 @@ class Config:
                 'auto_tag',
                 'convert_to_jpg',
                 'convert_threshold',
+                'convert_quality',
+                'shrink',
+                'shrink_threshold',
+                'shrink_dimensions',
             ],
             'import_from_booru': ['deepbooru_enabled', 'hide_progress'],
             'tag_posts': ['hide_progress'],
@@ -148,7 +156,7 @@ class Config:
             )
             exit()
 
-    def validate_convert_threshold(self) -> None:
+    def validate_convert_attrs(self) -> None:
         """Convert the threshold from a human readable to a machine readable size."""
 
         human_readable = self.upload_media['convert_threshold']
@@ -163,3 +171,42 @@ class Config:
             self.upload_media['convert_threshold'] = float(human_readable.replace('KB', '')) * 1000
         elif 'MB' in human_readable:
             self.upload_media['convert_threshold'] = float(human_readable.replace('MB', '')) * 1000000
+
+        if not self.upload_media['convert_quality'].isnumeric():
+            logger.critical(
+                f'Your convert_quality "{self.upload_media["convert_quality"]}" in config.toml \
+                    is not a numeric value!',
+            )
+            exit()
+        else:
+            self.upload_media['convert_quality'] = int(self.upload_media['convert_quality'])
+
+        if self.upload_media['convert_quality'] > 95:
+            logger.critical(
+                f'Your convert_quality value "{self.upload_media["convert_quality"]}" in config.toml \
+                    is higher than the max value of 95!',
+            )
+            exit()
+
+    def validate_shrink_attrs(self) -> None:
+        """Validate that the shink dimensions matches reg exp."""
+
+        if not re.match(r'\d+x\d+', self.upload_media['shrink_dimensions']):
+            logger.critical(
+                f'Your shrink_dimensions "{self.upload_media["shrink_dimensions"]}" in config.toml are not valid!',
+            )
+            exit()
+        else:
+            dimensions = re.search(r'(\d+)x(\d+)', self.upload_media['shrink_dimensions'])
+            max_width = int(dimensions.group(1))
+            max_height = int(dimensions.group(2))
+            self.upload_media['shrink_dimensions'] = (int(max_width), (max_height))
+
+        if not self.upload_media['shrink_threshold'].isnumeric():
+            logger.critical(
+                f'Your shrink_threshold "{self.upload_media["shrink_dimensions"]}" in config.toml \
+                    is not a numeric value!',
+            )
+            exit()
+        else:
+            self.upload_media['shrink_threshold'] = int(self.upload_media['shrink_threshold'])

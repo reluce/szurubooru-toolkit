@@ -1,6 +1,5 @@
 import os
-from pathlib import Path
-from typing import Tuple
+from io import BytesIO
 
 from PIL import Image
 
@@ -45,21 +44,22 @@ class Deepbooru:
         with open('./misc/deepbooru/tags.txt') as tags_stream:
             self.tags = np.array([tag for tag in (tag.strip() for tag in tags_stream) if tag])
 
-    def tag_image(self, image_path: Path, threshold: float = 0.6) -> Tuple[list, str]:
+    def tag_image(self, image: bytes, threshold: float = 0.6) -> tuple[list, str]:
         """Guesses the tags and rating of the provided image from `image_path`.
 
         Args:
-            image_path (Path): The path to the image which tags and rating should be guessed.
+            image (bytes): The image in bytes which tags and rating should be guessed.
             threshhold (float): The accuracy threshold of the guessed tags, 1 being 100%. Defaults to `0.6`.
 
         Returns:
-            Tuple[list, str]: A tuple with the guessed tags as a `list` and the rating as a `str`.
+            tuple[list, str]: A tuple with the guessed tags as a `list` and the rating as a `str`.
         """
 
         try:
-            image = np.array(Image.open(image_path).convert('RGB').resize((512, 512))) / 255.0
+            with Image.open(BytesIO(image)) as opened_image:
+                image = np.array(opened_image.convert('RGB').resize((512, 512))) / 255.0
         except Exception:
-            logger.warning(f'Failed to convert {image_path} to Deepbooru format')
+            logger.warning('Failed to convert image to Deepbooru format')
             return
 
         results = self.model(np.array([image])).reshape(self.tags.shape[0])
@@ -75,14 +75,14 @@ class Deepbooru:
         rating = 'unsafe'
 
         if not tags:
-            logger.warning(f'Deepbooru could not guess tags for image {image_path}')
+            logger.warning('Deepbooru could not guess tags for image!')
         else:
             try:
                 rating = convert_rating(tags[-1])
                 logger.debug(f'Guessed rating {rating}')
                 del tags[-1]
             except IndexError:
-                logger.warning(f'Could not guess rating for image {image_path}. Defaulting to unsafe.')
+                logger.warning('Could not guess rating for image! Defaulting to unsafe.')
 
             # Optional: add deepbooru tag. We can always reference source:Deepbooru though.
             # tags.append('deepbooru')

@@ -185,30 +185,64 @@ def delete_posts(szuru: Szurubooru, start_id: int, finish_id: int):
             logger.critical(f'An error occured while deleting posts: {e}')
 
 
-def upload_post(file_to_upload: Path, metadata: dict = None):
-    post = Post()
-    tmp_path = Path(config.auto_tagger['tmp_path'])
+def convert_image(file: bytes, file_ext: str) -> bytes:
+    """Evaluate if the image should be converted or shrunk and if so, do so.
 
-    # Save JPEG version of the file in the temp path
-    file_size = os.path.getsize(str(file_to_upload))
+    Args:
+        file (bytes): The file as a byte string.
+        file_ext (str): The file extension without a dot.
+
+    Returns:
+        bytes: The (converted) file as a byte string.
+    """
+
+    file_size = len(file)
+
     if (
         config.upload_media['convert_to_jpg']
-        and file_to_upload.suffix == '.png'
+        and file_ext == 'png'
+        and file_size > config.upload_media['convert_threshold']
+        and config.upload_media['shrink']
+    ):
+        logger.debug(
+            f'Converting and shrinking file, size {file_size} > {config.upload_media["convert_threshold"]}',
+        )
+        image = shrink_img(
+            file,
+            shrink_threshold=config.upload_media['shrink_threshold'],
+            shrink_dimensions=config.upload_media['shrink_dimensions'],
+            convert=True,
+            convert_quality=config.upload_media['convert_quality'],
+        )
+    elif (
+        config.upload_media['convert_to_jpg']
+        and file_ext == 'png'
         and file_size > config.upload_media['convert_threshold']
     ):
         logger.debug(
-            f'Converting file, size {file_size} > {config.upload_media["convert_threshold"]}: {file_to_upload}',
+            f'Converting file, size {file_size} > {config.upload_media["convert_threshold"]}',
         )
-        shrink_img(tmp_path, file_to_upload, convert=True)
+        image = shrink_img(
+            file,
+            convert=True,
+            convert_quality=config.upload_media['convert_quality'],
+        )
+    elif config.upload_media['shrink']:
+        logger.debug('Shrinking file...')
+        image = shrink_img(
+            file,
+            shrink_threshold=config.upload_media['shrink_threshold'],
+            shrink_dimensions=config.upload_media['shrink_dimensions'],
+        )
 
-        with open(str(tmp_path / file_to_upload.stem) + '.jpg', 'rb') as f:
-            post.image = f.read()
+    return image
 
-        converted = True
-    else:
-        with open(str(file_to_upload), 'rb') as f:
-            post.image = f.read()
-        converted = False
+
+def upload_post(file_to_upload: bytes, file_ext: str, metadata: dict = None) -> None:
+    post = Post()
+
+    # Save JPEG version of the file in the temp path
+    post.image = convert_image(file_to_upload, file_ext)
 
     post.image_token = get_image_token(szuru, post.image)
     post.exact_post, similar_posts = check_similarity(szuru, post.image_token)
@@ -237,20 +271,11 @@ def upload_post(file_to_upload: Path, metadata: dict = None):
 
         # Tag post if enabled
         if config.upload_media['auto_tag']:
-            if file_to_upload.suffix not in ['.mp4', '.webm']:
-                auto_tagger(str(post_id), file_to_upload)
-
-    # Always clean up converted jpg files if present
-    if converted:
-        if os.path.exists(str(tmp_path / file_to_upload.stem) + '.jpg'):
-            os.remove(str(tmp_path / file_to_upload.stem) + '.jpg')
-
-    if config.upload_media['cleanup']:
-        if os.path.exists(file_to_upload):
-            os.remove(file_to_upload)
+            if file_ext not in ['mp4', 'webm']:
+                auto_tagger(str(post_id), post.image)
 
 
-def main(file_to_upload: Path = None, metadata: dict = None) -> int:
+def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = None) -> int:
     """Main logic of the script."""
 
     if not file_to_upload:
@@ -272,7 +297,13 @@ def main(file_to_upload: Path = None, metadata: dict = None) -> int:
                 leave=False,
                 disable=config.upload_media['hide_progress'],
             ):
-                upload_post(Path(file_to_upload))
+                with open(file_to_upload, 'rb') as f:
+                    file = f.read()
+                upload_post(file, file_ext=Path(file_to_upload).suffix[1:])
+
+                if config.upload_media['cleanup']:
+                    if os.path.exists(file_to_upload):
+                        os.remove(file_to_upload)
 
             if config.upload_media['cleanup']:
                 cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
@@ -280,8 +311,7 @@ def main(file_to_upload: Path = None, metadata: dict = None) -> int:
             if not from_import_from:
                 logger.success('Script has finished uploading!')
         else:
-            upload_post(file_to_upload, metadata)
-
+            upload_post(file_to_upload, file_ext, metadata)
     else:
         logger.info('No files found to upload.')
 

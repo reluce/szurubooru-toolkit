@@ -1,19 +1,17 @@
 from __future__ import annotations
 
 import argparse
-import os
-import urllib
-from pathlib import Path
 from time import sleep
 
 from loguru import logger
 from tqdm import tqdm
 
+from szurubooru_toolkit import Post
 from szurubooru_toolkit import SauceNao
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.utils import collect_sources
-from szurubooru_toolkit.utils import get_md5sum
+from szurubooru_toolkit.utils import download_media
 from szurubooru_toolkit.utils import sanitize_tags
 from szurubooru_toolkit.utils import scrape_sankaku
 from szurubooru_toolkit.utils import shrink_img
@@ -80,12 +78,20 @@ def parse_args() -> tuple:
     return sankaku_url, query, add_tags, remove_tags
 
 
-def parse_saucenao_results(sauce: SauceNao, post, tmp_media_path):
+def parse_saucenao_results(sauce: SauceNao, post: Post, image: bytes) -> tuple[list, str, str, bool]:
+    """Retrieve and parse result from SauceNAO with the `image` to be uploaded.
+
+    Args:
+        sauce (SauceNao): SauceNao object.
+        post (Post): szurubooru Post object.
+        image (bytes): The image to uploade to upload to SauceNAO.
+
+    Returns:
+        tuple[list, str, str, bool]: List of tags, the source, rating and if the SauceNAO limit has been reached.
+    """
+
     limit_reached = False
-    tags, source, rating, limit_short, limit_long = sauce.get_metadata(
-        post.content_url,
-        str(tmp_media_path),
-    )
+    tags, source, rating, limit_short, limit_long = sauce.get_metadata(post.content_url, image)
 
     # Get previously set sources and add new sources
     source = collect_sources(*source.splitlines(), *post.source.splitlines())
@@ -109,32 +115,15 @@ def parse_saucenao_results(sauce: SauceNao, post, tmp_media_path):
     return sanitize_tags(tags), source, rating, limit_reached
 
 
-def download_media(content_url: str, md5: str) -> str:
-    filename = content_url.split('/')[-1]
+def set_tags_from_relations(post: Post) -> None:
+    """Copy artist, character and series from relations.
 
-    for _ in range(1, 3):
-        try:
-            tmp_media_path = urllib.request.urlretrieve(content_url, Path(config.auto_tagger['tmp_path']) / filename)[0]
-        except Exception as e:
-            logger.warning(f'Could not download post from {filename}: {e}')
+    Useful for FANBOX/Fantia sets where only the main post is uploaded to a Booru.
 
-        md5sum = get_md5sum(tmp_media_path)
+    Args:
+        post (Post): szurubooru Post object.
+    """
 
-        if md5 == md5sum:
-            break
-
-    # Shrink files >2MB
-    if os.path.getsize(tmp_media_path) > 2000000:
-        shrink_img(Path(config.auto_tagger['tmp_path']), Path(tmp_media_path), resize=True, convert=True)
-
-    logger.debug(f'Trying to get result from tmp_media_path: {tmp_media_path}')
-
-    return tmp_media_path
-
-
-def set_tags_from_relations(post) -> None:
-    # Copy artist, character and series from relations.
-    # Useful for FANBOX/Fantia sets where the main post is uploaded to a Booru.
     for relation in post.relations:
         result = szuru.api.getPost(relation['id'])
 
@@ -144,8 +133,19 @@ def set_tags_from_relations(post) -> None:
 
 
 @logger.catch
-def main(post_id: str = None, file_to_upload: Path = None) -> None:  # noqa C901
-    """Placeholder"""
+def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C901
+    """Automatically tag posts with SauceNAO and/or Deepbooru.
+
+    To auto tag a specific post, supply the `post_id` of the szurubooru post.
+    You can also provide `file_to_upload` in case the file is already locally available so
+    it doesn't have to get downloaded.
+
+    If called with no arguments, read from command line arguments.
+
+    Args:
+        post_id (str, optional): The `post_id` of the szurubooru post. Defaults to None.
+        file_to_upload (bytes, optional): If set, will be uploaded to SauceNAO directly. Defaults to None.
+    """
 
     # If this script/function was called from the upload-media script,
     # change output and behaviour of this script
@@ -218,21 +218,24 @@ def main(post_id: str = None, file_to_upload: Path = None) -> None:  # noqa C901
         ):
             tags = []
 
-            # Download the file from Szuru if its not already locally present.
+            # Download the file from szurubooru if its not already locally present.
             # This might be the case if this function was called from upload_media.
             if not file_to_upload:
                 if not config.szurubooru['public'] or config.auto_tagger['deepbooru_enabled']:
-                    tmp_media_path = download_media(post.content_url, post.md5)
+                    image = download_media(post.content_url, post.md5)
+                    # Shrink files >2MB
+                    if len(image) > 2000000:
+                        image = shrink_img(image, resize=True, convert=True)
                 else:
-                    tmp_media_path = None
+                    image = None  # Let SauceNAO download the image from public szurubooru URL
             else:
-                tmp_media_path = file_to_upload  # Save it as tmp_media_path so it gets tagged by Deepbooru
+                image = file_to_upload  # Save it as tmp_media_path so it gets tagged by Deepbooru
 
             if config.auto_tagger['saucenao_enabled']:
                 tags, post.source, post.safety, limit_reached = parse_saucenao_results(
                     sauce,
                     post,
-                    tmp_media_path,
+                    image,
                 )
 
                 if add_tags:
@@ -243,7 +246,7 @@ def main(post_id: str = None, file_to_upload: Path = None) -> None:  # noqa C901
                 limit_reached = False
 
             if (not tags and config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']:
-                tags, post.safety = deepbooru.tag_image(tmp_media_path, config.auto_tagger['deepbooru_threshold'])
+                tags, post.safety = deepbooru.tag_image(image, config.auto_tagger['deepbooru_threshold'])
 
                 if post.relations:
                     set_tags_from_relations(post)
@@ -266,11 +269,6 @@ def main(post_id: str = None, file_to_upload: Path = None) -> None:  # noqa C901
                     statistics(untagged=1)
             elif not tags:
                 statistics(untagged=1)
-
-            # Remove temporary image if it was downloaded from this script.
-            # Leave cleanup to the calling script otherwise (e.g. upload_media).
-            if not file_to_upload and os.path.exists(tmp_media_path):
-                os.remove(tmp_media_path)
 
             if remove_tags:
                 [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]

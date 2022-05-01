@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from asyncio.exceptions import TimeoutError
+from io import BytesIO
 from time import sleep
 from typing import Coroutine  # noqa TYP001
 
@@ -47,7 +48,7 @@ class SauceNao:
         self.yandere = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
 
     @sync
-    async def get_metadata(self, content_url: str, tmp_media_path: str = None) -> tuple:
+    async def get_metadata(self, content_url: str, image: bytes = None) -> tuple:
         """Retrieve results from SauceNAO and aggregate all metadata.
 
         Args:
@@ -70,7 +71,7 @@ class SauceNao:
         limit_short = 1
         limit_long = 10
 
-        response = await self.get_result(content_url, tmp_media_path)
+        response = await self.get_result(content_url, image)
 
         # Sometimes multiple results from the same Booru are found.
         # Results are sorted by their similiarity (highest first).
@@ -184,7 +185,7 @@ class SauceNao:
 
         return tags, source, rating, limit_short, limit_long
 
-    async def get_result(self, content_url: str, tmp_media_path: str = None) -> Coroutine | None:
+    async def get_result(self, content_url: str, image: bytes = None) -> Coroutine | None:
         """Fetch results from SauceNAO for supplied URL/image.
 
         If `tmp_media_path` is set, upload the image from that local path to SauceNAO.
@@ -200,10 +201,10 @@ class SauceNao:
             Coroutine | None: A coroutine with the pysaucenao search results or None in case of search errors.
         """
 
-        if tmp_media_path:
+        if image:
             for _ in range(1, 12):
                 try:
-                    response = await self.pysaucenao.from_file(tmp_media_path)
+                    response = await self.pysaucenao.from_file(BytesIO(image))
                     logger.debug(f'Received response {response}')
 
                     break

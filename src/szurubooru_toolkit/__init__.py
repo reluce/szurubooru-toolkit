@@ -11,7 +11,9 @@ from .szurubooru import Szurubooru
 from .utils import audit_rating  # noqa F401
 from .utils import collect_sources  # noqa F401
 from .utils import convert_rating  # noqa F401
+from .utils import download_media  # noqa F401
 from .utils import get_md5sum  # noqa F401
+from .utils import get_posts_from_booru  # noqa F401
 from .utils import sanitize_tags  # noqa F401
 from .utils import scrape_sankaku  # noqa F401
 from .utils import setup_logger  # noqa F401
