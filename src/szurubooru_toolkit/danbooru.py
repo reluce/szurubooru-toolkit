@@ -1,4 +1,5 @@
 import pybooru
+import requests
 from loguru import logger
 from pybooru import Danbooru as Danbooru_Module
 
@@ -41,3 +42,45 @@ class Danbooru:
         logger.debug(f'Returning rating: {result_rating}')
 
         return result_rating
+
+    @staticmethod
+    def download_tags(query: str = '*', min_post_count: int = 10, limit: int = 100) -> list:
+        """Download and return tags from Danbooru.
+
+        Args:
+            query (str, optional): Search for specific tag, accepts wildcard (*).
+                If not specified, download all tags. Defaults to '*'.
+            min_post_count (int, optional): The minimum amount of posts the tag should have been used in.
+                Defaults to 10.
+            limit (int, optional): The amount of tags that should be downloaded. Start from the most recent ones.
+                Defaults to 100.
+
+        Returns:
+            list: A list with found tags.
+        """
+
+        tag_base_url = 'https://danbooru.donmai.us/tags.json'
+
+        if limit > 1000:
+            pages = limit // 1000
+        else:
+            pages = 1
+
+        for page in range(1, pages + 1):
+            tag_url = (
+                tag_base_url
+                + '?search[post_count]=>'
+                + str(min_post_count)
+                + '&search[name_matches]='
+                + query
+                + '&limit='
+                + str(limit)
+                + '&page='
+                + str(page)
+            )
+
+            try:
+                logger.info(f'Fetching tags from URL {tag_url}...')
+                yield requests.get(tag_url, timeout=30).json()
+            except requests.exceptions as e:
+                logger.critical(f'Could not fetch tags: {e}')

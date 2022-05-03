@@ -165,12 +165,13 @@ class Szurubooru:
 
         return b64encode(f'{user}:{token}'.encode()).decode('ascii')
 
-    def create_tag(self, tag_name: str, category: str) -> None:
+    def create_tag(self, tag_name: str, category: str, overwrite: bool = False) -> None:
         """Create tag in szurubooru.
 
         Args:
             tag_name (str): The name of the tag to be created.
             category (str): The tag's category (needs to already exist).
+            overwrite (bool): If the tag's category should be overwritten.
 
         Raises:
             Exception: With the error description from the szurubooru API.
@@ -183,11 +184,20 @@ class Szurubooru:
         logger.debug(f'Using payload: {payload}')
 
         response = requests.post(query_url, headers=self.headers, data=payload)
-        if 'description' in response.json():
-            if 'used by another tag' in response.json()['description']:
-                raise TagExistsError(response.json()['description'])
-            else:
-                raise Exception(response.json()['description'])
+        try:
+            if 'description' in response.json():
+                if 'used by another tag' in response.json()['description']:
+                    if overwrite:
+                        tag = self.api.getTag(tag_name)
+                        if tag.category != category:
+                            tag.category = category
+                            tag.push()
+                    else:
+                        raise TagExistsError(response.json()['description'])
+                else:
+                    raise Exception(response.json()['description'])
+        except TypeError:
+            pass
 
     def delete_post(self, post: Post) -> None:
         """Delete the input Post object in szurubooru. Related posts and tags are kept.
