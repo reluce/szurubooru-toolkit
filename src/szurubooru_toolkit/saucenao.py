@@ -128,7 +128,8 @@ class SauceNao:
 
                     konachan_found = True
                 elif result.url is not None and 'sankaku' in result.url:
-                    metadata_san['tags'], metadata_san['source'], metadata_san['rating'] = scrape_sankaku(result.url)
+                    metadata_san['tags'], metadata_san['rating'] = scrape_sankaku(result.url)
+                    metadata_san['source'] = result.url
 
             limit_short = response.short_remaining
             logger.debug(f'Limit short: {limit_short}')
@@ -209,7 +210,7 @@ class SauceNao:
 
                     break
                 except (ContentTypeError, TimeoutError):
-                    logger.warning('Could not establish connection to SauceNAO, trying again in 5s...')
+                    logger.debug('Could not establish connection to SauceNAO, trying again in 5s...')
                     sleep(5)
                 except Exception as e:
                     if 'Daily Search Limit Exceeded' in e.args[0]:
@@ -227,7 +228,7 @@ class SauceNao:
                     logger.debug(f'Trying to get result from content_url: {content_url}')
                     response = await self.pysaucenao.from_url(content_url)
                 except (ContentTypeError, TimeoutError):
-                    logger.warning('Could not establish connection to SauceNAO, trying again in 5s...')
+                    logger.debug('Could not establish connection to SauceNAO, trying again in 5s...')
                     sleep(5)
                 except Exception as e:
                     response = None
