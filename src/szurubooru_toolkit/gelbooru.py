@@ -24,7 +24,7 @@ class Gelbooru:
                 logger.debug(f'Returning result: {result}')
                 break
             except ClientConnectorError:
-                logger.warning('Could not establish connection to Gelbooru, trying again in 5s...')
+                logger.debug('Could not establish connection to Gelbooru, trying again in 5s...')
                 sleep(5)
             except KeyError:  # In case the post got deleted but is still indexed
                 result = None
