@@ -32,47 +32,50 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 
 | Section | Option | Description | Examples/Default |
 |---------|--------|-------------|-----------------|
-| szurubooru | url | The URL of your szurubooru | `"https://szuru.example.com"` |
-| szurubooru | username | Username which connects to the szuruboori API | `"my_szuru_user"` |
-| szurubooru | api_token | API token of `username`. Generate one in szurubooru from _Account_ > _Login tokens_ > _Create token_ | `"my_api_token"` |
-| szurubooru | public | If your szurubooru is reachable over the internet | `false` |
-| auto_tagger | saucenao_api_token | In case you want to increase your daily query limit | `"my_saucenao_api_token"` |
-| auto_tagger | saucenao_enabled | Set this to `false` and `deepbooru_enabled` to `true` if you only want to tag with Deepbooru | `true` |
-| auto_tagger | deepbooru_enabled | If enabled, tag the post with Deepbooru if no tags with SauceNAO were found | `false` |
-| auto_tagger | deepbooru_model | Path to the Deepbooru model | `"./misc/deepbooru/model-resnet_custom_v3.h5"` |
-| auto_tagger | deepbooru_threshold | Define how accurate the matched tag from Deepbooru has to be | `"0.7"` |
-| auto_tagger | deepbooru_forced | Always tag with SauceNAO and Deepbooru | `false` |
-| auto_tagger | hide_progress | Set this to true to hide the progress bar | `false` |
-| auto_tagger | tmp_path | Local path where media files get downloaded temporarily if you szurubooru is not public. | `/tmp`, `C:/Users/Foo/Desktop` |
-| danbooru | user | Danbooru user | `"None"` |
-| danbooru | api_key | Danbooru api key | `"None"` |
-| gelbooru | user | Gelbooru user | `"None"` |
-| gelbooru | api_ley | Gelbooru api key | `"None"` |
-| konachan | user | Konachan user | `"None"` |
-| konachan | password | Konachan password | `"None"` |
-| yandere | user | Yandere user | `"None"` |
-| yandere | password | Yandere password | `"None"` |
-| pixiv | user | Pixiv user. Currently not being used. | `"None"` |
-| pixiv | password | Pixiv password. Currently not being used. | `"None"` |
-| pixiv | token | Pixiv token. Currently not being used. | `"None"` |
-| upload_media | src_path | Every valid media file under this dir (recursively) will get uploaded | `"/local/path/to/upload/dir"` |
-| upload_media | hide_progress | Set this to true to hide the progress bar | `false` |
-| upload_media | cleanup | Set this to true if images in the `src_path` should be deleted after upload | `false` |
-| upload_media | tags | These tags will get set for all uploaded posts. Separate them by a comma. | `["tagme", "tag1", "tag2", "tagN"]` |
-| upload_media | auto_tag | Set this to true if you want your post to be automatically tagged after upload | `false` |
-| upload_media | max_similarity | Adjust this value to ignore posts if a similar post higher than the threshold has already been uploaded | `"0.99"` |
-| upload_media | convert_to_jpg | Convert images to JPG to save disk space. This won't overwrite the source files and only affects the uploaded image. | `false` |
-| upload_media | convert_threshold | Only images above this threshold will be converted to jpg if `convert_to_jpg` is True. | `"3MB\|500KB"` |
-| import_from_booru | deepbooru_enabled  | Apply Deepbooru tagging additionally besides fetched tags from Booru | `false` |
-| import_from booru | hide_progress | Set this to true to hide the progress bar | `false` |
-| create_tags | hide_progress | Set this to true to hide the progress bar | `false` |
-| delete_posts booru | hide_progress | Set this to true to hide the progress bar | `false` |
-| reset_posts booru | hide_progress | Set this to true to hide the progress bar | `false` |
-| tag_posts | hide_progress | Set this to true to hide the progress bar | `false` |
-| logging | log_enabled | If logging to a log file should be enabled | `false` |
-| logging | log_file | Specify the path of the log file | `"C:/Users/Foo/Desktop/szurubooru_toolkit.log"` |
-| logging | log_level | Specify the log level. `DEBUG` logs the most information | `"DEBUG"\|"INFO"\|"WARNING"\|"ERROR"\|"CRITICAL"` |
-| logging | log_colorized | If the log file should be colorized. Requires compatible viewer (e.g. `less -r <log_file>`). | `true` |
+| `szurubooru` | `url` | The URL of your szurubooru | `"https://szuru.example.com"` |
+| `szurubooru` | `username` | Username which connects to the szuruboori API | `"my_szuru_user"` |
+| `szurubooru` | `api_token` | API token of `username`. Generate one in szurubooru from _Account_ > _Login tokens_ > _Create token_ | `"my_api_token"` |
+| `szurubooru` | `public` | If your szurubooru is reachable over the internet | `false` |
+| `auto_tagger` | `saucenao_api_token` | In case you want to increase your daily query limit | `"my_saucenao_api_token"` |
+| `auto_tagger` | `saucenao_enabled` | Set this to `false` and `deepbooru_enabled` to `true` if you only want to tag with Deepbooru | `true` |
+| `auto_tagger` | `deepbooru_enabled` | If enabled, tag the post with Deepbooru if no tags with SauceNAO were found | `false` |
+| `auto_tagger` | `deepbooru_model` | Path to the Deepbooru model | `"./misc/deepbooru/model-resnet_custom_v3.h5"` |
+| `auto_tagger` | `deepbooru_threshold` | Define how accurate the matched tag from Deepbooru has to be | `"0.7"` |
+| `auto_tagger` | `deepbooru_forced` | Always tag with SauceNAO and Deepbooru | `false` |
+| `auto_tagger` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `auto_tagger` | `tmp_path` | Local path where media files get downloaded temporarily if you szurubooru is not public. | `"/tmp"`, `"C:/Users/Foo/Desktop"` |
+| `danbooru` | `user` | Danbooru user | `"None"` |
+| `danbooru` | `api_key` | Danbooru api key | `"None"` |
+| `gelbooru` | `user` | Gelbooru user | `"None"` |
+| `gelbooru` | `api_key` | Gelbooru api key | `"None"` |
+| `konachan` | `user` | Konachan user | `"None"` |
+| `konachan` | `password` | Konachan password | `"None"` |
+| `yandere` | `user` | Yandere user | `"None"` |
+| `yandere` | `password` | Yandere password | `"None"` |
+| `pixiv` | `user` | Pixiv user. Currently not being used. | `"None"` |
+| `pixiv` | `password` | Pixiv password. Currently not being used. | `"None"` |
+| `pixiv` | `token` | Pixiv token. Currently not being used. | `"None"` |
+| `upload_media` | `src_path` | Every valid media file under this dir (recursively) will get uploaded | `"/local/path/to/upload/dir"` |
+| `upload_media` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `upload_media` | `cleanup` | Set this to true if images in the `src_path` should be deleted after upload | `false` |
+| `upload_media` | `tags` | These tags will get set for all uploaded posts. Separate them by a comma. | `["tagme", "tag1", "tag2", "tagN"]` |
+| `upload_media` | `auto_tag` | Set this to true if you want your post to be automatically tagged after upload | `false` |
+| `upload_media` | `max_similarity` | Adjust this value to ignore posts if a similar post higher than the threshold has already been uploaded | `"0.99"` |
+| `upload_media` | `convert_to_jpg` | Convert images to JPG to save disk space. This won't overwrite the source files and only affects the uploaded image. | `false` |
+| `upload_media` | `convert_quality` | Only images above this threshold will be converted to jpg if `convert_to_jpg` is True. | `"3MB\|500KB"` |
+| `upload_media` | `shrink` | Set to true to shrink images to shrink_dimensions based on shrink_threshold below. | `false` |
+| `upload_media` | `shrink_threshold` | Images which total pixel size exceeds this treshold will be resized to `shrink_size`. E.g. 2000x3000 results in 6000000. | `"6000000"` |
+| `upload_media` | `shrink_dimensions` | Set the max value for width/height. Keeps aspect ratio. E.g. 2000x4000 results in 700x1400, 4000x2000 in 1400x700 (with `"1400x1400"`). | `"2500x2500"` |
+| `import_from_booru` | `deepbooru_enabled`  | Apply Deepbooru tagging additionally besides fetched tags from Booru | `false` |
+| `import_from booru` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `create_tags` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `delete_posts` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `reset_posts` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `tag_posts` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `logging` | `log_enabled` | If logging to a log file should be enabled | `false` |
+| `logging` | `log_file` | Specify the path of the log file | `"C:/Users/Foo/Desktop/szurubooru_toolkit.log"` |
+| `logging` | `log_level` | Specify the log level. `DEBUG` logs the most information | `"DEBUG"\|"INFO"\|"WARNING"\|"ERROR"\|"CRITICAL"` |
+| `logging` | `log_colorized` | If the log file should be colorized. Requires compatible viewer (e.g. `less -r <log_file>`). | `true` |
 </details>
 
 Creating a SauceNAO account and an API key is recommended.

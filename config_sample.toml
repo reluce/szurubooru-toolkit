@@ -42,16 +42,23 @@ cleanup = false  # Set this to true if images in the source directory should be 
 tags = ["tagme"]  # These tags will get set for all uploaded posts
 auto_tag = true  # Set this to true if you want your post to be automatically tagged after upload
 max_similarity = "0.99"  # 1.00 being basically the same image
-convert_to_jpg = true  # Convert images to JPG to save disk space. This won't overwrite the source files.
+convert_to_jpg = false  # Convert images to JPG to save disk space. This won't overwrite the source files.
 convert_threshold = "3MB"  # Convert images only if specified threshold has been broken.
 convert_quality = "90"  # Set up to 95. Higher means better quality, but takes up more disk space.
-shrink = true  # Set to true to shrink images to shrink_dimensions based on shrink_threshold below.
+shrink = false  # Set to true to shrink images to shrink_dimensions based on shrink_threshold below.
 shrink_threshold = "6000000"  # Images which total pixel size exceeds this treshold will be resized to shrink_size. E.g. 2000x3000 results in 6000000.
 shrink_dimensions = "2500x2500"  # Set the max value for width/height. Keeps aspect ratio. E.g. 2000x4000 results in 700x1400, 4000x2000 in 1400x700.
 
 [import_from_booru]
 deepbooru_enabled = true  # Apply Deepbooru tagging additionally besides fetched tags from Booru
 hide_progress = false  # Set this to true to hide the progress bar
+# Following settings apply from upload_media as well:
+# max_similarity
+# convert_to_jpg
+# convert_threshold
+# shrink
+# shrink_threshold
+# shrink_dimensions
 
 [tag_posts]
 hide_progress = false  # Set this to true to hide the progress bar
