@@ -257,23 +257,25 @@ __Examples__
 ### create-tags
 __Usage__
 ```
-usage: create-tags [-h] [--tag-file TAG_FILE]
+usage: create-tags [-h] [--tag-file TAG_FILE] [--query QUERY] [--min-post-count MIN_POST_COUNT] [--limit LIMIT] [--overwrite]
 
 This script will read the tags from specified file and create them in your szurubooru.
 
 optional arguments:
-  -h, --help           show this help message and exit
-  --tag-file TAG_FILE  Specify the local path to the file containing the tags and categories (default: ./misc/tags/tags.txt)
+  -h, --help            show this help message and exit
+  --tag-file TAG_FILE   Specify the local path to the file containing the tags and categories. If specified, ignores other arguments.
+  --query QUERY         Search for specific tags (default: "*").
+  --min-post-count MIN_POST_COUNT
+                        The minimum amount of posts the tag should have been used in (default: 10).
+  --limit LIMIT         The amount of tags that should be downloaded. Start from the most recent ones (default: 100).
+  --overwrite           Overwrite tag category if the tag already exists.
 ```
 
-This script reads per default the file `./misc/tags/tags.txt`, parses its contents and creates the tags in your szurubooru.
-Alternatively, specify `--tag-file` as an argument with the path to the file containing the tags and categories.
-
-If the tag already exists, it will get skipped.
+If no `tag_file` is specified, the script will download the most recent 100 tags from Danbooru which have been used at least ten times.
 
 You can use tools like [Grabber](https://github.com/Bionus/imgbrd-grabber) to download a tag list from common boorus.
 
-The file has to be in following format:
+The `tag_file` has to be in following format:
 
 ```
 <tag_a>,<category_number>
@@ -288,6 +290,11 @@ The file has to be in following format:
 |series|2|
 |character|3|
 |meta|4|
+
+__Examples__
+* `create-tags`
+* `create-tags --query genshin* --overwrite`
+* `create-tags --tag-file tags.txt`
 
 ## Image credit
 GitHub repo icon: <a href="https://www.flaticon.com/free-icons/code" title="code icons">Code icons created by Smashicons - Flaticon</a>
