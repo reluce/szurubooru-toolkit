@@ -6,6 +6,7 @@ import warnings
 from io import BytesIO
 from math import ceil
 from typing import Iterator
+from urllib.error import ContentTooShortError
 
 import bs4
 import requests
@@ -347,6 +348,8 @@ def download_media(content_url: str, md5: str) -> bytes:
     for _ in range(1, 3):
         try:
             file: bytes = requests.get(content_url).content
+        except ContentTooShortError:
+            download_media(content_url, md5)
         except Exception as e:
             logger.warning(f'Could not download post from {content_url}: {e}')
 
