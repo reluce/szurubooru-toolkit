@@ -7,13 +7,13 @@
 # szurubooru-toolkit
 Python package and script collection to manage your [szurubooru](https://github.com/rr-/szurubooru) image board.
 
-## Requirements
+## :ballot_box_with_check: Requirements
 In order to run the included scripts, a Python release `>=3.8` and the configuratrion file `config.toml` is required.
 
 The `config.toml` file needs to be always present in your current working directory from where you are executing the scripts.
 You can find a sample config file in the [GitHub repository](https://github.com/reluce/szurubooru-toolkit) of this package.
 
-## Installation
+## :hammer_and_wrench: Installation
 This package is available on [PyPI](https://pypi.org/project/szurubooru-toolkit/) and can be installed with pip:
 `pip install szurubooru-toolkit`
 
@@ -22,13 +22,13 @@ Alternatively, you can clone the package from GitHub and set everything up with 
 Please note this package requires Tensorflow for Deepbooru tagging and other required packages which do take up quite a lot of disk space (>400MB).
 A future release of this package will offer an option without the need to install Tensorflow if you don't want to use Deepbooru tagging.
 
-## User configuration
+## :memo: User configuration
 Make your changes in the `config_sample.toml` file provided in the git repo and rename it to `config.toml` afterwards.
 
 Note that path names have to be specified with forward slashes (/) if you're using Windows.
 
 <details>
-  <summary>config.toml reference</summary>
+  <summary>:information_source: config.toml reference</summary>
 
 | Section | Option | Description | Examples/Default |
 |---------|--------|-------------|-----------------|
@@ -85,7 +85,7 @@ With a free plan, you can request up to 200 posts in 24h.
 For Deepbooru support, download the current release [here](https://github.com/KichangKim/DeepDanbooru/releases/tag/v3-20211112-sgd-e28) (v3-20211112-sgd-e28) and extract the contents of the zip file. Specify the path of the folder with the extracted files in `deepbooru_model`.
 Please note that you have to set `deepbooru_enabled` if you want to use it.
 
-## Scripts
+## :page_with_curl: Scripts
 Following scripts are currently available:
 
 * `auto-tagger`: Batch tagging of posts with SauceNAO and Deepbooru
@@ -102,7 +102,7 @@ If you installed this package with pip, you can generally just call the scripts 
 
 If you cloned the repo from GitHub, prefix the above scripts with `poetry run`, e.g. `poetry run auto-tagger "date:today"`. Note that your current working directory has to be the the root of the GitHub project.
 
-### auto-tagger
+### :gear: auto-tagger
 This script accepts a szurubooru query as a user input, fetches all posts returned by it and attempts to tag it using SauceNAO/Deepbooru.
 
 If no matches from SauceNAO were found, the script keeps the previously set tags of the post and additionally appends the tag `tagme`.
@@ -146,7 +146,7 @@ Alternatively, we can tag a single post and specify `--sankaku_url` to fetch the
 
 This is especially useful since Sankaku has changed their API and aggregator sites like SauceNAO don't have the latest results there.
 
-### import-from-booru
+### :arrow_lower_right:	import-from-booru
 This scripts imports posts and their tags from various Boorus that matched your input query.
 
 In the `config.toml` file, you can set if the post should be additionally tagged with Deepbooru and if the progress bar should be shown.
@@ -176,18 +176,14 @@ __Examples__
 Note that if you specify `all` to download from all Boorus, you are limited to two tags because free Danbooru accounts are limited to two tags per query.
 If you have a Gold/Platinum account, set your credentials in `config.toml`. Note that it's currently untested if the script will work with upgraded accounts.
 
-### upload-media
+### :arrow_upper_right: upload-media
 This script searches through your specified upload folder in the `config.toml` file for any image/video files and uploads them to your szurubooru.
 
 __Usage__
 
-After editing and renaming the `config_sample.toml` file to `config.toml`, we can just execute the script.
+* `upload-media`
 
-If you installed it with pip, execute `upload-media`. Note that `config.toml` has to be in your current working directory.
-
-If you cloned the repo from GitHub, execute `poetry run upload-media`. Note that your current working directory has to be the the root of the GitHub project.
-
-### tag-posts
+### :label: tag-posts
 __Usage__
 ```
 usage: tag-posts [-h] [--add-tags ADD_TAGS] [--remove-tags REMOVE_TAGS] [--mode {append,overwrite}] query
@@ -211,7 +207,7 @@ __Examples__
 * `tag-posts --add-tags "foo,bar" --mode "overwrite" "foo bar"`
 * `tag-posts --add-tags "foo,bar" --remove-tags "baz" "foo"`
 
-### reset-posts
+### :arrows_counterclockwise: reset-posts
 __Usage__
 ```
 usage: reset-posts [-h] [--except-ids EXCEPT_IDS] [--add-tags ADD_TAGS] query
@@ -234,7 +230,7 @@ __Examples__
 * `reset-posts --add-tags "tagme,foo" "foobar"`
 * `reset-posts --except-ids "2,4" --add-tags "tagme,foo" "foobar"`
 
-### delete-posts
+### :wastebasket:	delete-posts
 __Usage__
 ```
 usage: delete-posts [-h] [--except-ids EXCEPT_IDS] query
@@ -254,7 +250,7 @@ __Examples__
 * `delete-posts "id:10,11,100,23"`
 * `delete-posts --except-ids "12,23,44" "id:10..50"`
 
-### create-tags
+### :label: create-tags
 __Usage__
 ```
 usage: create-tags [-h] [--tag-file TAG_FILE] [--query QUERY] [--min-post-count MIN_POST_COUNT] [--limit LIMIT] [--overwrite]
@@ -296,5 +292,5 @@ __Examples__
 * `create-tags --query genshin* --overwrite`
 * `create-tags --tag-file tags.txt`
 
-## Image credit
+## :information_source:	Image credit
 GitHub repo icon: <a href="https://www.flaticon.com/free-icons/code" title="code icons">Code icons created by Smashicons - Flaticon</a>
