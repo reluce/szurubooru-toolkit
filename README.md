@@ -61,9 +61,9 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `upload_media` | `tags` | These tags will get set for all uploaded posts. Separate them by a comma. | `["tagme", "tag1", "tag2", "tagN"]` |
 | `upload_media` | `auto_tag` | Set this to true if you want your post to be automatically tagged after upload | `false` |
 | `upload_media` | `max_similarity` | Adjust this value to ignore posts if a similar post higher than the threshold has already been uploaded | `"0.99"` |
-| `upload_media` | `convert_to_jpg` | Convert images to JPG to save disk space. This won't overwrite the source files and only affects the uploaded image. | `false` |
+| `upload_media` | `convert_to_jpg` | Convert images to JPG to save disk space. This won't overwrite the source files and only affects the uploaded image. Images might slip through identical post check. | `false` |
 | `upload_media` | `convert_quality` | Only images above this threshold will be converted to jpg if `convert_to_jpg` is True. | `"3MB\|500KB"` |
-| `upload_media` | `shrink` | Set to true to shrink images to shrink_dimensions based on shrink_threshold below. | `false` |
+| `upload_media` | `shrink` | Set to true to shrink images to shrink_dimensions based on shrink_threshold below. Images might slip through identical post check. | `false` |
 | `upload_media` | `shrink_threshold` | Images which total pixel size exceeds this treshold will be resized to `shrink_size`. E.g. 2000x3000 results in 6000000. | `"6000000"` |
 | `upload_media` | `shrink_dimensions` | Set the max value for width/height. Keeps aspect ratio. E.g. 2000x4000 results in 700x1400, 4000x2000 in 1400x700 (with `"1400x1400"`). | `"2500x2500"` |
 | `import_from_booru` | `deepbooru_enabled`  | Apply Deepbooru tagging additionally besides fetched tags from Booru | `false` |
