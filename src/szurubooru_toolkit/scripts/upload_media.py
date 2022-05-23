@@ -40,17 +40,17 @@ def get_files(upload_dir):
     return files
 
 
-def get_image_token(szuru: Szurubooru, image: bytes) -> str:
-    """Upload the image to the temporary uploads endpoint.
+def get_media_token(szuru: Szurubooru, media: bytes) -> str:
+    """Upload the media file to the temporary upload endpoint.
 
-    We can access our temporary image with the image token.
+    We can access our temporary file with the token which receive from the response.
 
     Args:
-        szuru (Szurubooru):
-        image (bytes): The image file to upload as bytes.
+        szuru (Szurubooru): A szurubooru object.
+        media (bytes): The media file to upload as bytes.
 
     Returns:
-        str: An image token from szurubooru.
+        str: A token from szurubooru.
 
     Raises:
         Exception
@@ -59,13 +59,13 @@ def get_image_token(szuru: Szurubooru, image: bytes) -> str:
     post_url = szuru.szuru_api_url + '/uploads'
 
     try:
-        response = requests.post(post_url, files={'content': image}, headers=szuru.headers)
+        response = requests.post(post_url, files={'content': media}, headers=szuru.headers)
 
         if 'description' in response.json():
             raise Exception(response.json()['description'])
         else:
-            image_token = response.json()['token']
-            return image_token
+            token = response.json()['token']
+            return token
     except Exception as e:
         logger.critical(f'An error occured while getting the image token: {e}')
 
@@ -124,7 +124,7 @@ def upload_file(szuru: Szurubooru, post: Post) -> None:
             'safety': safety,
             'source': source,
             'relations': post.similar_posts,
-            'contentToken': post.image_token,
+            'contentToken': post.token,
         },
     )
 
@@ -165,7 +165,7 @@ def cleanup_dirs(dir: str) -> None:
                 pass
 
 
-def convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -> bytes:
+def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -> bytes:
     """Evaluate if the image should be converted or shrunk and if so, do so.
 
     Args:
@@ -226,11 +226,13 @@ def convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -> byt
 def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_to_upload: str = None) -> None:
     post = Post()
 
-    # Save JPEG version of the file in the temp path
-    post.image = convert_image(file, file_ext, file_to_upload)
+    if file_ext not in ['mp4', 'webm', 'gif']:
+        post.media = eval_convert_image(file, file_ext, file_to_upload)
+    else:
+        post.media = file
 
-    post.image_token = get_image_token(szuru, post.image)
-    post.exact_post, similar_posts = check_similarity(szuru, post.image_token)
+    post.token = get_media_token(szuru, post.media)
+    post.exact_post, similar_posts = check_similarity(szuru, post.token)
     threshold = 1 - float(config.upload_media['max_similarity'])
 
     for entry in similar_posts:
@@ -262,7 +264,7 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_to_uploa
         # Tag post if enabled
         if config.upload_media['auto_tag']:
             if file_ext not in ['mp4', 'webm']:
-                auto_tagger(str(post_id), post.image)
+                auto_tagger(str(post_id), post.media)
 
 
 def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = None) -> int:
