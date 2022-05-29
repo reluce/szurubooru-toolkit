@@ -229,7 +229,7 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                 else:
                     image = None  # Let SauceNAO download the image from public szurubooru URL
             else:
-                image = file_to_upload  # Save it as tmp_media_path so it gets tagged by Deepbooru
+                image = file_to_upload
 
             if config.auto_tagger['saucenao_enabled']:
                 tags, post.source, post.safety, limit_reached = parse_saucenao_results(

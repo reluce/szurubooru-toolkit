@@ -57,8 +57,8 @@ class Config:
                 'deepbooru_model',
                 'deepbooru_threshold',
                 'deepbooru_forced',
+                'deepbooru_set_tag',
                 'hide_progress',
-                'tmp_path',
             ],
             'upload_media': [
                 'src_path',
@@ -108,10 +108,6 @@ class Config:
 
         Paths have to exist, even if one is not being actively used.
         """
-
-        if not Path(self.auto_tagger['tmp_path']).is_dir():
-            logger.critical(f'The tmp_path "{self.auto_tagger["tmp_path"]}" specified in config.toml does not exist!')
-            exit()
 
         if not Path(self.upload_media['src_path']).is_dir():
             logger.critical(f'The src_path "{self.upload_media["src_path"]}" specified in config.toml does not exist!')

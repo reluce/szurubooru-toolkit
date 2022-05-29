@@ -42,8 +42,8 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `auto_tagger` | `deepbooru_model` | Path to the Deepbooru model | `"./misc/deepbooru/model-resnet_custom_v3.h5"` |
 | `auto_tagger` | `deepbooru_threshold` | Define how accurate the matched tag from Deepbooru has to be | `"0.7"` |
 | `auto_tagger` | `deepbooru_forced` | Always tag with SauceNAO and Deepbooru | `false` |
+| `auto_tagger` | `deepbooru_set_tag` | Tag Deepbooru post with tag `deepbooru` | `true` |
 | `auto_tagger` | `hide_progress` | Set this to true to hide the progress bar | `false` |
-| `auto_tagger` | `tmp_path` | Local path where media files get downloaded temporarily if you szurubooru is not public. | `"/tmp"`, `"C:/Users/Foo/Desktop"` |
 | `danbooru` | `user` | Danbooru user | `"None"` |
 | `danbooru` | `api_key` | Danbooru api key | `"None"` |
 | `gelbooru` | `user` | Gelbooru user | `"None"` |

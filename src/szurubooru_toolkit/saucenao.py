@@ -53,7 +53,7 @@ class SauceNao:
 
         Args:
             content_url (str): Image URL where SauceNAO should retrieve the image from.
-            tmp_media_path (str): Local path of the image you want to upload. Defaults to None.
+            image (bytes): The media file as bytes.
 
         Returns:
             tuple: Contains `tags`, `source`, `rating`, `limit_short` and `limit_long`.
@@ -189,14 +189,14 @@ class SauceNao:
     async def get_result(self, content_url: str, image: bytes = None) -> Coroutine | None:
         """Fetch results from SauceNAO for supplied URL/image.
 
-        If `tmp_media_path` is set, upload the image from that local path to SauceNAO.
+        If `image` is passed, upload the image from that local path to SauceNAO.
         Otherwise, let SauceNAO retrieve the result from `content_url`.
 
         If this SauceNAO cannot be reached, try again every five seconds for up to a minute.
 
         Args:
             content_url (str): Image URL where SauceNAO should retrieve the image from.
-            tmp_media_path (str): Local path of the image you want to upload. Defaults to None.
+            image (bytes): The media as bytes.
 
         Returns:
             Coroutine | None: A coroutine with the pysaucenao search results or None in case of search errors.
