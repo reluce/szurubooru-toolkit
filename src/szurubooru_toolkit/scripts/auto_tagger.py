@@ -246,7 +246,11 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                 limit_reached = False
 
             if (not tags and config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']:
-                tags, post.safety = deepbooru.tag_image(image, config.auto_tagger['deepbooru_threshold'])
+                tags, post.safety = deepbooru.tag_image(
+                    image,
+                    config.auto_tagger['deepbooru_threshold'],
+                    config.auto_tagger['deepbooru_set_tag'],
+                )
 
                 if post.relations:
                     set_tags_from_relations(post)
@@ -275,7 +279,7 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
 
             # If any tags were collected with SauceNAO or Deepbooru, remove tagme and deepbooru tag
             if tags:
-                [post.tags.remove(tag) for tag in post.tags if tag == 'deepbooru' or tag == 'tagme']
+                [post.tags.remove(tag) for tag in post.tags if tag == 'tagme']
             else:
                 post.tags.append('tagme')
 

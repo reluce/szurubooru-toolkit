@@ -44,12 +44,13 @@ class Deepbooru:
         with open('./misc/deepbooru/tags.txt') as tags_stream:
             self.tags = np.array([tag for tag in (tag.strip() for tag in tags_stream) if tag])
 
-    def tag_image(self, image: bytes, threshold: float = 0.6) -> tuple[list, str]:
+    def tag_image(self, image: bytes, threshold: float = 0.6, set_tag: bool = True) -> tuple[list, str]:
         """Guesses the tags and rating of the provided image from `image_path`.
 
         Args:
             image (bytes): The image in bytes which tags and rating should be guessed.
             threshhold (float): The accuracy threshold of the guessed tags, 1 being 100%. Defaults to `0.6`.
+            set_tag (bool): Add tag "deepbooru"
 
         Returns:
             tuple[list, str]: A tuple with the guessed tags as a `list` and the rating as a `str`.
@@ -84,8 +85,8 @@ class Deepbooru:
             except IndexError:
                 logger.warning('Could not guess rating for image! Defaulting to unsafe.')
 
-            # Optional: add deepbooru tag. We can always reference source:Deepbooru though.
-            # tags.append('deepbooru')
+            if set_tag:
+                tags.append('deepbooru')
 
         if rating is None:
             rating = 'unsafe'
