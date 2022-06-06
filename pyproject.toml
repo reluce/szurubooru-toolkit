@@ -52,6 +52,7 @@ auto-tagger = 'szurubooru_toolkit.scripts.auto_tagger:main'
 upload-media = 'szurubooru_toolkit.scripts.upload_media:main'
 create-tags = 'szurubooru_toolkit.scripts.create_tags:main'
 import-from-booru = 'szurubooru_toolkit.scripts.import_from_booru:main'
+import-from-twitter = 'szurubooru_toolkit.scripts.import_from_twitter:main'
 tag-posts= 'szurubooru_toolkit.scripts.tag_posts:main'
 delete-posts= 'szurubooru_toolkit.scripts.delete_posts:main'
 reset-posts= 'szurubooru_toolkit.scripts.reset_posts:main'
@@ -75,6 +76,7 @@ loguru = "^0.6.0"
 pathvalidate = "^2.5.0"
 validators = "^0.18.2"
 lxml = "^4.8.0"
+tweepy = "^4.10.0"
 
 [tool.poetry.dev-dependencies]
 black = "^22.1.0"

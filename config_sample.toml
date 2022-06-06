@@ -31,6 +31,12 @@ password = "None"
 user = "None"
 password = "None"
 token = "None"
+[twitter]
+user_id = "None"  # The user id which should be queried.
+consumer_key = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
+consumer_secret = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
+access_token = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
+access_token_secret = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
 
 [upload_media]
 src_path = "/local/path/to/upload/dir"  # Every valid media file under this dir (recursively) will get uploaded
@@ -49,6 +55,18 @@ shrink_dimensions = "2500x2500"  # Set the max value for width/height. Keeps asp
 [import_from_booru]
 deepbooru_enabled = true  # Apply Deepbooru tagging additionally besides fetched tags from Booru
 hide_progress = false  # Set this to true to hide the progress bar
+# Following settings apply from upload_media as well:
+# max_similarity
+# convert_to_jpg
+# convert_threshold
+# shrink
+# shrink_threshold
+# shrink_dimensions
+
+[import_from_twitter]
+saucenao_enabled = true  # Tag posts with SauceNAO
+deepbooru_enabled = false  # Tag posts with Deepbooru
+hide_progress = false  # Set this to true to hide the progress barions
 # Following settings apply from upload_media as well:
 # max_similarity
 # convert_to_jpg

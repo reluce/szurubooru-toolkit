@@ -55,6 +55,11 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `pixiv` | `user` | Pixiv user. Currently not being used. | `"None"` |
 | `pixiv` | `password` | Pixiv password. Currently not being used. | `"None"` |
 | `pixiv` | `token` | Pixiv token. Currently not being used. | `"None"` |
+| `twitter` | `user_id` | The user id which should be queried. | `"None"` |
+| `twitter` | `consumer_key` | See https://developer.twitter.com/en/docs/authentication/oauth-1-0a | `"None"` |
+| `twitter` | `consumer_secret` | See https://developer.twitter.com/en/docs/authentication/oauth-1-0a | `"None"` |
+| `twitter` | `access_token` | See https://developer.twitter.com/en/docs/authentication/oauth-1-0a | `"None"` |
+| `twitter` | `access_token_secret` | See https://developer.twitter.com/en/docs/authentication/oauth-1-0a | `"None"` |
 | `upload_media` | `src_path` | Every valid media file under this dir (recursively) will get uploaded | `"/local/path/to/upload/dir"` |
 | `upload_media` | `hide_progress` | Set this to true to hide the progress bar | `false` |
 | `upload_media` | `cleanup` | Set this to true if images in the `src_path` should be deleted after upload | `false` |
@@ -66,8 +71,11 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `upload_media` | `shrink` | Set to true to shrink images to shrink_dimensions based on shrink_threshold below. Images might slip through identical post check. | `false` |
 | `upload_media` | `shrink_threshold` | Images which total pixel size exceeds this treshold will be resized to `shrink_size`. E.g. 2000x3000 results in 6000000. | `"6000000"` |
 | `upload_media` | `shrink_dimensions` | Set the max value for width/height. Keeps aspect ratio. E.g. 2000x4000 results in 700x1400, 4000x2000 in 1400x700 (with `"1400x1400"`). | `"2500x2500"` |
-| `import_from_booru` | `deepbooru_enabled`  | Apply Deepbooru tagging additionally besides fetched tags from Booru | `false` |
-| `import_from booru` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `import_from_booru` | `deepbooru_enabled` | Apply Deepbooru tagging additionally besides fetched tags from Booru | `false` |
+| `import_from_booru` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `import_from_twitter` | `saucenao_enabled` | Tag posts with SauceNAO | `false` |
+| `import_from_twitter` | `deepbooru_enabled` | Tag posts with Deepbooru | `false` |
+| `import_from_twitter` | `hide_progress` | Set this to true to hide the progress bar | `false` |
 | `create_tags` | `hide_progress` | Set this to true to hide the progress bar | `false` |
 | `delete_posts` | `hide_progress` | Set this to true to hide the progress bar | `false` |
 | `reset_posts` | `hide_progress` | Set this to true to hide the progress bar | `false` |
@@ -150,7 +158,13 @@ This is especially useful since Sankaku has changed their API and aggregator sit
 This scripts imports posts and their tags from various Boorus that matched your input query.
 
 In the `config.toml` file, you can set if the post should be additionally tagged with Deepbooru and if the progress bar should be shown.
-Since this script is using the `upload-media` script to upload the post, following settings apply from the `upload-media` section: `convert_to_jpg` and `convert_threshold`.
+Since this script is using the `upload-media` script to upload the post, following settings apply from the `upload-media` section:
+* max_similarity
+* convert_to_jpg
+* convert_threshold
+* shrink
+* shrink_threshold
+* shrink_dimensions
 
 __Usage__
 ```
@@ -175,6 +189,40 @@ __Examples__
 
 Note that if you specify `all` to download from all Boorus, you are limited to two tags because free Danbooru accounts are limited to two tags per query.
 If you have a Gold/Platinum account, set your credentials in `config.toml`. Note that it's currently untested if the script will work with upgraded accounts.
+
+### :dove: import-from-twitter
+This script fetches media files from your Twitter likes, uploads and optionally tags them.
+
+:warning: __OAuth 1.0a credentials are required to read the likes from a user. See https://developer.twitter.com/en/docs/authentication/oauth-1-0a on how to generate them.__
+
+The `user_id` can be converted on sites like https://tweeterid.com/. If you configured above credentials, you can also get your own ID from the `access_token`, which is in following format: `<user_id>-<random_string>`
+
+Currently, only a maximum of 100 tweets can be retrieved.
+
+In the `config.toml` file, you can set if the post should be additionally tagged with SauceNAO or Deepbooru and if the progress bar should be shown.
+Since this script is using the `upload-media` script to upload the post, following settings apply from the `upload-media` section:
+* max_similarity
+* convert_to_jpg
+* convert_threshold
+* shrink
+* shrink_threshold
+* shrink_dimensions
+
+__Usage__
+```
+usage: import-from-twitter [-h] [--limit LIMIT] [--user-id USER_ID]
+
+This script fetches media files from your Twitter likes, uploads and optionally tags them.
+
+optional arguments:
+  -h, --help         show this help message and exit
+  --limit LIMIT      Limit the amount of Twitter posts returned (default: 25)
+  --user-id USER_ID  Fetch likes from the specified user id
+```
+
+__Examples__
+* `import-from-twitter --limit 50`
+* `import-from-twitter --limit 50 --user_id 123`
 
 ### :arrow_upper_right: upload-media
 This script searches through your specified upload folder in the `config.toml` file for any image/video files and uploads them to your szurubooru.

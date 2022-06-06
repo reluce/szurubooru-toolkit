@@ -334,7 +334,7 @@ def get_md5sum(file: bytes) -> str:
     return md5sum
 
 
-def download_media(content_url: str, md5: str) -> bytes:
+def download_media(content_url: str, md5: str = None) -> bytes:
     """Download the file from `content_url` and return it if the md5 hashes match.
 
     Args:
@@ -353,9 +353,12 @@ def download_media(content_url: str, md5: str) -> bytes:
         except Exception as e:
             logger.warning(f'Could not download post from {content_url}: {e}')
 
-        md5sum = get_md5sum(file)
+        if md5:
+            md5sum = get_md5sum(file)
 
-        if md5 == md5sum:
+            if md5 == md5sum:
+                break
+        else:
             break
 
     return file

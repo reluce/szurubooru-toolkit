@@ -8,6 +8,7 @@ from .gelbooru import Gelbooru  # noqa F401
 from .saucenao import SauceNao  # noqa F401
 from .szurubooru import Post  # noqa F401
 from .szurubooru import Szurubooru
+from .twitter import Twitter  # noqa F401
 from .utils import audit_rating  # noqa F401
 from .utils import collect_sources  # noqa F401
 from .utils import convert_rating  # noqa F401

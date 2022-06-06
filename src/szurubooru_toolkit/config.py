@@ -75,6 +75,7 @@ class Config:
                 'shrink_dimensions',
             ],
             'import_from_booru': ['deepbooru_enabled', 'hide_progress'],
+            'import_from_twitter': ['saucenao_enabled', 'deepbooru_enabled', 'hide_progress'],
             'tag_posts': ['hide_progress'],
             'delete_posts': ['hide_progress'],
             'reset_posts': ['hide_progress'],
@@ -85,6 +86,7 @@ class Config:
             'konachan': ['user', 'password'],
             'yandere': ['user', 'password'],
             'pixiv': ['user', 'password', 'token'],
+            'twitter': ['user_id', 'consumer_key', 'consumer_secret', 'access_token', 'access_token_secret'],
         }
 
         for section in req_opts:
