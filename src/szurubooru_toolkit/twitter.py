@@ -28,6 +28,33 @@ class Twitter:
             access_token_secret=access_token_secret,
         )
 
+    def get_media_from_bookmarks(self, limit: int = 5) -> list:
+        """Retrieves media files from bookmarks from `user_id`.
+
+        Args:
+            limit (int): Limit the amount of tweets returned (default: 25).
+
+        Returns:
+            list: A list which contains the tweet URL and the associated media file URLs as a tuple.
+        """
+
+        response = self.client.get_bookmarks(
+            expansions=['attachments.media_keys'],
+            tweet_fields=['entities'],
+            media_fields=['url', 'variants'],
+            max_results=limit,
+        )
+
+        tweets = []
+
+        for tweet in response.data:
+            if tweet.attachments:
+                tweet_url = Twitter.get_tweet_url(tweet.entities['urls'])
+                media_refs = Twitter.get_media_refs(tweet.attachments['media_keys'], response.includes['media'])
+                tweets.append(tuple((tweet_url, media_refs)))
+
+        return tweets
+
     def get_media_from_liked_tweets(self, user_id: int, limit: int = 25) -> list:
         """Retrieves media files from liked tweets from `user_id`.
 

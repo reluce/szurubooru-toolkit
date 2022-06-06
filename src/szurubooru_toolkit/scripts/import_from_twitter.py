@@ -30,21 +30,30 @@ def parse_args() -> tuple:
         '--user-id',
         type=int,
         default=None,
-        help='Fetch likes from the specified user id.',
+        help='Fetch likes from the specified user id',
+    )
+
+    parser.add_argument(
+        '--mode',
+        choices=['likes', 'bookmarks'],
+        type=str,
+        default='likes',
+        help='Specify from where to download media files (default: likes)',
     )
 
     args = parser.parse_args()
     limit = args.limit
     user_id = args.user_id
+    mode = args.mode
 
-    return user_id, limit
+    return mode, user_id, limit
 
 
 @logger.catch
 def main() -> None:
     """Call respective functions to retrieve and upload posts based on user input."""
 
-    user_id, limit = parse_args()
+    mode, user_id, limit = parse_args()
 
     if not user_id:
         if config.twitter['user_id'] != 'None':
@@ -76,14 +85,24 @@ def main() -> None:
         config.twitter['access_token_secret'],
     )
 
-    try:
-        tweets = twitter.get_media_from_liked_tweets(user_id, limit)
-    except errors.Unauthorized:
-        logger.critical(
-            'You\'re unauthorized to retrieve the user\'s tweets! User profile is probably private. '
-            'Configure credentials in config.toml.',
-        )
-        exit()
+    if mode == 'likes':
+        try:
+            tweets = twitter.get_media_from_liked_tweets(user_id, limit)
+        except errors.Unauthorized:
+            logger.critical(
+                'You\'re unauthorized to retrieve the user\'s tweets! User profile is probably private. '
+                'Configure credentials in config.toml.',
+            )
+            exit()
+    else:
+        try:
+            tweets = twitter.get_media_from_bookmarks(limit)
+        except errors.Unauthorized:
+            logger.critical(
+                'You\'re unauthorized to retrieve the user\'s tweets! User profile is probably private. '
+                'Configure credentials in config.toml.',
+            )
+            exit()
 
     logger.info(f'Found {len(tweets)} tweets with media attachments. Start importing...')
 
