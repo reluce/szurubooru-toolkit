@@ -237,6 +237,10 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_to_uploa
 
     for entry in similar_posts:
         if entry['distance'] < threshold and not post.exact_post:
+            print()
+            logger.debug(
+                f'File "{file_to_upload} is too similar to post {entry["post"]["id"]} ({100 - entry["distance"]}%)',
+            )
             post.exact_post = True
             break
 
