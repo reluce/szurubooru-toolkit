@@ -136,6 +136,7 @@ def upload_file(szuru: Szurubooru, post: Post) -> None:
         else:
             return response.json()['id']
     except Exception as e:
+        print('')
         logger.warning(f'An error occured during the upload for file "{post.file_to_upload}": {e}')
         return None
 
@@ -217,6 +218,7 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
                 shrink_dimensions=config.upload_media['shrink_dimensions'],
             )
     except OSError:
+        print('')
         logger.warning(f'Could not shrink image {file_to_upload}. Keeping dimensions...')
         image = file
 

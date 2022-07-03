@@ -351,6 +351,7 @@ def download_media(content_url: str, md5: str = None) -> bytes:
         except ContentTooShortError:
             download_media(content_url, md5)
         except Exception as e:
+            print('')
             logger.warning(f'Could not download post from {content_url}: {e}')
 
         if md5:

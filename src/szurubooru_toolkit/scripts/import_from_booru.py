@@ -52,6 +52,7 @@ def parse_args() -> tuple:
     query = args.query
     logger.debug(f'query = {query}')
     if '\'' in query:
+        print('')
         logger.warning(
             'Your query contains single quotes (\'). '
             'Consider using double quotes (") if the script doesn\'t behave as intended.',
@@ -78,12 +79,14 @@ def import_post(
     try:
         file_url = post.file_url if booru == 'gelbooru' else post['file_url']
     except KeyError:
+        print('')
         logger.warning('Could not find file url for post. It got probably removed from the site.')
         return
 
     try:
         file = download_media(file_url, md5)
     except Exception as e:
+        print('')
         logger.warning(f'Could not download post from {file_url}: {e}')
         return
 
@@ -159,6 +162,7 @@ def main() -> None:
                 else:
                     md5 = post['md5']
             except KeyError:
+                print('')
                 logger.warning('Post has no MD5 attribute, it probably got removed from the site.')
                 continue
 

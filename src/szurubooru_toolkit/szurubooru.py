@@ -67,6 +67,7 @@ class Szurubooru:
             # logger.debug(f'Got following response: {response}')
 
             if 'name' in response and response['name'] == 'SearchError':
+                print('')
                 logger.critical(f'{response["name"]}: {response["description"]}')
                 exit()
 
@@ -147,6 +148,7 @@ class Szurubooru:
             if 'description' in response.json():
                 raise Exception(response.json()['description'])
         except Exception as e:
+            print('')
             logger.warning(f'Could not edit your post: {e}')
 
     @staticmethod
@@ -218,6 +220,7 @@ class Szurubooru:
             if 'description' in response.json():
                 raise Exception(response.json()['description'])
         except Exception as e:
+            print('')
             logger.warning(f'Could not delete your post: {e}')
 
 

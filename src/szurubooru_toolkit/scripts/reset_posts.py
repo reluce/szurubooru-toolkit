@@ -49,6 +49,7 @@ def parse_args() -> tuple:
     query = args.query
     logger.debug(f'query = {query}')
     if '\'' in query:
+        print('')
         logger.warning(
             'Your query contains single quotes (\'). '
             'Consider using double quotes (") if the script doesn\'t behave as intended.',
