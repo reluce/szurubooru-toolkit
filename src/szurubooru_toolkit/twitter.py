@@ -94,7 +94,7 @@ class Twitter:
         media_refs = []
         for media in media_list:
             if media.media_key in media_keys:
-                if media.type == 'video':
+                if media.type in ['video', 'animated_gif']:
                     video_url = Twitter.get_highest_quality_video(media.data['variants'])
                     file_ext = Twitter.get_file_ext(video_url)
                     media_refs.append({'url': video_url, 'file_ext': file_ext})
@@ -126,6 +126,7 @@ class Twitter:
     @staticmethod
     def get_highest_quality_video(variants: list) -> str:
         """Return the highest quality video URL from a tweet.
+        Can be applied to `media_type` `animated_gif` as well.
 
         Args:
             variants (list): The variants list of the Tweepy tweet object.
