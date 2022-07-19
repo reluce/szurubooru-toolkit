@@ -68,15 +68,19 @@ class Twitter:
             max_results=limit,
         )
 
-        next_token = response.meta['next_token']
         tweets = []
-
         set_media_refs(response.data, tweets)
 
         # If user limit is > 100, start pagination.
         if total_posts_to_fetch:
+            try:
+                next_token = response.meta['next_token']
+            except KeyError:
+                next_token = False
+
             total_pages = ceil(total_posts_to_fetch / 100)
             page = 2  # We already retrieved page 1
+
             while next_token and page <= total_pages:
                 # On the last page, retrieve only the last double digits posts from the limit.
                 # 1230 -> 30, 123 -> 23
