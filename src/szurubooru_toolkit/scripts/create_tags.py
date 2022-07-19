@@ -14,7 +14,7 @@ def parse_args() -> tuple:
     """Parse the input args to the script create_tags.py and set the variables accordingly."""
 
     parser = argparse.ArgumentParser(
-        description='This script will read the tags from specified file and create them in your szurubooru.',
+        description='This script will read the tags from specified file and creates them in your szurubooru.',
     )
 
     parser.add_argument(
