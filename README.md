@@ -197,8 +197,6 @@ This script fetches media files from your Twitter likes, uploads and optionally 
 
 The `user_id` can be converted on sites like https://tweeterid.com/. If you configured above credentials, you can also get your own ID from the `access_token`, which is in following format: `<user_id>-<random_string>`
 
-Currently, only a maximum of 100 tweets can be retrieved.
-
 In the `config.toml` file, you can set if the post should be additionally tagged with SauceNAO or Deepbooru and if the progress bar should be shown.
 Since this script is using the `upload-media` script to upload the post, following settings apply from the `upload-media` section:
 * max_similarity
