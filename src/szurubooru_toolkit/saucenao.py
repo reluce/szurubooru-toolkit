@@ -81,7 +81,7 @@ class SauceNao:
         yandere_found = False
         konachan_found = False
 
-        if response:
+        if response and not response == 'Limit reached':
             for result in response:
                 if result.url is not None and 'danbooru' in result.url and not danbooru_found:
                     result_dan = self.danbooru.get_result(result.danbooru_id)
