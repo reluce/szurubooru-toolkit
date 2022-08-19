@@ -179,6 +179,7 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
     """
 
     file_size = len(file)
+    image = file
 
     try:
         if (
@@ -220,7 +221,6 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
     except OSError:
         print('')
         logger.warning(f'Could not shrink image {file_to_upload}. Keeping dimensions...')
-        image = file
 
     return image
 
