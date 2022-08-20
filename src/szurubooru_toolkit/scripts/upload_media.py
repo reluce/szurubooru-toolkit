@@ -31,7 +31,7 @@ def get_files(upload_dir):
         files: A list which contains the full path of each found images/videos (includes subdirectories)
     """
 
-    allowed_extensions = ['jpg', 'jpeg', 'png', 'mp4', 'webm', 'gif', 'swf']
+    allowed_extensions = ['jpg', 'jpeg', 'png', 'mp4', 'webm', 'gif', 'swf', 'webp']
     files_raw = list(
         filter(None, [glob(upload_dir + '/**/*.' + extension, recursive=True) for extension in allowed_extensions]),
     )
