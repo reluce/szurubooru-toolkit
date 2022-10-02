@@ -37,6 +37,14 @@ def parse_args() -> tuple:
     )
 
     parser.add_argument(
+        '--update-implications',
+        action='store_true',
+        default=False,
+        help='Fetches all tags from the posts matching the query and updates them if tag implications are \
+            missing (default: False)',
+    )
+
+    parser.add_argument(
         'query',
         help='The search query for the posts you want to tag',
     )
@@ -48,8 +56,11 @@ def parse_args() -> tuple:
     remove_tags = args.remove_tags
     logger.debug(f'remove_tags = {remove_tags}')
 
-    if not add_tags and not remove_tags:
-        logger.critical('You have to specify either --add-tags or --remove-tags as an argument!')
+    update_implications = args.update_implications
+    logger.debug(f'update_implications = {str(update_implications)}')
+
+    if not add_tags and not remove_tags and not update_implications:
+        logger.critical('You have to specify either --add-tags, --remove-tags or --update-implications as an argument!')
         exit()
 
     if add_tags:
@@ -66,14 +77,14 @@ def parse_args() -> tuple:
             'Consider using double quotes (") if the script doesn\'t behave as intended.',
         )
 
-    return add_tags, remove_tags, args.mode, query
+    return add_tags, remove_tags, update_implications, args.mode, query
 
 
 @logger.catch
 def main() -> None:
     """Retrieve the posts from input query, set post.tags based on mode and update them in szurubooru."""
 
-    add_tags, remove_tags, mode, query = parse_args()
+    add_tags, remove_tags, update_implications, mode, query = parse_args()
 
     posts = szuru.get_posts(query)
 
@@ -102,6 +113,14 @@ def main() -> None:
 
         if remove_tags:
             post.tags = [tag for tag in post.tags if tag not in remove_tags]
+
+        if update_implications:
+            for tag in post.tags:
+                szuru_tag = szuru.api.getTag(tag)
+                for implication in szuru_tag.implications:
+                    szuru_implication = szuru.api.getTag(implication)
+                    if szuru_implication not in post.tags:
+                        post.tags.append(szuru_implication.primary_name)
 
         szuru.update_post(post)
 
