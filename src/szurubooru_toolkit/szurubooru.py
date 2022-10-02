@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import urllib
 from base64 import b64encode
 from math import ceil
 from typing import Generator
@@ -59,7 +60,8 @@ class Szurubooru:
 
         try:
             # Ignore mp4 and webms
-            query_url = self.szuru_api_url + '/posts/?query=' + query + '%20type:image,animation'
+            query_params = {'query': query, 'type': 'image,animation'}
+            query_url = self.szuru_api_url + '/posts/?' + urllib.parse.urlencode(query_params)
             logger.debug(f'Getting post from query_url: {query_url}')
 
             response_json = requests.get(query_url, headers=self.headers)
