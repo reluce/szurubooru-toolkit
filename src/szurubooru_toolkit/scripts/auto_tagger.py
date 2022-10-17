@@ -252,11 +252,16 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                 limit_reached = False
 
             if (not tags and config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']:
-                tags, post.safety = deepbooru.tag_image(
+                result = deepbooru.tag_image(
                     image,
                     config.auto_tagger['deepbooru_threshold'],
                     config.auto_tagger['deepbooru_set_tag'],
                 )
+                
+                if result is None:
+                    continue
+                
+                tags, post.safety = result
 
                 if post.relations:
                     set_tags_from_relations(post)
