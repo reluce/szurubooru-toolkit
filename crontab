@@ -1,0 +1,1 @@
+*/30 * * * * root poetry --ansi --no-interaction run auto-tagger --add-tags deepbooru "type:image -deepbooru"
