@@ -22,6 +22,36 @@ Alternatively, you can clone the package from GitHub and set everything up with 
 Please note this package requires Tensorflow for Deepbooru tagging and other required packages which do take up quite a lot of disk space (>400MB).
 A future release of this package will offer an option without the need to install Tensorflow if you don't want to use Deepbooru tagging.
 
+### Docker Instructions
+If you would like to run the toolkit in a Docker container instead, follow the
+instructions below.
+
+1. Copy `docker-compose.yml` to the location where you want to run the toolkit.
+1. Copy `config_sample.toml` to the same location, renaming to `config.toml` and
+replacing with your configuration.
+1. Copy `crontab_sample` to the same location, renaming to `crontab` and adding
+   the commands you would like to run regularly. An example command is provided
+   in `crontab_sample`.
+1. If you would like to use deepbooru or tag files, create `misc/deepbooru`
+   and/or `misc/tags` in the same location and follow the instructions linked
+   below
+1. Run `touch szurubooru_toolkit.log` in the same location to create a file for
+   the log. You may need to set the log location to
+   `/szuru-toolkit/szurubooru_toolkit.log` in `config.toml`
+1. Use `docker-compose up` or `docker-compose up -d` to start the container, or
+   start the container in the background, respectively. You can use
+   `docker-compose logs` or `docker-compose logs -f` to inspect the container
+   output, which will include szuru toolkit's output if you append your cron
+   jobs with `>/proc/1/fd/1 2>&1` like in the example job.
+1. If you just want to run a one-time command, leave the `crontab` file blank
+   and start the container with `docker-compose up -d`, taking note of the
+   `container_name` option in `docker-compose.yml`. Then, you can run commands
+   inside of the running container like this: `docker exec -it container_name
+   poetry run auto-tagger`, replacing `container_name` with the container name.
+1. If you would like the container to run a one-time command and then quit with
+   `docker-compose.yml`, add a `command` configuration [like
+   this](https://docs.docker.com/compose/compose-file/compose-file-v3/#command).
+
 ## :memo: User configuration
 Make your changes in the `config_sample.toml` file provided in the git repo and rename it to `config.toml` afterwards.
 

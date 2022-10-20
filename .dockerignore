@@ -2,9 +2,19 @@
 config.json
 config.toml
 .vscode
-crontab
-szurubooru_toolkit.log
-temp/
+
+# Docker
+.git
+.github/
+.gitignore
+.pre-commit-config.yaml
+Dockerfile
+docker-compose.yml
+LICENSE
+config_sample.toml
+misc/deepbooru
+misc/tags
+crontab_sample
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -91,7 +101,6 @@ ipython_config.py
 
 # pyenv
 .python-version
-.tool-versions
 
 # pipenv
 #   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.

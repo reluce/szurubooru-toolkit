@@ -1,0 +1,13 @@
+version: "3"
+
+services:
+  szuru-toolkit:
+    image: shibao/szuru-toolkit
+    container_name: szuru-toolkit
+    restart: on-failure
+    volumes:
+      - ./crontab:/etc/cron.d/crontab
+      - ./config.toml:/szuru-toolkit/config.toml
+      - ./misc:/szuru-toolkit/misc
+      - ./temp:/szuru-toolkit/temp
+      - ./szurubooru_toolkit.log:/szuru-toolkit/szurubooru_toolkit.log
