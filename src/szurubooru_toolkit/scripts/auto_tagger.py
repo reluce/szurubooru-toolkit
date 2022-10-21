@@ -17,6 +17,7 @@ from szurubooru_toolkit.utils import scrape_sankaku
 from szurubooru_toolkit.utils import shrink_img
 from szurubooru_toolkit.utils import statistics
 
+from PIL import UnidentifiedImageError
 
 def parse_args() -> tuple:
     """Parse the input args to the script auto_tagger.py and set the variables accordingly."""
@@ -226,8 +227,11 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                 if not config.szurubooru['public'] or config.auto_tagger['deepbooru_enabled']:
                     image = download_media(post.content_url, post.md5)
                     # Shrink files >2MB
-                    if len(image) > 2000000:
-                        image = shrink_img(image, resize=True, convert=True)
+                    try:
+                        if len(image) > 2000000:
+                            image = shrink_img(image, resize=True, convert=True)
+                    except UnidentifiedImageError:
+                        logger.warning('Could not shrink image')
                 else:
                     image = None  # Let SauceNAO download the image from public szurubooru URL
             else:
@@ -248,11 +252,16 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                 limit_reached = False
 
             if (not tags and config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']:
-                tags, post.safety = deepbooru.tag_image(
+                result = deepbooru.tag_image(
                     image,
                     config.auto_tagger['deepbooru_threshold'],
                     config.auto_tagger['deepbooru_set_tag'],
                 )
+                
+                if result is None:
+                    continue
+                
+                tags, post.safety = result
 
                 if post.relations:
                     set_tags_from_relations(post)

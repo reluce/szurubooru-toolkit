@@ -60,7 +60,7 @@ class Szurubooru:
 
         try:
             # Ignore mp4 and webms
-            query_params = {'query': query, 'type': 'image,animation'}
+            query_params = {'query': f"type:image,animation {query}"}
             query_url = self.szuru_api_url + '/posts/?' + urllib.parse.urlencode(query_params)
             logger.debug(f'Getting post from query_url: {query_url}')
 
