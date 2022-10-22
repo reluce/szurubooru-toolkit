@@ -1,4 +1,4 @@
-ARG WORKDIR="/szuru-toolkit"
+ARG WORKDIR="/szurubooru-toolkit"
 
 FROM python:3.10
 
@@ -27,10 +27,10 @@ RUN poetry config virtualenvs.create false && \
   poetry install --only main --ansi --no-interaction
 
 VOLUME /etc/cron.d/crontab
-VOLUME /szuru-toolkit/config.toml
-VOLUME /szuru-toolkit/temp
-VOLUME /szuru-toolkit/misc
-VOLUME /szuru-toolkit/szurubooru_toolkit.log
+VOLUME /szurubooru-toolkit/config.toml
+VOLUME /szurubooru-toolkit/temp
+VOLUME /szurubooru-toolkit/misc
+VOLUME /szurubooru-toolkit/szurubooru_toolkit.log
 
-RUN chmod +x /szuru-toolkit/entrypoint.sh
-CMD ["/szuru-toolkit/entrypoint.sh"]
+RUN chmod +x /szurubooru-toolkit/entrypoint.sh
+CMD ["/szurubooru-toolkit/entrypoint.sh"]

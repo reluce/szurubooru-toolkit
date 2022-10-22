@@ -37,7 +37,7 @@ replacing with your configuration.
    below
 1. Run `touch szurubooru_toolkit.log` in the same location to create a file for
    the log. You may need to set the log location to
-   `/szuru-toolkit/szurubooru_toolkit.log` in `config.toml`
+   `/szurubooru-toolkit/szurubooru_toolkit.log` in `config.toml`
 1. Use `docker-compose up` or `docker-compose up -d` to start the container, or
    start the container in the background, respectively. You can use
    `docker-compose logs` or `docker-compose logs -f` to inspect the container
