@@ -1,1 +1,1 @@
-*/30 * * * *  poetry --ansi --no-interaction run auto-tagger --add-tags deepbooru "-deepbooru -deepbooru" >/proc/1/fd/1 2>&1
+*/30 * * * *  auto-tagger --add-tags deepbooru "-deepbooru -deepbooru" >/proc/1/fd/1 2>&1

@@ -47,7 +47,7 @@ replacing with your configuration.
    and start the container with `docker-compose up -d`, taking note of the
    `container_name` option in `docker-compose.yml`. Then, you can run commands
    inside of the running container like this: `docker exec -it container_name
-   poetry run auto-tagger`, replacing `container_name` with the container name.
+   auto-tagger`, replacing `container_name` with the container name.
 1. If you would like the container to run a one-time command and then quit with
    `docker-compose.yml`, add a `command` configuration [like
    this](https://docs.docker.com/compose/compose-file/compose-file-v3/#command).

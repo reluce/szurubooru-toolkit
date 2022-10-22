@@ -26,6 +26,8 @@ COPY poetry.lock pyproject.toml README.md ./
 RUN poetry config virtualenvs.create false && \
   poetry install --only main --ansi --no-interaction
 
+ENV PATH="${PATH}:/szurubooru-toolkit/src/scripts"
+
 VOLUME /etc/cron.d/crontab
 VOLUME /szurubooru-toolkit/config.toml
 VOLUME /szurubooru-toolkit/temp
