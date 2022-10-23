@@ -9,5 +9,5 @@ services:
       - ./crontab:/etc/cron.d/crontab
       - ./config.toml:/szurubooru-toolkit/config.toml
       - ./misc:/szurubooru-toolkit/misc
-      - ./temp:/szurubooru-toolkit/temp
+      - ./upload_src:/szurubooru-toolkit/upload_src
       - ./szurubooru_toolkit.log:/szurubooru-toolkit/szurubooru_toolkit.log

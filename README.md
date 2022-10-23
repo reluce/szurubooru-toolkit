@@ -32,6 +32,8 @@ replacing with your configuration.
 1. Copy `crontab_sample` to the same location, renaming to `crontab` and adding
    the commands you would like to run regularly. An example command is provided
    in `crontab_sample`.
+1. Make sure to set the `src_path` option in `config.toml` to use
+   `/szurubooru-toolkit/upload_src`.
 1. If you would like to use deepbooru or tag files, create `misc/deepbooru`
    and/or `misc/tags` in the same location and follow the instructions linked
    below
