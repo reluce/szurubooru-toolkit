@@ -28,11 +28,5 @@ RUN poetry config virtualenvs.create false && \
 
 ENV PATH="${PATH}:/szurubooru-toolkit/src/scripts"
 
-VOLUME /etc/cron.d/crontab
-VOLUME /szurubooru-toolkit/config.toml
-VOLUME /szurubooru-toolkit/temp
-VOLUME /szurubooru-toolkit/misc
-VOLUME /szurubooru-toolkit/szurubooru_toolkit.log
-
 RUN chmod +x /szurubooru-toolkit/entrypoint.sh
 CMD ["/szurubooru-toolkit/entrypoint.sh"]
