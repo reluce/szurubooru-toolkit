@@ -51,6 +51,7 @@ replacing with your configuration.
 1. If you would like the container to run a one-time command and then quit with
    `docker-compose.yml`, add a `command` configuration [like
    this](https://docs.docker.com/compose/compose-file/compose-file-v3/#command).
+   You may also need to prepend `poetry run` to the command as well.
 
 ## :memo: User configuration
 Make your changes in the `config_sample.toml` file provided in the git repo and rename it to `config.toml` afterwards.
