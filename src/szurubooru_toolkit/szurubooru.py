@@ -60,7 +60,7 @@ class Szurubooru:
 
         try:
             # Ignore mp4 and webms
-            query_params = {'query': f"type:image,animation {query}"}
+            query_params = {'query': f'type:image,animation {query}'}
             query_url = self.szuru_api_url + '/posts/?' + urllib.parse.urlencode(query_params)
             logger.debug(f'Getting post from query_url: {query_url}')
 
@@ -90,7 +90,8 @@ class Szurubooru:
                 if pages > 1:
                     for page in range(1, pages + 1):
                         if pagination:
-                            query_url = self.szuru_api_url + '/posts/?offset=' + str(page) + '00&query=' + query
+                            query_params = {'offset': f'{str(page)}00', 'query': f'type:image,animation {query}'}
+                            query_url = self.szuru_api_url + '/posts/?' + urllib.parse.urlencode(query_params)
                         results = requests.get(query_url, headers=self.headers).json()['results']
 
                         for result in results:
