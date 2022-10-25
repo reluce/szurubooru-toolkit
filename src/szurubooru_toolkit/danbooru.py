@@ -1,7 +1,11 @@
-import pybooru
+from time import sleep
+
 import requests
 from loguru import logger
 from pybooru import Danbooru as Danbooru_Module
+from pybooru.exceptions import PybooruAPIError
+from pybooru.exceptions import PybooruError
+from pybooru.exceptions import PybooruHTTPError
 
 
 class Danbooru:
@@ -14,20 +18,35 @@ class Danbooru:
             logger.debug('Using Danbooru without user and API key')
 
     def get_by_md5(self, md5sum):
-        try:
-            logger.debug(f'Trying to fetch result by md5sum {md5sum}')
-            self.result = self.client.post_list(md5=md5sum)
-            self.source = self.result['source']
-            logger.debug(f'Returning result: {self.result}')
-        except pybooru.exceptions.PybooruHTTPError:
-            logger.debug('Got no result')
-            self.result = None
+        for _ in range(1, 12):
+            try:
+                logger.debug(f'Trying to fetch result by md5sum {md5sum}')
+                result = self.client.post_list(md5=md5sum)
+                logger.debug(f'Returning result: {result}')
 
-        return self.result
+                break
+            except (TimeoutError, PybooruError, PybooruHTTPError, PybooruAPIError):
+                logger.debug('Got no result')
+                sleep(5)
+        else:
+            logger.debug('Could not establish connection to Danbooru, returning None...')
+            result = None
+
+        return result
 
     def get_result(self, post_id):
-        result = self.client.post_show(post_id)
-        logger.debug(f'Returning result: {result}')
+        for _ in range(1, 12):
+            try:
+                result = self.client.post_show(post_id)
+                logger.debug(f'Returning result: {result}')
+
+                break
+            except (TimeoutError, PybooruError, PybooruHTTPError, PybooruAPIError):
+                logger.debug('Could not establish connection to Danbooru, trying again in 5s...')
+                sleep(5)
+        else:
+            logger.debug('Could not establish connection to Danbooru. Skip tagging this post with Danbooru...')
+            result = None
 
         return result
 
