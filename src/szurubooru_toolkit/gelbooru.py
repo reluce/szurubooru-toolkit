@@ -31,8 +31,7 @@ class Gelbooru:
                 logger.debug('Got no result')
                 break
         else:
-            print('')
-            logger.warning('Cannot reach Gelbooru for now. Skip tagging this post with Gelbooru...')
+            logger.debug('Could not establish connection to Gelbooru. Skip tagging this post with Gelbooru...')
             result = None
 
         return result
