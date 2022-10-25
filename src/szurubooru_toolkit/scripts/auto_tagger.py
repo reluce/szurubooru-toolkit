@@ -4,6 +4,7 @@ import argparse
 from time import sleep
 
 from loguru import logger
+from PIL import UnidentifiedImageError
 from tqdm import tqdm
 
 from szurubooru_toolkit import Post
@@ -17,7 +18,6 @@ from szurubooru_toolkit.utils import scrape_sankaku
 from szurubooru_toolkit.utils import shrink_img
 from szurubooru_toolkit.utils import statistics
 
-from PIL import UnidentifiedImageError
 
 def parse_args() -> tuple:
     """Parse the input args to the script auto_tagger.py and set the variables accordingly."""
@@ -257,10 +257,10 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                     config.auto_tagger['deepbooru_threshold'],
                     config.auto_tagger['deepbooru_set_tag'],
                 )
-                
+
                 if result is None:
                     continue
-                
+
                 tags, post.safety = result
 
                 if post.relations:
