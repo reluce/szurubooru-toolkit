@@ -1,0 +1,13 @@
+version: "3"
+
+services:
+  szurubooru-toolkit:
+    image: reluce/szurubooru-toolkit
+    container_name: szurubooru-toolkit
+    restart: on-failure
+    volumes:
+      - ./crontab:/etc/cron.d/crontab
+      - ./config.toml:/szurubooru-toolkit/config.toml
+      - ./misc:/szurubooru-toolkit/misc
+      - ./upload_src:/szurubooru-toolkit/upload_src
+      - ./szurubooru_toolkit.log:/szurubooru-toolkit/szurubooru_toolkit.log
