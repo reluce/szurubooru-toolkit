@@ -33,7 +33,10 @@ replacing with your configuration.
    the commands you would like to run regularly. An example command is provided
    in `crontab_sample`.
 1. Make sure to set the `src_path` option in `config.toml` to use
-   `/szurubooru-toolkit/upload_src`.
+   `/szurubooru-toolkit/upload_src`. If you're using a different directory than
+   `upload_src`, you may need to update the `docker-compose.yml` binding to be
+   something like `./uploads:/szurubooru-toolkit/uploads`, and set
+   `/szurubooru-toolkit/uploads` as the `src_path` option instead.
 1. If you would like to use deepbooru or tag files, create `misc/deepbooru`
    and/or `misc/tags` in the same location and follow the instructions linked
    below
