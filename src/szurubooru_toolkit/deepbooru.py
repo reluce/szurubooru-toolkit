@@ -1,4 +1,5 @@
 import os
+import re
 from io import BytesIO
 
 from PIL import Image
@@ -95,4 +96,16 @@ class Deepbooru:
         if rating is None:
             rating = 'unsafe'
 
-        return tags, rating
+        converted_tags = []
+        unsanitized_tags = []
+        for tag in tags:
+            if not re.match(r'\S+$', tag):
+                unsanitized_tags.append(tag)
+                converted_tags.append(tag.replace(' ', '_'))
+                logger.debug(f'Converted whitespaces to underscores in tag: {tag}')
+
+        sanitized_tags = [tag for tag in tags if tag not in unsanitized_tags]
+        merged_tags = sanitized_tags + converted_tags
+        final_tags = [*set(merged_tags)]  # Remove duplicates
+
+        return final_tags, rating
