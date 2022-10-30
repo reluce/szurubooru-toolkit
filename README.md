@@ -135,6 +135,7 @@ Following scripts are currently available:
 * `create-tags`: Batch creation of tags with their categories
 * `delete-posts`: Batch delete of posts
 * `import-from-booru`: Batch importing of posts with their tags from various Boorus
+* `import-from-twitter`: Batch importing of Twitter favorites
 * `reset-posts`: Batch resetting of posts (remove tags and sources)
 * `upload-media`: Batch upload of media files from local source folder
 * `tag-posts`: Manual batch tagging
