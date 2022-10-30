@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from sys import argv
 from time import sleep
 
 from loguru import logger
@@ -27,7 +28,7 @@ def parse_args() -> tuple:
     )
 
     parser.add_argument(
-        '--sankaku_url',
+        '--sankaku-url',
         default=None,
         help='Fetch tags from specified Sankaku URL instead of searching SauceNAO.',
     )
@@ -48,12 +49,15 @@ def parse_args() -> tuple:
         help='Specify tags, separated by a comma, which will be removed from all posts matching your query.',
     )
 
-    args = parser.parse_args()
+    # Don't parse the query (latest arg), as it might contain a dash (-) to negative the search token
+    # Otherwise, parse_args() would interpret it as an argument
+    # args.query results in the script name, but we use argv[-1] to extract the query
+    args = parser.parse_args(argv[:-1])
+    query = argv[-1]
 
     sankaku_url = args.sankaku_url
     logger.debug(f'sankaku_url = {sankaku_url}')
 
-    query = args.query
     logger.debug(f'query = {query}')
 
     if 'type:' in query:

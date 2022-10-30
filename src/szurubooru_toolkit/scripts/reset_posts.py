@@ -1,4 +1,5 @@
 import argparse
+from sys import argv
 
 from loguru import logger
 from tqdm import tqdm
@@ -34,7 +35,11 @@ def parse_args() -> tuple:
         help='The search query for the posts you want to reset.',
     )
 
-    args = parser.parse_args()
+    # Don't parse the query (latest arg), as it might contain a dash (-) to negative the search token
+    # Otherwise, parse_args() would interpret it as an argument
+    # args.query results in the script name, but we use argv[-1] to extract the query
+    args = parser.parse_args(argv[:-1])
+    query = argv[-1]
 
     except_ids = args.except_ids
     if except_ids:
