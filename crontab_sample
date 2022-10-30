@@ -1,1 +1,1 @@
-*/30 * * * *  auto-tagger --add-tags deepbooru "-deepbooru -deepbooru" >/proc/1/fd/1 2>&1
+*/30 * * * *  cd /szurubooru-toolkit && /usr/local/bin/auto-tagger "-source:*donmai* -source:*gelbooru* -source:*yande* sort:date,asc" > /proc/1/fd/1 2>&1
