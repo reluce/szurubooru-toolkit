@@ -47,12 +47,16 @@ def parse_args() -> tuple:
 
     parser.add_argument(
         'query',
-        help='The search query for the posts you want to tag',
+        help='The search query for the posts you want to tag.',
     )
 
-    # Don't parse the query (latest arg), as it might contain a dash (-) to negative the search token
+    # Don't parse the query (should be latest arg), as it might contain a dash (-) to negative the search token
     # Otherwise, parse_args() would interpret it as an argument
     # args.query results in the script name, but we use argv[-1] to extract the query
+    # As -h won't get interpreted with this approach, we have to implement it manually
+    if any(help_str in ['-h', '-help', '--help'] for help_str in argv):
+        parser.print_help()
+        exit()
     args = parser.parse_args(argv[:-1])
     query = argv[-1]
 

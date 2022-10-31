@@ -32,10 +32,6 @@ def parse_args() -> tuple:
         default=None,
         help='Fetch tags from specified Sankaku URL instead of searching SauceNAO.',
     )
-    parser.add_argument(
-        'query',
-        help='Specify a single post id to tag or a szuru query. E.g. "date:today tag-count:0"',
-    )
 
     parser.add_argument(
         '--add-tags',
@@ -49,9 +45,18 @@ def parse_args() -> tuple:
         help='Specify tags, separated by a comma, which will be removed from all posts matching your query.',
     )
 
-    # Don't parse the query (latest arg), as it might contain a dash (-) to negative the search token
+    parser.add_argument(
+        'query',
+        help='Specify a single post id to tag or a szuru query. E.g. "date:today tag-count:0"',
+    )
+
+    # Don't parse the query (should be latest arg), as it might contain a dash (-) to negative the search token
     # Otherwise, parse_args() would interpret it as an argument
     # args.query results in the script name, but we use argv[-1] to extract the query
+    # As -h won't get interpreted with this approach, we have to implement it manually
+    if any(help_str in ['-h', '-help', '--help'] for help_str in argv):
+        parser.print_help()
+        exit()
     args = parser.parse_args(argv[:-1])
     query = argv[-1]
 
