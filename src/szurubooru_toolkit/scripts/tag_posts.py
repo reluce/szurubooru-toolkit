@@ -73,7 +73,6 @@ def parse_args() -> tuple:
     if remove_tags:
         remove_tags = remove_tags.replace(' ', '').split(',')
 
-    query = args.query
     logger.debug(f'query = {query}')
     if '\'' in query:
         print('')

@@ -51,7 +51,6 @@ def parse_args() -> tuple:
         add_tags = add_tags.replace(' ', '').split(',')
         logger.debug(f'add_tags = {add_tags}')
 
-    query = args.query
     logger.debug(f'query = {query}')
     if '\'' in query:
         print('')

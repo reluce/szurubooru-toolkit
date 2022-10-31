@@ -37,7 +37,6 @@ def parse_args() -> tuple:
         except_ids = except_ids.replace(' ', '').split(',')
         logger.debug(f'except_ids = {except_ids}')
 
-    query = args.query
     logger.debug(f'query = {query}')
     if '\'' in query:
         print('')
