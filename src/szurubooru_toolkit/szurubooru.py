@@ -39,7 +39,12 @@ class Szurubooru:
         # Use the api object to interact with pyszuru module
         self.api = pyszuru.API(base_url=szuru_url, username=szuru_user, token=szuru_token)
 
-    def get_posts(self, query: str, pagination: bool = True) -> Generator[str | Post, None, None]:
+    def get_posts(
+        self,
+        query: str,
+        pagination: bool = True,
+        animation: bool = False,
+    ) -> Generator[str | Post, None, None]:
         """Return the found post ids of the supplied query.
 
         Video files like mp4 or webm will be ignored.
@@ -49,6 +54,7 @@ class Szurubooru:
             pagination (bool): If the offset should be adjusted when searching through pages.
                 Disabling this only makes sense if posts are being deleted.
                 This won't behave like real a search limit!
+            animation (bool): If mp4 and webms should be excluded from the search query
 
         Yields:
             Generator[str | Post, None, None]: Will yield the total amount of search results first, then Post objects.
@@ -59,8 +65,10 @@ class Szurubooru:
             logger.debug(f'Modified input query to "{query}"')
 
         try:
-            # Ignore mp4 and webms
-            query_params = {'query': f'type:image,animation {query}'}
+            if animation:
+                query_params = {'query': f'type:image,animation {query}'}
+            else:
+                query_params = {'query': query}
             query_url = self.szuru_api_url + '/posts/?' + urllib.parse.urlencode(query_params)
             logger.debug(f'Getting post from query_url: {query_url}')
 
@@ -90,7 +98,10 @@ class Szurubooru:
                 if pages > 1:
                     for page in range(1, pages + 1):
                         if pagination:
-                            query_params = {'offset': f'{str(page)}00', 'query': f'type:image,animation {query}'}
+                            if animation:
+                                query_params = {'offset': f'{str(page)}00', 'query': f'type:image,animation {query}'}
+                            else:
+                                query_params = {'offset': f'{str(page)}00', 'query': query}
                             query_url = self.szuru_api_url + '/posts/?' + urllib.parse.urlencode(query_params)
                         results = requests.get(query_url, headers=self.headers).json()['results']
 
