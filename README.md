@@ -282,6 +282,8 @@ optional arguments:
                         Specify tags, separated by a comma, which will be removed from all posts matching your query.
   --mode {append,overwrite}
                         Set mode to overwrite to remove already set tags, set append to keep them (default: append).
+  --update-implications
+                        Fetches all tags from the posts matching the query and updates them if tag implications are missing (default: False)
 ```
 
 __Examples__
