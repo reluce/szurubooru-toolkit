@@ -72,7 +72,7 @@ def main() -> None:
 
     add_tags, except_ids, query = parse_args()
 
-    posts = szuru.get_posts(query, animation=True)
+    posts = szuru.get_posts(query, videos=True)
 
     try:
         total_posts = next(posts)
