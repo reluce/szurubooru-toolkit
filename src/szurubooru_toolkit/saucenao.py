@@ -227,6 +227,8 @@ class SauceNao:
                 try:
                     logger.debug(f'Trying to get result from content_url: {content_url}')
                     response = await self.pysaucenao.from_url(content_url)
+
+                    break
                 except (ContentTypeError, TimeoutError):
                     logger.debug('Could not establish connection to SauceNAO, trying again in 5s...')
                     sleep(5)
