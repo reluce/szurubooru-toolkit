@@ -358,18 +358,12 @@ You can use tools like [Grabber](https://github.com/Bionus/imgbrd-grabber) to do
 The `tag_file` has to be in following format:
 
 ```
-<tag_a>,<category_number>
-<tag_b>,<category_number>
-<tag_..n>,<category_number>
+<tag_a>,<category_name>
+<tag_b>,<category_name>
+<tag_..n>,<category_name>
 ```
 
-|Category|Number|
-|---|---|
-|default|0|
-|artist|1|
-|series|2|
-|character|3|
-|meta|4|
+The category has to be created beforehand manually (e.g. default, artist, series, character and meta).
 
 __Examples__
 * `create-tags`
