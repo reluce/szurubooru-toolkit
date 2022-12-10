@@ -202,39 +202,32 @@ class SauceNao:
             Coroutine | None: A coroutine with the pysaucenao search results or None in case of search errors.
         """
 
-        if image:
-            for _ in range(1, 12):
-                try:
+        for _ in range(1, 12):
+            try:
+                if image:
+                    logger.debug('Trying to get result from uploaded file...')
                     response = await self.pysaucenao.from_file(BytesIO(image))
-                    logger.debug(f'Received response {response}')
-
-                    break
-                except (ContentTypeError, TimeoutError):
-                    logger.debug('Could not establish connection to SauceNAO, trying again in 5s...')
-                    sleep(5)
-                except Exception as e:
-                    if 'Daily Search Limit Exceeded' in e.args[0]:
-                        response = 'Limit reached'
-                    else:
-                        logger.warning(f'Could not get result from SauceNAO with uploaded image "{content_url}": {e}')
-                        response = None
-                    break
-            else:
-                logger.warning('Could not establish connection to SauceNAO, trying with next post...')
-                response = None
-        else:
-            for _ in range(1, 12):
-                try:
+                else:
                     logger.debug(f'Trying to get result from content_url: {content_url}')
                     response = await self.pysaucenao.from_url(content_url)
+                logger.debug(f'Received response {response}')
 
-                    break
-                except (ContentTypeError, TimeoutError):
-                    logger.debug('Could not establish connection to SauceNAO, trying again in 5s...')
-                    sleep(5)
-                except Exception as e:
+                break
+            except (ContentTypeError, TimeoutError):
+                logger.debug('Could not establish connection to SauceNAO, trying again in 5s...')
+                sleep(5)
+            except Exception as e:
+                if 'Daily Search Limit Exceeded' in e.args[0]:
+                    response = 'Limit reached'
+                else:
+                    if image:
+                        logger.warning(f'Could not get result from SauceNAO with uploaded image "{content_url}": {e}')
+                    else:
+                        logger.warning(f'Could not get result from SauceNAO with image URL "{content_url}": {e}')
                     response = None
-                    logger.warning(f'Could not get result from SauceNAO with image URL "{content_url}": {e}')
-                    break
+                break
+        else:
+            logger.warning('Could not establish connection to SauceNAO, trying with next post...')
+            response = None
 
         return response
