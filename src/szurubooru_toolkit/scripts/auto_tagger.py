@@ -110,7 +110,7 @@ def parse_saucenao_results(sauce: SauceNao, post: Post, image: bytes) -> tuple[l
         # Sleep 35 seconds after short limit has been reached
         if limit_short == 0:
             print('')
-            logger.warning('Short limit reached for SauceNAO, trying again in 35s...')
+            logger.info('Short limit reached for SauceNAO, trying again in 35s...')
             sleep(35)
     else:
         limit_reached = True
