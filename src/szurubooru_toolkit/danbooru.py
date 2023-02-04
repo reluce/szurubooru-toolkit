@@ -98,8 +98,14 @@ class Danbooru:
                 + str(page)
             )
 
+            headers = {
+                'User-Agent': (
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                    'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
+                ),
+            }
             try:
                 logger.info(f'Fetching tags from URL {tag_url}...')
-                yield requests.get(tag_url, timeout=30).json()
-            except requests.exceptions as e:
+                yield requests.get(tag_url, timeout=30, headers=headers).json()
+            except Exception as e:
                 logger.critical(f'Could not fetch tags: {e}')
