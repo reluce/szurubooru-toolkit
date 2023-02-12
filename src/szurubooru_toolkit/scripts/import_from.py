@@ -117,6 +117,9 @@ def main() -> None:
             metadata['source'] = generate_src(file)
             metadata['safety'] = convert_rating(metadata['rating'])
 
+            if isinstance(metadata['tags'], str):
+                metadata['tags'] = metadata['tags'].split()
+
             with open(file, 'rb') as file_b:
                 upload_media.main(file_b.read(), Path(file).suffix[1:], metadata)
 
