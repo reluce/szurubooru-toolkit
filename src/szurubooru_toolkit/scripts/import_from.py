@@ -5,6 +5,7 @@ import os
 import subprocess
 from pathlib import Path
 
+from loguru import logger
 from tqdm import tqdm
 
 from szurubooru_toolkit import config
@@ -42,10 +43,7 @@ def parse_args() -> tuple:
 
     args = parser.parse_args()
 
-    url = args.url
-    input_file = args.input_file
-
-    return range, url, input_file
+    return args.range, args.url[0], args.input_file
 
 
 def extract_metadata(file_path) -> tuple:
@@ -76,10 +74,11 @@ def generate_src(file_path: str) -> str:
     return src
 
 
+@logger.catch
 def main() -> None:
     """Call respective functions to retrieve and upload posts based on user input."""
 
-    range, url, input_file = parse_args()
+    limit_range, url, input_file = parse_args()
 
     if config.import_from_booru['deepbooru_enabled']:
         config.upload_media['auto_tag'] = True
@@ -89,6 +88,7 @@ def main() -> None:
         config.upload_media['auto_tag'] = False
 
     if input_file:
+        logger.info(f'Downloading posts from input file {input_file}...')
         subprocess.run(
             [
                 'gallery-dl',
@@ -99,11 +99,21 @@ def main() -> None:
             ],
         )
     else:
+        logger.info(f'Downloading posts from URL {url}...')
         subprocess.run(
-            ['gallery-dl', '-q', '--write-metadata', f'--range={range}', f'-D={config.import_from["tmp_path"]}', url],
+            [
+                'gallery-dl',
+                '-q',
+                '--write-metadata',
+                f'--range={limit_range}',
+                f'-D={config.import_from["tmp_path"]}',
+                url,
+            ],
         )
 
     files = [file for file in glob.glob(config.import_from['tmp_path'] + '/*') if not Path(file).suffix == '.json']
+
+    logger.info(f'Downloaded {len(files)} post(s). Start importing...')
 
     for file in tqdm(
         files,
