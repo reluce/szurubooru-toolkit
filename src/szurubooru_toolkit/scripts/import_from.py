@@ -127,8 +127,12 @@ def main() -> None:
             metadata['source'] = generate_src(file)
             metadata['safety'] = convert_rating(metadata['rating'])
 
-            if isinstance(metadata['tags'], str):
-                metadata['tags'] = metadata['tags'].split()
+            try:
+                if isinstance(metadata['tags'], str):
+                    metadata['tags'] = metadata['tags'].split()
+            except KeyError:
+                if isinstance(metadata['tag_string'], str):
+                    metadata['tags'] = metadata['tag_string'].split()
 
             with open(file, 'rb') as file_b:
                 upload_media.main(file_b.read(), Path(file).suffix[1:], metadata)
@@ -137,6 +141,8 @@ def main() -> None:
                 os.remove(file)
             if os.path.exists(file + '.json'):
                 os.remove(file + '.json')
+
+    logger.success('Script finished importing!')
 
 
 if __name__ == '__main__':
