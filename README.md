@@ -106,6 +106,7 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `upload_media` | `shrink` | Set to true to shrink images to shrink_dimensions based on shrink_threshold below. Images might slip through identical post check. | `false` |
 | `upload_media` | `shrink_threshold` | Images which total pixel size exceeds this treshold will be resized to `shrink_size`. E.g. 2000x3000 results in 6000000. | `"6000000"` |
 | `upload_media` | `shrink_dimensions` | Set the max value for width/height. Keeps aspect ratio. E.g. 2000x4000 results in 700x1400, 4000x2000 in 1400x700 (with `"1400x1400"`). | `"2500x2500"` |
+| `upload_media` | `default_safety` | # Set the default safety in case neither SauceNAO, nor Deepbooru could determine it | `safe` |
 | `import_from_booru` | `deepbooru_enabled` | Apply Deepbooru tagging additionally besides fetched tags from Booru | `false` |
 | `import_from_booru` | `hide_progress` | Set this to true to hide the progress bar | `false` |
 | `import_from_twitter` | `saucenao_enabled` | Tag posts with SauceNAO | `false` |
