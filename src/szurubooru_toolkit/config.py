@@ -33,6 +33,7 @@ class Config:
         self.check_attr_set()
         self.validate_path()
         self.validate_url()
+        self.validate_safety()
 
         if self.upload_media['convert_to_jpg']:
             self.validate_convert_attrs()
@@ -73,6 +74,7 @@ class Config:
                 'shrink',
                 'shrink_threshold',
                 'shrink_dimensions',
+                'default_safety',
             ],
             'import_from_booru': ['deepbooru_enabled', 'hide_progress'],
             'import_from_twitter': ['saucenao_enabled', 'deepbooru_enabled', 'hide_progress'],
@@ -213,3 +215,13 @@ class Config:
             exit(1)
         else:
             self.upload_media['shrink_threshold'] = int(self.upload_media['shrink_threshold'])
+
+    def validate_safety(self) -> None:
+        """Check if default_safety in config.toml is set correctly."""
+
+        if not self.upload_media['default_safety'] in ['safe', 'sketchy', 'unsafe']:
+            logger.critical(
+                f'The default_safety "{self.upload_media["default_safety"]}" in config.toml is not valid!',
+            )
+            logger.critical('Choose between safe, sketchy and unsafe.')
+            exit(1)

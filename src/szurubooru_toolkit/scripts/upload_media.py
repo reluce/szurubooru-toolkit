@@ -114,7 +114,7 @@ def upload_file(szuru: Szurubooru, post: Post) -> None:
         Exception
     """
 
-    safety = post.safety if post.safety else 'unsafe'
+    safety = post.safety if post.safety else config.upload_media['default_safety']
     source = post.source if post.source else ''
 
     post_url = szuru.szuru_api_url + '/posts'
