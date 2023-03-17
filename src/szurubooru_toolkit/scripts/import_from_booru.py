@@ -116,71 +116,76 @@ def import_post(
 def main() -> None:
     """Call respective functions to retrieve and upload posts based on user input."""
 
-    booru, query, limit = parse_args()
+    try:
+        booru, query, limit = parse_args()
 
-    if config.import_from_booru['deepbooru_enabled']:
-        config.upload_media['auto_tag'] = True
-        config.auto_tagger['saucenao_enabled'] = False
-        config.auto_tagger['deepbooru_enabled'] = True
-    else:
-        config.upload_media['auto_tag'] = False
+        if config.import_from_booru['deepbooru_enabled']:
+            config.upload_media['auto_tag'] = True
+            config.auto_tagger['saucenao_enabled'] = False
+            config.auto_tagger['deepbooru_enabled'] = True
+        else:
+            config.upload_media['auto_tag'] = False
 
-    if booru == 'all':
-        boorus = ['danbooru', 'gelbooru', 'yandere', 'konachan']
-    else:
-        boorus = [booru]
+        if booru == 'all':
+            boorus = ['danbooru', 'gelbooru', 'yandere', 'konachan']
+        else:
+            boorus = [booru]
 
-    for booru in boorus:
-        logger.info(f'Retrieving posts from {booru} with query "{query}"...')
+        for booru in boorus:
+            logger.info(f'Retrieving posts from {booru} with query "{query}"...')
 
-        if booru == 'danbooru':
-            booru_client = Danbooru('danbooru', config.danbooru['user'], config.danbooru['api_key'])
-        elif booru == 'gelbooru':
-            booru_client = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
-        elif booru == 'konachan':
-            booru_client = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
-        elif booru == 'yandere':
-            booru_client = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
+            if booru == 'danbooru':
+                booru_client = Danbooru('danbooru', config.danbooru['user'], config.danbooru['api_key'])
+            elif booru == 'gelbooru':
+                booru_client = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
+            elif booru == 'konachan':
+                booru_client = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
+            elif booru == 'yandere':
+                booru_client = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
 
-        posts = get_posts_from_booru(booru_client, query, limit)
+            posts = get_posts_from_booru(booru_client, query, limit)
 
-        total_posts = next(posts)
-        logger.info(f'Found {total_posts} posts. Start importing...')
+            total_posts = next(posts)
+            logger.info(f'Found {total_posts} posts. Start importing...')
 
-        for post in tqdm(
-            posts,
-            ncols=80,
-            position=0,
-            leave=False,
-            total=int(total_posts),
-            disable=config.import_from_booru['hide_progress'],
-        ):
-            # Check by md5 hash if file is already uploaded
-            try:
-                if booru == 'gelbooru':
-                    md5 = Path(post.filename).stem
-                else:
-                    md5 = post['md5']
-            except KeyError:
-                print('')
-                logger.warning('Post has no MD5 attribute, it probably got removed from the site.')
-                continue
+            for post in tqdm(
+                posts,
+                ncols=80,
+                position=0,
+                leave=False,
+                total=int(total_posts),
+                disable=config.import_from_booru['hide_progress'],
+            ):
+                # Check by md5 hash if file is already uploaded
+                try:
+                    if booru == 'gelbooru':
+                        md5 = Path(post.filename).stem
+                    else:
+                        md5 = post['md5']
+                except KeyError:
+                    print('')
+                    logger.warning('Post has no MD5 attribute, it probably got removed from the site.')
+                    continue
 
-            try:
-                file_ext = Path(post.filename).suffix[1:]  # Gelbooru, remove dot at the end
-            except AttributeError:
-                file_ext = post['file_url'].split('.')[-1]  # Other Boorus
+                try:
+                    file_ext = Path(post.filename).suffix[1:]  # Gelbooru, remove dot at the end
+                except AttributeError:
+                    file_ext = post['file_url'].split('.')[-1]  # Other Boorus
 
-            result = szuru.get_posts(f'md5:{md5}')
+                result = szuru.get_posts(f'md5:{md5}')
 
-            try:
-                next(result)
-                logger.debug(f'Skipping post, already exists: {post}')
-            except StopIteration:
-                import_post(booru, post, file_ext, md5)
-                logger.debug(f'Importing post: {post}')
+                try:
+                    next(result)
+                    logger.debug(f'Skipping post, already exists: {post}')
+                except StopIteration:
+                    import_post(booru, post, file_ext, md5)
+                    logger.debug(f'Importing post: {post}')
 
-    logger.success('Script finished importing!')
+        logger.success('Script finished importing!')
+    except KeyboardInterrupt:
+        print('')
+        logger.info('Received keyboard interrupt from user.')
+        exit(1)
 
 
 if __name__ == '__main__':

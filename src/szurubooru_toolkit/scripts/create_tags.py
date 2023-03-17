@@ -71,39 +71,44 @@ def convert_tag_category(category: int) -> str:
 def main() -> None:
     """Read tags from file and create them in szurubooru."""
 
-    tags_file, query, min_post_count, limit, overwrite = parse_args()
+    try:
+        tags_file, query, min_post_count, limit, overwrite = parse_args()
 
-    if tags_file:
-        with open(tags_file) as tags_file:
-            lines = tags_file.readlines()
+        if tags_file:
+            with open(tags_file) as tags_file:
+                lines = tags_file.readlines()
 
-            for line in tqdm(
-                lines,
-                ncols=80,
-                position=0,
-                leave=False,
-                disable=config.create_tags['hide_progress'],
-            ):
-                tag: list = line.strip().replace(' ', '').split(',')
-                tag_name = tag[0]
-                tag_category = tag[1]
+                for line in tqdm(
+                    lines,
+                    ncols=80,
+                    position=0,
+                    leave=False,
+                    disable=config.create_tags['hide_progress'],
+                ):
+                    tag: list = line.strip().replace(' ', '').split(',')
+                    tag_name = tag[0]
+                    tag_category = tag[1]
 
-                try:
-                    szuru.create_tag(tag_name, tag_category)
-                except TagExistsError as e:  # noqa F841
-                    # logger.warning(e)  # Could result in lots of output with larger tag files
-                    pass
-    else:
-        results = Danbooru.download_tags(query, min_post_count, limit)
+                    try:
+                        szuru.create_tag(tag_name, tag_category)
+                    except TagExistsError as e:  # noqa F841
+                        # logger.warning(e)  # Could result in lots of output with larger tag files
+                        pass
+        else:
+            results = Danbooru.download_tags(query, min_post_count, limit)
 
-        for result in results:
-            for tag in result:
-                try:
-                    szuru.create_tag(tag['name'], convert_tag_category(tag['category']), overwrite)
-                except TagExistsError as e:  # noqa F841
-                    pass
+            for result in results:
+                for tag in result:
+                    try:
+                        szuru.create_tag(tag['name'], convert_tag_category(tag['category']), overwrite)
+                    except TagExistsError as e:  # noqa F841
+                        pass
 
-    logger.success('Script finished creating tags!')
+        logger.success('Script finished creating tags!')
+    except KeyboardInterrupt:
+        print('')
+        logger.info('Received keyboard interrupt from user.')
+        exit(1)
 
 
 if __name__ == '__main__':

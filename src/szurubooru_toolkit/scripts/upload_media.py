@@ -276,42 +276,47 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_to_uploa
 def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = None) -> int:
     """Main logic of the script."""
 
-    if not file_to_upload:
-        files_to_upload = get_files(config.upload_media['src_path'])
-        from_import_from = False
-    else:
-        files_to_upload = file_to_upload
-        from_import_from = True
-        config.upload_media['hide_progress'] = True
+    try:
+        if not file_to_upload:
+            files_to_upload = get_files(config.upload_media['src_path'])
+            from_import_from = False
+        else:
+            files_to_upload = file_to_upload
+            from_import_from = True
+            config.upload_media['hide_progress'] = True
 
-    if files_to_upload:
-        if not from_import_from:
-            logger.info('Found ' + str(len(files_to_upload)) + ' file(s). Starting upload...')
+        if files_to_upload:
+            if not from_import_from:
+                logger.info('Found ' + str(len(files_to_upload)) + ' file(s). Starting upload...')
 
-            for file_to_upload in tqdm(
-                files_to_upload,
-                ncols=80,
-                position=0,
-                leave=False,
-                disable=config.upload_media['hide_progress'],
-            ):
-                with open(file_to_upload, 'rb') as f:
-                    file = f.read()
-                upload_post(file, file_ext=Path(file_to_upload).suffix[1:], file_to_upload=file_to_upload)
+                for file_to_upload in tqdm(
+                    files_to_upload,
+                    ncols=80,
+                    position=0,
+                    leave=False,
+                    disable=config.upload_media['hide_progress'],
+                ):
+                    with open(file_to_upload, 'rb') as f:
+                        file = f.read()
+                    upload_post(file, file_ext=Path(file_to_upload).suffix[1:], file_to_upload=file_to_upload)
+
+                    if config.upload_media['cleanup']:
+                        if os.path.exists(file_to_upload):
+                            os.remove(file_to_upload)
 
                 if config.upload_media['cleanup']:
-                    if os.path.exists(file_to_upload):
-                        os.remove(file_to_upload)
+                    cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
 
-            if config.upload_media['cleanup']:
-                cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
-
-            if not from_import_from:
-                logger.success('Script has finished uploading!')
+                if not from_import_from:
+                    logger.success('Script has finished uploading!')
+            else:
+                upload_post(file_to_upload, file_ext, metadata)
         else:
-            upload_post(file_to_upload, file_ext, metadata)
-    else:
-        logger.info('No files found to upload.')
+            logger.info('No files found to upload.')
+    except KeyboardInterrupt:
+        print('')
+        logger.info('Received keyboard interrupt from user.')
+        exit(1)
 
 
 if __name__ == '__main__':

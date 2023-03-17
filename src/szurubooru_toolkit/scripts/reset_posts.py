@@ -70,34 +70,39 @@ def parse_args() -> tuple:
 def main() -> None:
     """Retrieve the posts from input query and reset them in szurubooru."""
 
-    add_tags, except_ids, query = parse_args()
-
-    posts = szuru.get_posts(query, videos=True)
-
     try:
-        total_posts = next(posts)
-    except StopIteration:
-        logger.info(f'Found no posts for your query: {query}')
-        exit()
+        add_tags, except_ids, query = parse_args()
 
-    logger.info(f'Found {total_posts} posts. Start resetting...')
-    if except_ids:
-        logger.info(f'Won\'t reset the following ids: {except_ids}')
+        posts = szuru.get_posts(query, videos=True)
 
-    for post in tqdm(
-        posts,
-        ncols=80,
-        position=0,
-        leave=False,
-        total=int(total_posts),
-        disable=config.reset_posts['hide_progress'],
-    ):
-        if post.id not in except_ids:
-            post.tags = add_tags if add_tags else []
-            post.source = ''
-            szuru.update_post(post)
+        try:
+            total_posts = next(posts)
+        except StopIteration:
+            logger.info(f'Found no posts for your query: {query}')
+            exit()
 
-    logger.success('Script finished resetting!')
+        logger.info(f'Found {total_posts} posts. Start resetting...')
+        if except_ids:
+            logger.info(f'Won\'t reset the following ids: {except_ids}')
+
+        for post in tqdm(
+            posts,
+            ncols=80,
+            position=0,
+            leave=False,
+            total=int(total_posts),
+            disable=config.reset_posts['hide_progress'],
+        ):
+            if post.id not in except_ids:
+                post.tags = add_tags if add_tags else []
+                post.source = ''
+                szuru.update_post(post)
+
+        logger.success('Script finished resetting!')
+    except KeyboardInterrupt:
+        print('')
+        logger.info('Received keyboard interrupt from user.')
+        exit(1)
 
 
 if __name__ == '__main__':

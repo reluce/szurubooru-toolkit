@@ -159,165 +159,170 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
         file_to_upload (bytes, optional): If set, will be uploaded to SauceNAO directly. Defaults to None.
     """
 
-    # If this script/function was called from the upload-media script,
-    # change output and behaviour of this script
-    from_upload_media = True if post_id else False
-
-    if not from_upload_media:
-        logger.info('Initializing script...')
-    else:
-        config.auto_tagger['hide_progress'] = True
-
-    if not config.auto_tagger['saucenao_enabled'] and not config.auto_tagger['deepbooru_enabled']:
-        logger.info('Nothing to do. Enable either SauceNAO or Deepbooru in your config.')
-        exit()
-
-    # If posts are being tagged directly from upload-media script
-    if not from_upload_media:
-        sankaku_url, query, add_tags, remove_tags = parse_args()
-    else:
-        sankaku_url = None
-        query = post_id
-        add_tags = None
-        remove_tags = None
-
-    if config.auto_tagger['saucenao_enabled']:
-        sauce = SauceNao(config)
-
-    if config.auto_tagger['deepbooru_enabled']:
-        from szurubooru_toolkit import Deepbooru
-
-        deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
-
-    if not from_upload_media:
-        logger.info(f'Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
-
-    posts = szuru.get_posts(query)
-
     try:
-        total_posts = next(posts)
-    except StopIteration:
-        logger.info(f'Found no posts for your query: {query}')
-        exit()
+        # If this script/function was called from the upload-media script,
+        # change output and behaviour of this script
+        from_upload_media = True if post_id else False
 
-    if not from_upload_media:
-        logger.info(f'Found {total_posts} posts. Start tagging...')
-
-    if sankaku_url:
-        if query.isnumeric():
-            post = next(posts)
-            post.tags, post.safety = scrape_sankaku(sankaku_url)
-            post.source = sankaku_url
-
-            try:
-                szuru.update_post(post)
-                statistics(tagged=1)
-            except Exception as e:
-                statistics(untagged=1)
-                logger.error(f'Could not tag post with Sankaku: {e}')
+        if not from_upload_media:
+            logger.info('Initializing script...')
         else:
-            logger.critical('Can only tag a single post if you specify --sankaku_url.')
-    else:
-        for index, post in enumerate(
-            tqdm(
-                posts,
-                ncols=80,
-                position=0,
-                leave=False,
-                disable=config.auto_tagger['hide_progress'],
-                total=int(total_posts),
-            ),
-        ):
-            tags = []
+            config.auto_tagger['hide_progress'] = True
 
-            # Download the file from szurubooru if its not already locally present.
-            # This might be the case if this function was called from upload_media.
-            if not file_to_upload:
-                if not config.szurubooru['public'] or config.auto_tagger['deepbooru_enabled']:
-                    image = download_media(post.content_url, post.md5)
-                    # Shrink files >2MB
-                    try:
-                        if len(image) > 2000000:
-                            image = shrink_img(image, resize=True, convert=True)
-                    except UnidentifiedImageError:
-                        logger.warning('Could not shrink image')
-                else:
-                    image = None  # Let SauceNAO download the image from public szurubooru URL
-            else:
-                image = file_to_upload
+        if not config.auto_tagger['saucenao_enabled'] and not config.auto_tagger['deepbooru_enabled']:
+            logger.info('Nothing to do. Enable either SauceNAO or Deepbooru in your config.')
+            exit()
 
-            if config.auto_tagger['saucenao_enabled']:
-                tags, post.source, post.safety, limit_reached = parse_saucenao_results(
-                    sauce,
-                    post,
-                    image,
-                )
+        # If posts are being tagged directly from upload-media script
+        if not from_upload_media:
+            sankaku_url, query, add_tags, remove_tags = parse_args()
+        else:
+            sankaku_url = None
+            query = post_id
+            add_tags = None
+            remove_tags = None
 
-                if add_tags:
-                    post.tags = list(set().union(post.tags, tags, add_tags))  # Keep previous tags, add user tags
-                else:
-                    post.tags = list(set().union(post.tags, tags))  # Keep previous tags, add user tags
-            else:
-                limit_reached = False
+        if config.auto_tagger['saucenao_enabled']:
+            sauce = SauceNao(config)
 
-            if (not tags and config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']:
-                result = deepbooru.tag_image(
-                    image,
-                    config.auto_tagger['deepbooru_threshold'],
-                    config.auto_tagger['deepbooru_set_tag'],
-                )
+        if config.auto_tagger['deepbooru_enabled']:
+            from szurubooru_toolkit import Deepbooru
 
-                if result is None:
-                    continue
+            deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
 
-                tags, post.safety = result
+        if not from_upload_media:
+            logger.info(f'Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
 
-                if post.relations:
-                    set_tags_from_relations(post)
+        posts = szuru.get_posts(query)
 
-                if add_tags:
-                    post.tags = list(set().union(post.tags, tags, add_tags))  # Keep previous tags and add user tags
-                else:
-                    post.tags = list(set().union(post.tags, tags))  # Keep previous tags
+        try:
+            total_posts = next(posts)
+        except StopIteration:
+            logger.info(f'Found no posts for your query: {query}')
+            exit()
 
-                if 'DeepBooru' in post.source:
-                    post.source = post.source.replace('DeepBooru\n', '')
-                    post.source = post.source.replace('\nDeepBooru', '')
+        if not from_upload_media:
+            logger.info(f'Found {total_posts} posts. Start tagging...')
 
-                if 'Deepbooru' not in post.source:
-                    post.source = collect_sources(post.source, 'Deepbooru')
+        if sankaku_url:
+            if query.isnumeric():
+                post = next(posts)
+                post.tags, post.safety = scrape_sankaku(sankaku_url)
+                post.source = sankaku_url
 
-                if tags:
-                    statistics(deepbooru=1)
-                else:
+                try:
+                    szuru.update_post(post)
+                    statistics(tagged=1)
+                except Exception as e:
                     statistics(untagged=1)
-            elif not tags:
-                statistics(untagged=1)
-
-            if remove_tags:
-                [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]
-
-            # If any tags were collected with SauceNAO or Deepbooru, remove tagme and deepbooru tag
-            if tags:
-                [post.tags.remove(tag) for tag in post.tags if tag == 'tagme']
+                    logger.error(f'Could not tag post with Sankaku: {e}')
             else:
-                post.tags.append('tagme')
+                logger.critical('Can only tag a single post if you specify --sankaku_url.')
+        else:
+            for index, post in enumerate(
+                tqdm(
+                    posts,
+                    ncols=80,
+                    position=0,
+                    leave=False,
+                    disable=config.auto_tagger['hide_progress'],
+                    total=int(total_posts),
+                ),
+            ):
+                tags = []
 
-            szuru.update_post(post)
+                # Download the file from szurubooru if its not already locally present.
+                # This might be the case if this function was called from upload_media.
+                if not file_to_upload:
+                    if not config.szurubooru['public'] or config.auto_tagger['deepbooru_enabled']:
+                        image = download_media(post.content_url, post.md5)
+                        # Shrink files >2MB
+                        try:
+                            if len(image) > 2000000:
+                                image = shrink_img(image, resize=True, convert=True)
+                        except UnidentifiedImageError:
+                            logger.warning('Could not shrink image')
+                    else:
+                        image = None  # Let SauceNAO download the image from public szurubooru URL
+                else:
+                    image = file_to_upload
 
-            if limit_reached and not config.auto_tagger['deepbooru_enabled']:
-                statistics(untagged=int(total_posts) - index - 1)  # Index starts at 0
-                break
+                if config.auto_tagger['saucenao_enabled']:
+                    tags, post.source, post.safety, limit_reached = parse_saucenao_results(
+                        sauce,
+                        post,
+                        image,
+                    )
 
-    if not from_upload_media:
-        total_tagged, total_deepbooru, total_untagged, total_skipped = statistics()
+                    if add_tags:
+                        post.tags = list(set().union(post.tags, tags, add_tags))  # Keep previous tags, add user tags
+                    else:
+                        post.tags = list(set().union(post.tags, tags))  # Keep previous tags, add user tags
+                else:
+                    limit_reached = False
 
-        logger.success('Script has finished tagging.')
-        logger.success(f'Total:     {total_posts}')
-        logger.success(f'Tagged:    {str(total_tagged)}')
-        logger.success(f'Deepbooru: {str(total_deepbooru)}')
-        logger.success(f'Untagged:  {str(total_untagged)}')
-        logger.success(f'Skipped:   {str(total_skipped)}')
+                if (not tags and config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']:
+                    result = deepbooru.tag_image(
+                        image,
+                        config.auto_tagger['deepbooru_threshold'],
+                        config.auto_tagger['deepbooru_set_tag'],
+                    )
+
+                    if result is None:
+                        continue
+
+                    tags, post.safety = result
+
+                    if post.relations:
+                        set_tags_from_relations(post)
+
+                    if add_tags:
+                        post.tags = list(set().union(post.tags, tags, add_tags))  # Keep previous tags and add user tags
+                    else:
+                        post.tags = list(set().union(post.tags, tags))  # Keep previous tags
+
+                    if 'DeepBooru' in post.source:
+                        post.source = post.source.replace('DeepBooru\n', '')
+                        post.source = post.source.replace('\nDeepBooru', '')
+
+                    if 'Deepbooru' not in post.source:
+                        post.source = collect_sources(post.source, 'Deepbooru')
+
+                    if tags:
+                        statistics(deepbooru=1)
+                    else:
+                        statistics(untagged=1)
+                elif not tags:
+                    statistics(untagged=1)
+
+                if remove_tags:
+                    [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]
+
+                # If any tags were collected with SauceNAO or Deepbooru, remove tagme and deepbooru tag
+                if tags:
+                    [post.tags.remove(tag) for tag in post.tags if tag == 'tagme']
+                else:
+                    post.tags.append('tagme')
+
+                szuru.update_post(post)
+
+                if limit_reached and not config.auto_tagger['deepbooru_enabled']:
+                    statistics(untagged=int(total_posts) - index - 1)  # Index starts at 0
+                    break
+
+        if not from_upload_media:
+            total_tagged, total_deepbooru, total_untagged, total_skipped = statistics()
+
+            logger.success('Script has finished tagging.')
+            logger.success(f'Total:     {total_posts}')
+            logger.success(f'Tagged:    {str(total_tagged)}')
+            logger.success(f'Deepbooru: {str(total_deepbooru)}')
+            logger.success(f'Untagged:  {str(total_untagged)}')
+            logger.success(f'Skipped:   {str(total_skipped)}')
+    except KeyboardInterrupt:
+        print('')
+        logger.info('Received keyboard interrupt from user.')
+        exit(1)
 
 
 if __name__ == '__main__':

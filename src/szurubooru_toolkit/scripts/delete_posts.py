@@ -57,32 +57,37 @@ def parse_args() -> tuple:
 def main() -> None:
     """Retrieve the posts from input query and delete them in szurubooru."""
 
-    except_ids, query = parse_args()
-
-    posts = szuru.get_posts(query, pagination=False, videos=True)
-
     try:
-        total_posts = next(posts)
-    except StopIteration:
-        logger.info(f'Found no posts for your query: {query}')
-        exit()
+        except_ids, query = parse_args()
 
-    logger.info(f'Found {total_posts} posts. Start deleting...')
-    if except_ids:
-        logger.info(f'Won\'t delete the following ids: {except_ids}')
+        posts = szuru.get_posts(query, pagination=False, videos=True)
 
-    for post in tqdm(
-        posts,
-        ncols=80,
-        position=0,
-        leave=False,
-        total=int(total_posts),
-        disable=config.delete_posts['hide_progress'],
-    ):
-        if post.id not in except_ids:
-            szuru.delete_post(post)
+        try:
+            total_posts = next(posts)
+        except StopIteration:
+            logger.info(f'Found no posts for your query: {query}')
+            exit()
 
-    logger.success('Script finished deleting!')
+        logger.info(f'Found {total_posts} posts. Start deleting...')
+        if except_ids:
+            logger.info(f'Won\'t delete the following ids: {except_ids}')
+
+        for post in tqdm(
+            posts,
+            ncols=80,
+            position=0,
+            leave=False,
+            total=int(total_posts),
+            disable=config.delete_posts['hide_progress'],
+        ):
+            if post.id not in except_ids:
+                szuru.delete_post(post)
+
+        logger.success('Script finished deleting!')
+    except KeyboardInterrupt:
+        print('')
+        logger.info('Received keyboard interrupt from user.')
+        exit(1)
 
 
 if __name__ == '__main__':

@@ -92,47 +92,52 @@ def parse_args() -> tuple:
 def main() -> None:
     """Retrieve the posts from input query, set post.tags based on mode and update them in szurubooru."""
 
-    add_tags, remove_tags, update_implications, mode, query = parse_args()
-
-    posts = szuru.get_posts(query, videos=True)
-
     try:
-        total_posts = next(posts)
-    except StopIteration:
-        logger.info(f'Found no posts for your query: {query}')
-        exit()
+        add_tags, remove_tags, update_implications, mode, query = parse_args()
 
-    logger.info(f'Found {total_posts} posts. Start tagging...')
+        posts = szuru.get_posts(query, videos=True)
 
-    for post in tqdm(
-        posts,
-        ncols=80,
-        position=0,
-        leave=False,
-        total=int(total_posts),
-        disable=config.tag_posts['hide_progress'],
-    ):
-        if mode == 'append':
-            if add_tags:
-                post.tags = list(set().union(post.tags, add_tags))
-        elif mode == 'overwrite':
-            if add_tags:
-                post.tags = add_tags
+        try:
+            total_posts = next(posts)
+        except StopIteration:
+            logger.info(f'Found no posts for your query: {query}')
+            exit()
 
-        if remove_tags:
-            post.tags = [tag for tag in post.tags if tag not in remove_tags]
+        logger.info(f'Found {total_posts} posts. Start tagging...')
 
-        if update_implications:
-            for tag in post.tags:
-                szuru_tag = szuru.api.getTag(tag)
-                for implication in szuru_tag.implications:
-                    szuru_implication = szuru.api.getTag(implication)
-                    if szuru_implication not in post.tags:
-                        post.tags.append(szuru_implication.primary_name)
+        for post in tqdm(
+            posts,
+            ncols=80,
+            position=0,
+            leave=False,
+            total=int(total_posts),
+            disable=config.tag_posts['hide_progress'],
+        ):
+            if mode == 'append':
+                if add_tags:
+                    post.tags = list(set().union(post.tags, add_tags))
+            elif mode == 'overwrite':
+                if add_tags:
+                    post.tags = add_tags
 
-        szuru.update_post(post)
+            if remove_tags:
+                post.tags = [tag for tag in post.tags if tag not in remove_tags]
 
-    logger.success('Script finished tagging!')
+            if update_implications:
+                for tag in post.tags:
+                    szuru_tag = szuru.api.getTag(tag)
+                    for implication in szuru_tag.implications:
+                        szuru_implication = szuru.api.getTag(implication)
+                        if szuru_implication not in post.tags:
+                            post.tags.append(szuru_implication.primary_name)
+
+            szuru.update_post(post)
+
+        logger.success('Script finished tagging!')
+    except KeyboardInterrupt:
+        print('')
+        logger.info('Received keyboard interrupt from user.')
+        exit(1)
 
 
 if __name__ == '__main__':
