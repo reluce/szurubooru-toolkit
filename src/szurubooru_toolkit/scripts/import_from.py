@@ -43,6 +43,10 @@ def parse_args() -> tuple:
 
     args = parser.parse_args()
 
+    if not args.url and not args.input_file:
+        parser.print_help()
+        exit(1)
+
     return args.range, args.url[0], args.input_file
 
 
