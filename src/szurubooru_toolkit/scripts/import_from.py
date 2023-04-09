@@ -124,10 +124,10 @@ def main() -> None:
             password = config.sankaku['password']
         elif 'danbooru' in url:
             user = config.danbooru['user']
-            password = config.danbooru['password']
+            password = config.danbooru['api_key']
         elif 'gelbooru' in url:
             user = config.gelbooru['user']
-            password = config.gelbooru['password']
+            password = config.gelbooru['api_key']
         elif 'konachan' in url:
             user = config.konachan['user']
             password = config.konachan['password']
@@ -156,7 +156,6 @@ def main() -> None:
                 [
                     'gallery-dl',
                     '-q',
-                    '--verbose',
                     '--write-metadata',
                     f'--range={limit_range}',
                     f'-D={config.import_from["tmp_path"]}',
