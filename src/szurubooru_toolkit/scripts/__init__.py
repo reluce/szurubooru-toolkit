@@ -1,4 +1,5 @@
 from .auto_tagger import main  # noqa F401
+from .create_relations import main  # noqa F401
 from .create_tags import main  # noqa F401
 from .delete_posts import main  # noqa F401
 from .import_from_booru import main  # noqa F401

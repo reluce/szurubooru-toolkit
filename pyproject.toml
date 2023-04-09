@@ -51,6 +51,7 @@ keywords = ["szurubooru", "szuru", "booru", "saucenao", "deepbooru"]
 auto-tagger = 'szurubooru_toolkit.scripts.auto_tagger:main'
 upload-media = 'szurubooru_toolkit.scripts.upload_media:main'
 create-tags = 'szurubooru_toolkit.scripts.create_tags:main'
+create-relations = 'szurubooru_toolkit.scripts.create_relations:main'
 import-from-booru = 'szurubooru_toolkit.scripts.import_from_booru:main'
 import-from-twitter = 'szurubooru_toolkit.scripts.import_from_twitter:main'
 tag-posts = 'szurubooru_toolkit.scripts.tag_posts:main'
