@@ -65,6 +65,17 @@ hide_progress = false  # Set this to true to hide the progress bar
 # shrink_dimensions
 # default_safety
 
+[import_from]
+tmp_path = './tmp/gallery_dl'
+hide_progress = false  # Set this to true to hide the progress bar
+# Following settings apply from upload_media as well:
+# max_similarity
+# convert_to_jpg
+# convert_threshold
+# shrink
+# shrink_threshold
+# shrink_dimensions
+
 [import_from_twitter]
 saucenao_enabled = true  # Tag posts with SauceNAO
 deepbooru_enabled = false  # Tag posts with Deepbooru
