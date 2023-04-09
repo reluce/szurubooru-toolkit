@@ -109,6 +109,8 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `upload_media` | `default_safety` | # Set the default safety in case neither SauceNAO, nor Deepbooru could determine it | `safe` |
 | `import_from_booru` | `deepbooru_enabled` | Apply Deepbooru tagging additionally besides fetched tags from Booru | `false` |
 | `import_from_booru` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `import_from` | `tmp_path` | Path to directory where temporary downloads from gallery-dl script will be saved | `false` |
+| `import_from` | `hide_progress` | Set this to true to hide the progress bar | `false` |
 | `import_from_twitter` | `saucenao_enabled` | Tag posts with SauceNAO | `false` |
 | `import_from_twitter` | `deepbooru_enabled` | Tag posts with Deepbooru | `false` |
 | `import_from_twitter` | `hide_progress` | Set this to true to hide the progress bar | `false` |
@@ -226,6 +228,49 @@ __Examples__
 
 Note that if you specify `all` to download from all Boorus, you are limited to two tags because free Danbooru accounts are limited to two tags per query.
 If you have a Gold/Platinum account, set your credentials in `config.toml`. Note that it's currently untested if the script will work with upgraded accounts.
+
+### :arrow_lower_right:	import-from
+This scripts imports posts with their tags from the URL passed to this script.
+In the background, it simply calls the [gallery-dl](https://github.com/mikf/gallery-dl) script and parses its output.
+Alternatively, an input file with multiple URLs can be specified.
+
+In the `config.toml` file, you have to specify a directory where posts will be temporarily saved to.
+Since this script is using the `upload-media` script to upload the post, following settings apply from the `upload-media` section:
+* max_similarity
+* convert_to_jpg
+* convert_threshold
+* shrink
+* shrink_threshold
+* shrink_dimensions
+
+:information_source:️ **Following Boorus are currently supported:**
+* Gelbooru
+* Danbooru
+* Sankaku
+* Konachan
+* Yandere
+
+Credentials in your `config.toml` file will be passed to the gallery-dl script if you use a single input URL to this script.
+
+__Usage__
+```
+usage: import-from [-h] [--range RANGE] [--input-file INPUT_FILE] [url ...]
+
+This script downloads and tags posts from various Boorus based on your input query.
+
+positional arguments:
+  url                   The URL for the posts you want to download and tag
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --range RANGE         Index range(s) specifying which files to download. These can be either a constant value, range, or slice (e.g. '5', '8-20', or '1:24:3')
+  --input-file INPUT_FILE
+                        Download URLs found in FILE.
+
+```
+
+__Examples__
+* `import-from "https://danbooru.donmai.us/posts?tags=foo"`
 
 ### :dove: import-from-twitter
 This script fetches media files from your Twitter likes, uploads and optionally tags them.
