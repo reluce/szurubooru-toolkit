@@ -14,7 +14,7 @@ from szurubooru_toolkit.utils import convert_rating
 
 
 def parse_args() -> tuple:
-    """Parse the input args to the script auto_tagger.py and set the object attributes accordingly."""
+    """Parse the input args to the script import_from.py and set the object attributes accordingly."""
 
     parser = argparse.ArgumentParser(
         description='This script downloads and tags posts from various Boorus based on your input query.',
@@ -58,25 +58,39 @@ def extract_metadata(file_path) -> tuple:
 
 
 def generate_src(file_path: str) -> str:
+    """Generate and return post source URL.
+
+    Args:
+        file_path (str): The path to the generated metadata file from gallery-dl.
+
+    Returns:
+        str: The source URL of the post.
+    """
+
     site, id = extract_metadata(file_path)
 
     if site == 'danbooru':
         src = 'https://danbooru.donmai.us/posts/' + id
-    if site == 'gelbooru':
+    elif site == 'gelbooru':
         src = 'https://gelbooru.com/index.php?page=post&s=view&id=' + id
-    if site == 'konachan':
+    elif site == 'konachan':
         src = 'https://konachan.com/post/show/' + id
-    if site == 'sankaku':
+    elif site == 'sankaku':
         src = 'https://chan.sankakucomplex.com/post/show/' + id
-    if site == 'yandere':
+    elif site == 'yandere':
         src = 'https://yande.re/post/show/' + id
+    else:
+        src = None
 
     return src
 
 
 @logger.catch
 def main() -> None:
-    """Call respective functions to retrieve and upload posts based on user input."""
+    """Calls gallery-dl and parse output.
+
+    Currently supports only Danbooru, Gelbooru, Konachan, Yandere and Sankaku.
+    """
 
     limit_range, url, input_file = parse_args()
 
@@ -100,16 +114,51 @@ def main() -> None:
         )
     else:
         logger.info(f'Downloading posts from URL {url}...')
-        subprocess.run(
-            [
-                'gallery-dl',
-                '-q',
-                '--write-metadata',
-                f'--range={limit_range}',
-                f'-D={config.import_from["tmp_path"]}',
-                url,
-            ],
-        )
+
+        if 'sankaku' in url:
+            user = config.sankaku['user']
+            password = config.sankaku['password']
+        elif 'danbooru' in url:
+            user = config.danbooru['user']
+            password = config.danbooru['password']
+        elif 'gelbooru' in url:
+            user = config.gelbooru['user']
+            password = config.gelbooru['password']
+        elif 'konachan' in url:
+            user = config.konachan['user']
+            password = config.konachan['password']
+        elif 'yandere' in url:
+            user = config.yandere['user']
+            password = config.yandere['password']
+        else:
+            user = None
+            password = None
+
+        if user and password and (user != 'None' and password != 'None'):
+            subprocess.run(
+                [
+                    'gallery-dl',
+                    '-q',
+                    '--write-metadata',
+                    f'--username={user}',
+                    f'--password={password}',
+                    f'--range={limit_range}',
+                    f'-D={config.import_from["tmp_path"]}',
+                    url,
+                ],
+            )
+        else:
+            subprocess.run(
+                [
+                    'gallery-dl',
+                    '-q',
+                    '--verbose',
+                    '--write-metadata',
+                    f'--range={limit_range}',
+                    f'-D={config.import_from["tmp_path"]}',
+                    url,
+                ],
+            )
 
     files = [file for file in glob.glob(config.import_from['tmp_path'] + '/*') if not Path(file).suffix == '.json']
 

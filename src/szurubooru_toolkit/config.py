@@ -88,6 +88,7 @@ class Config:
             'gelbooru': ['user', 'api_key'],
             'konachan': ['user', 'password'],
             'yandere': ['user', 'password'],
+            'sankaku': ['user', 'password'],
             'pixiv': ['user', 'password', 'token'],
             'twitter': ['user_id', 'consumer_key', 'consumer_secret', 'access_token', 'access_token_secret'],
         }
