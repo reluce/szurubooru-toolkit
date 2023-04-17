@@ -36,18 +36,18 @@ def parse_args() -> tuple:
     )
 
     parser.add_argument(
-        'url',
+        'urls',
         nargs='*',
-        help='The URL for the posts you want to download and tag',
+        help='One or multiple URLs to the posts you want to download and tag',
     )
 
     args = parser.parse_args()
 
-    if not args.url and not args.input_file:
+    if not args.urls and not args.input_file:
         parser.print_help()
         exit(1)
 
-    return args.range, args.url, args.input_file
+    return args.range, args.urls, args.input_file
 
 
 def extract_metadata(file_path) -> tuple:
@@ -112,37 +112,54 @@ def main() -> None:
         f'-D={config.import_from["tmp_path"]}',
     ]
 
-    if input_file:
-        logger.info(f'Downloading posts from input file {input_file}...')
-        subprocess.run(base_command + [f'--input-file={input_file}'])
+    if input_file and not urls:
+        logger.info(f'Downloading posts from input file "{input_file}"...')
+    elif input_file and urls:
+        logger.info(f'Downloading posts from input file "{input_file}" and URLs {urls}...')
     else:
-        logger.info(f'Downloading posts from URL {urls}...')
+        logger.info(f'Downloading posts from URLs {urls}...')
 
-        if any('sankaku' in url for url in urls):
-            user = config.sankaku['user']
-            password = config.sankaku['password']
-        elif any('danbooru' in url for url in urls):
-            user = config.danbooru['user']
-            password = config.danbooru['api_key']
-        elif any('gelbooru' in url for url in urls):
-            user = config.gelbooru['user']
-            password = config.gelbooru['api_key']
-        elif any('konachan' in url for url in urls):
-            user = config.konachan['user']
-            password = config.konachan['password']
-        elif any('yande.re' in url for url in urls):
-            user = config.yandere['user']
-            password = config.yandere['password']
+    if any('sankaku' in url for url in urls):
+        user = config.sankaku['user']
+        password = config.sankaku['password']
+    elif any('danbooru' in url for url in urls):
+        user = config.danbooru['user']
+        password = config.danbooru['api_key']
+    elif any('gelbooru' in url for url in urls):
+        user = config.gelbooru['user']
+        password = config.gelbooru['api_key']
+    elif any('konachan' in url for url in urls):
+        user = config.konachan['user']
+        password = config.konachan['password']
+    elif any('yande.re' in url for url in urls):
+        user = config.yandere['user']
+        password = config.yandere['password']
+    else:
+        user = None
+        password = None
+
+    if user and password and (user != 'None' and password != 'None'):
+        if input_file:
+            command = (
+                base_command
+                + [
+                    f'--username={user}',
+                    f'--password={password}',
+                    f'--range={limit_range}',
+                    f'--input-file={input_file}',
+                ]
+                + urls
+            )
         else:
-            user = None
-            password = None
-
-        if user and password and (user != 'None' and password != 'None'):
             command = base_command + [f'--username={user}', f'--password={password}', f'--range={limit_range}'] + urls
-            subprocess.run(command)
+
+        subprocess.run(command)
+    else:
+        if input_file:
+            command = base_command + [f'--range={limit_range}', f'--input-file={input_file}'] + urls
         else:
             command = base_command + [f'--range={limit_range}'] + urls
-            subprocess.run(command)
+        subprocess.run(command)
 
     files = [file for file in glob.glob(config.import_from['tmp_path'] + '/*') if not Path(file).suffix == '.json']
 
