@@ -47,7 +47,7 @@ def parse_args() -> tuple:
         parser.print_help()
         exit(1)
 
-    return args.range, args.url[0], args.input_file
+    return args.range, args.url, args.input_file
 
 
 def extract_metadata(file_path) -> tuple:
@@ -96,7 +96,7 @@ def main() -> None:
     Currently supports only Danbooru, Gelbooru, Konachan, Yandere and Sankaku.
     """
 
-    limit_range, url, input_file = parse_args()
+    limit_range, urls, input_file = parse_args()
 
     if config.import_from_booru['deepbooru_enabled']:
         config.upload_media['auto_tag'] = True
@@ -105,33 +105,32 @@ def main() -> None:
     else:
         config.upload_media['auto_tag'] = False
 
+    base_command = [
+        'gallery-dl',
+        '-q',
+        '--write-metadata',
+        f'-D={config.import_from["tmp_path"]}',
+    ]
+
     if input_file:
         logger.info(f'Downloading posts from input file {input_file}...')
-        subprocess.run(
-            [
-                'gallery-dl',
-                '-q',
-                '--write-metadata',
-                f'-D={config.import_from["tmp_path"]}',
-                f'--input-file={input_file}',
-            ],
-        )
+        subprocess.run(base_command + [f'--input-file={input_file}'])
     else:
-        logger.info(f'Downloading posts from URL {url}...')
+        logger.info(f'Downloading posts from URL {urls}...')
 
-        if 'sankaku' in url:
+        if any('sankaku' in url for url in urls):
             user = config.sankaku['user']
             password = config.sankaku['password']
-        elif 'danbooru' in url:
+        elif any('danbooru' in url for url in urls):
             user = config.danbooru['user']
             password = config.danbooru['api_key']
-        elif 'gelbooru' in url:
+        elif any('gelbooru' in url for url in urls):
             user = config.gelbooru['user']
             password = config.gelbooru['api_key']
-        elif 'konachan' in url:
+        elif any('konachan' in url for url in urls):
             user = config.konachan['user']
             password = config.konachan['password']
-        elif 'yandere' in url:
+        elif any('yande.re' in url for url in urls):
             user = config.yandere['user']
             password = config.yandere['password']
         else:
@@ -139,29 +138,11 @@ def main() -> None:
             password = None
 
         if user and password and (user != 'None' and password != 'None'):
-            subprocess.run(
-                [
-                    'gallery-dl',
-                    '-q',
-                    '--write-metadata',
-                    f'--username={user}',
-                    f'--password={password}',
-                    f'--range={limit_range}',
-                    f'-D={config.import_from["tmp_path"]}',
-                    url,
-                ],
-            )
+            command = base_command + [f'--username={user}', f'--password={password}', f'--range={limit_range}'] + urls
+            subprocess.run(command)
         else:
-            subprocess.run(
-                [
-                    'gallery-dl',
-                    '-q',
-                    '--write-metadata',
-                    f'--range={limit_range}',
-                    f'-D={config.import_from["tmp_path"]}',
-                    url,
-                ],
-            )
+            command = base_command + [f'--range={limit_range}'] + urls
+            subprocess.run(command)
 
     files = [file for file in glob.glob(config.import_from['tmp_path'] + '/*') if not Path(file).suffix == '.json']
 
