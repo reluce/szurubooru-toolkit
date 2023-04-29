@@ -109,8 +109,8 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `upload_media` | `default_safety` | # Set the default safety in case neither SauceNAO, nor Deepbooru could determine it | `safe` |
 | `import_from_booru` | `deepbooru_enabled` | Apply Deepbooru tagging additionally besides fetched tags from Booru | `false` |
 | `import_from_booru` | `hide_progress` | Set this to true to hide the progress bar | `false` |
-| `import_from` | `tmp_path` | Path to directory where temporary downloads from gallery-dl script will be saved | `false` |
-| `import_from` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `import_from_url` | `tmp_path` | Path to directory where temporary downloads from gallery-dl script will be saved | `false` |
+| `import_from_url` | `hide_progress` | Set this to true to hide the progress bar | `false` |
 | `import_from_twitter` | `saucenao_enabled` | Tag posts with SauceNAO | `false` |
 | `import_from_twitter` | `deepbooru_enabled` | Tag posts with Deepbooru | `false` |
 | `import_from_twitter` | `hide_progress` | Set this to true to hide the progress bar | `false` |
@@ -139,6 +139,7 @@ Following scripts are currently available:
 * `delete-posts`: Batch delete of posts
 * `import-from-booru`: Batch importing of posts with their tags from various Boorus
 * `import-from-twitter`: Batch importing of Twitter favorites
+* `import-from-url`: Batch importing of URLs based on [gallery-dl](https://github.com/mikf/gallery-dl)
 * `reset-posts`: Batch resetting of posts (remove tags and sources)
 * `upload-media`: Batch upload of media files from local source folder
 * `tag-posts`: Manual batch tagging
@@ -229,7 +230,7 @@ __Examples__
 Note that if you specify `all` to download from all Boorus, you are limited to two tags because free Danbooru accounts are limited to two tags per query.
 If you have a Gold/Platinum account, set your credentials in `config.toml`. Note that it's currently untested if the script will work with upgraded accounts.
 
-### :arrow_lower_right:	import-from
+### :link:	import-from-url
 This scripts imports posts with their tags from the URL passed to this script.
 In the background, it simply calls the [gallery-dl](https://github.com/mikf/gallery-dl) script and parses its output.
 Alternatively, an input file with multiple URLs can be specified.
@@ -254,7 +255,7 @@ Credentials in your `config.toml` file will be passed to the gallery-dl script i
 
 __Usage__
 ```
-usage: import-from [-h] [--range RANGE] [--input-file INPUT_FILE] [url ...]
+usage: import-from-url [-h] [--range RANGE] [--input-file INPUT_FILE] [url ...]
 
 This script downloads and tags posts from various Boorus based on your input query.
 
@@ -270,7 +271,9 @@ optional arguments:
 ```
 
 __Examples__
-* `import-from "https://danbooru.donmai.us/posts?tags=foo"`
+* `import-from-url "https://danbooru.donmai.us/posts?tags=foo"`
+* `import-from-url "https://chan.sankakucomplex.com/?tags=foo"`
+* `import-from-url "https://beta.sankakucomplex.com/post/show/<id>"`
 
 ### :dove: import-from-twitter
 This script fetches media files from your Twitter likes, uploads and optionally tags them.

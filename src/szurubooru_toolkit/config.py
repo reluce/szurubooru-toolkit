@@ -78,7 +78,7 @@ class Config:
             ],
             'import_from_booru': ['deepbooru_enabled', 'hide_progress'],
             'import_from_twitter': ['saucenao_enabled', 'deepbooru_enabled', 'hide_progress'],
-            'import_from': ['hide_progress', 'tmp_path'],
+            'import_from_url': ['hide_progress', 'tmp_path'],
             'tag_posts': ['hide_progress'],
             'delete_posts': ['hide_progress'],
             'reset_posts': ['hide_progress'],
@@ -119,8 +119,10 @@ class Config:
             logger.critical(f'The src_path "{self.upload_media["src_path"]}" specified in config.toml does not exist!')
             exit(1)
 
-        if not Path(self.import_from['tmp_path']).is_dir():
-            logger.critical(f'The tmp_path "{self.import_from["tmp_path"]}" specified in config.toml does not exist!')
+        if not Path(self.import_from_url['tmp_path']).is_dir():
+            logger.critical(
+                f'The tmp_path "{self.import_from_url["tmp_path"]}" specified in config.toml does not exist!',
+            )
             exit(1)
 
         if not Path(self.logging['log_file']).parent.is_dir():

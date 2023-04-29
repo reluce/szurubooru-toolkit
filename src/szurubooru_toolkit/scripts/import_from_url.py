@@ -14,7 +14,7 @@ from szurubooru_toolkit.utils import convert_rating
 
 
 def parse_args() -> tuple:
-    """Parse the input args to the script import_from.py and set the object attributes accordingly."""
+    """Parse the input args to the script import_from_url.py and set the object attributes accordingly."""
 
     parser = argparse.ArgumentParser(
         description='This script downloads and tags posts from various Boorus based on your input query.',
@@ -109,7 +109,7 @@ def main() -> None:
         'gallery-dl',
         '-q',
         '--write-metadata',
-        f'-D={config.import_from["tmp_path"]}',
+        f'-D={config.import_from_url["tmp_path"]}',
     ]
 
     if input_file and not urls:
@@ -161,7 +161,7 @@ def main() -> None:
             command = base_command + [f'--range={limit_range}'] + urls
         subprocess.run(command)
 
-    files = [file for file in glob.glob(config.import_from['tmp_path'] + '/*') if not Path(file).suffix == '.json']
+    files = [file for file in glob.glob(config.import_from_url['tmp_path'] + '/*') if not Path(file).suffix == '.json']
 
     logger.info(f'Downloaded {len(files)} post(s). Start importing...')
 
@@ -170,7 +170,7 @@ def main() -> None:
         ncols=80,
         position=0,
         leave=False,
-        disable=config.import_from['hide_progress'],
+        disable=config.import_from_url['hide_progress'],
     ):
         with open(file + '.json') as f:
             metadata = json.load(f)
