@@ -82,6 +82,7 @@ class Danbooru:
                     artist = self.session.get(
                         f'https://danbooru.donmai.us/artists.json?search[any_other_name_like]={artist.lower()}',
                     ).json()[0]['name']
+                    self.session.close()
 
                 logger.debug(f'Returning artist: {artist}')
 
