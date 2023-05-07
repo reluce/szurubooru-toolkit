@@ -27,6 +27,9 @@ password = "None"
 [yandere]
 user = "None"
 password = "None"
+[sankaku]
+user = "None"
+password = "None"
 [pixiv]
 user = "None"
 password = "None"
