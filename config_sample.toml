@@ -13,6 +13,7 @@ deepbooru_threshold = "0.7"  # Define how accurate the matched tag from DeepBoor
 deepbooru_forced = false  # Always tag with SauceNAO and Deepbooru
 deepbooru_set_tag = true  # Tag Deepbooru post with tag "deepbooru"
 hide_progress = false  # Set this to true to hide the progress bar
+use_pixiv_artist = false  # If the artist could only be found on pixiv, create and use the pixiv artist. Category has to be 'artist'.
 
 # Leave those options as "None" if you have no accounts on these sites
 [danbooru]

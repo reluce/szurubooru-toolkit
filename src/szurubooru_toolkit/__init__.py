@@ -5,7 +5,6 @@ from loguru import logger
 from .config import Config
 from .danbooru import Danbooru  # noqa F401
 from .gelbooru import Gelbooru  # noqa F401
-from .saucenao import SauceNao  # noqa F401
 from .szurubooru import Post  # noqa F401
 from .szurubooru import Szurubooru
 from .twitter import Twitter  # noqa F401
@@ -42,3 +41,5 @@ if config.auto_tagger['deepbooru_enabled']:
 setup_logger(config)
 
 szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
+# SauceNao imports the szuru object, so we have to include it here
+from .saucenao import SauceNao  # noqa F401

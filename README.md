@@ -79,6 +79,7 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `auto_tagger` | `deepbooru_forced` | Always tag with SauceNAO and Deepbooru | `false` |
 | `auto_tagger` | `deepbooru_set_tag` | Tag Deepbooru post with tag `deepbooru` | `true` |
 | `auto_tagger` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `auto_tagger` | `use_pixiv_artist` | If the artist could only be found on pixiv, create and use the pixiv artist. Category has to be 'artist'. | `false` |
 | `danbooru` | `user` | Danbooru user | `"None"` |
 | `danbooru` | `api_key` | Danbooru api key | `"None"` |
 | `gelbooru` | `user` | Gelbooru user | `"None"` |

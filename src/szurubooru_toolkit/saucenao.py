@@ -14,6 +14,7 @@ from syncer import sync
 from szurubooru_toolkit import Config
 from szurubooru_toolkit import Danbooru
 from szurubooru_toolkit import Gelbooru
+from szurubooru_toolkit import szuru
 from szurubooru_toolkit.utils import audit_rating
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import convert_rating
@@ -46,6 +47,7 @@ class SauceNao:
         self.gelbooru = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
         self.konachan = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
         self.yandere = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
+        self.use_pixiv_artist = config.auto_tagger['use_pixiv_artist']
 
     @sync
     async def get_metadata(self, content_url: str, image: bytes = None) -> tuple:
@@ -67,6 +69,7 @@ class SauceNao:
         metadata_san = metadata.copy()
         metadata_yan = metadata.copy()
         metadata_kona = metadata.copy()
+        metadata_pix = metadata.copy()
 
         limit_short = 1
         limit_long = 10
@@ -80,6 +83,9 @@ class SauceNao:
         gelbooru_found = False
         yandere_found = False
         konachan_found = False
+        sankaku_found = False
+
+        pixiv_artist = None
 
         if response and not response == 'Limit reached':
             for result in response:
@@ -127,9 +133,26 @@ class SauceNao:
                     metadata_kona['source'] = result.url
 
                     konachan_found = True
-                elif result.url is not None and 'sankaku' in result.url:
+                elif result.url is not None and 'sankaku' in result.url and not sankaku_found:
                     metadata_san['tags'], metadata_san['rating'] = scrape_sankaku(result.url)
                     metadata_san['source'] = result.url
+
+                    sankaku_found = True
+                elif result.url is not None and 'pixiv' in result.url:
+                    pixiv_artist = result.author_name
+
+                    metadata_pix['source'] = result.url
+
+            if pixiv_artist and not any([danbooru_found, gelbooru_found, konachan_found, yandere_found, sankaku_found]):
+                artist = self.danbooru.search_artist(pixiv_artist)
+
+                # Use the pixiv artist as a fallback if configured
+                if not artist and self.use_pixiv_artist:
+                    artist = pixiv_artist
+                    artist = artist.lower().replace(' ', '_')
+                    szuru.create_tag(artist, category='artist', overwrite=True)
+
+                metadata_pix['tags'] = [artist]
 
             limit_short = response.short_remaining
             logger.debug(f'Limit short: {limit_short}')
@@ -144,6 +167,7 @@ class SauceNao:
                 metadata_dan['tags'],
                 metadata_yan['tags'],
                 metadata_kona['tags'],
+                metadata_pix['tags'],
             ),
         )
 
@@ -154,6 +178,7 @@ class SauceNao:
             metadata_dan['source'],
             metadata_yan['source'],
             metadata_kona['source'],
+            metadata_pix['source'],
         )
         source_debug = source.replace('\n', '\\n')  # Don't display line breaks in logs
 
@@ -170,15 +195,17 @@ class SauceNao:
             limit_long = 0
 
         if metadata_dan['tags']:
-            logger.debug('Found result in Danbooru')
+            logger.debug('Found result on Danbooru')
         if metadata_gel['tags']:
-            logger.debug('Found result in Gelbooru')
+            logger.debug('Found result on Gelbooru')
         if metadata_san['tags']:
-            logger.debug('Found result in Sankaku')
+            logger.debug('Found result on Sankaku')
         if metadata_yan['tags']:
-            logger.debug('Found result in Yande.re')
+            logger.debug('Found result on Yande.re')
         if metadata_kona['tags']:
-            logger.debug('Found result in Konachan')
+            logger.debug('Found result on Konachan')
+        if metadata_pix['tags']:
+            logger.debug('Found result on pixiv')
 
         logger.debug(f'Returning tags: {tags}')
         logger.debug(f'Returning sources: {source_debug}')

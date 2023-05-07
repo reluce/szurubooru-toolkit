@@ -60,6 +60,7 @@ class Config:
                 'deepbooru_forced',
                 'deepbooru_set_tag',
                 'hide_progress',
+                'use_pixiv_artist',
             ],
             'upload_media': [
                 'src_path',

@@ -95,7 +95,8 @@ def main() -> None:
                         # logger.warning(e)  # Could result in lots of output with larger tag files
                         pass
         else:
-            results = Danbooru.download_tags(query, min_post_count, limit)
+            danbooru = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
+            results = danbooru.download_tags(query, min_post_count, limit)
 
             for result in results:
                 for tag in result:
