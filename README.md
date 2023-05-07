@@ -274,6 +274,7 @@ __Examples__
 * `import-from-url "https://danbooru.donmai.us/posts?tags=foo"`
 * `import-from-url "https://chan.sankakucomplex.com/?tags=foo"`
 * `import-from-url "https://beta.sankakucomplex.com/post/show/<id>"`
+* `import-from-url --input-file urls.txt "https://danbooru.donmai.us/posts?tags=foo" "https://beta.sankakucomplex.com/post/show/<id>"`
 
 ### :dove: import-from-twitter
 This script fetches media files from your Twitter likes, uploads and optionally tags them.
