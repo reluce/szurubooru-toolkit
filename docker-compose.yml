@@ -11,3 +11,5 @@ services:
       - ./misc:/szurubooru-toolkit/misc
       - ./upload_src:/szurubooru-toolkit/upload_src
       - ./szurubooru_toolkit.log:/szurubooru-toolkit/szurubooru_toolkit.log
+      - ./tmp:/szurubooru-toolkit/tmp
+
