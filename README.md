@@ -37,6 +37,7 @@ replacing with your configuration.
    `upload_src`, you may need to update the `docker-compose.yml` binding to be
    something like `./uploads:/szurubooru-toolkit/uploads`, and set
    `/szurubooru-toolkit/uploads` as the `src_path` option instead.
+1. Create the folder `tmp` in the same location.
 1. If you would like to use deepbooru or tag files, create `misc/deepbooru`
    and/or `misc/tags` in the same location and follow the instructions linked
    below
@@ -88,6 +89,8 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `konachan` | `password` | Konachan password | `"None"` |
 | `yandere` | `user` | Yandere user | `"None"` |
 | `yandere` | `password` | Yandere password | `"None"` |
+| `sankaku` | `user` | Sankaku user | `"None"` |
+| `sankaku` | `password` | Sankaku password | `"None"` |
 | `pixiv` | `user` | Pixiv user. Currently not being used. | `"None"` |
 | `pixiv` | `password` | Pixiv password. Currently not being used. | `"None"` |
 | `pixiv` | `token` | Pixiv token. Currently not being used. | `"None"` |
