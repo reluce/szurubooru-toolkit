@@ -35,7 +35,11 @@ logger.add(
 )
 
 config = Config()
-if config.auto_tagger['deepbooru_enabled']:
+if (
+    config.auto_tagger['deepbooru_enabled']
+    or config.import_from_url['deepbooru_enabled']
+    or config.import_from_booru['deepbooru_enabled']
+):
     from .deepbooru import Deepbooru  # noqa F401
 
 setup_logger(config)
