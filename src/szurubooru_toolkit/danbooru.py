@@ -29,6 +29,10 @@ class Danbooru:
                 logger.debug(f'Returning result: {result}')
 
                 break
+            except PybooruHTTPError as e:
+                if 'Not Found' in e._msg:
+                    result = None
+                    break
             except (TimeoutError, PybooruError, PybooruHTTPError, PybooruAPIError):
                 logger.debug('Got no result')
                 sleep(5)
