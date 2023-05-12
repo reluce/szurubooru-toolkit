@@ -103,6 +103,7 @@ def convert_rating(rating: str) -> str:
         'Safe': 'safe',
         'safe': 'safe',
         's': 'safe',
+        'g': 'safe',
         'Questionable': 'sketchy',
         'questionable': 'sketchy',
         'q': 'sketchy',
@@ -435,3 +436,36 @@ def get_posts_from_booru(
 
     yield len(results)
     yield from results
+
+
+def generate_src(metadata: dict) -> str:
+    """Generate and return post source URL.
+
+    Args:
+        metadata (dict): Contains the site and id of the post
+
+    Returns:
+        str: The source URL of the post.
+    """
+
+    if 'id' in metadata:
+        id = str(metadata['id'])
+
+    if metadata['site'] == 'danbooru':
+        src = 'https://danbooru.donmai.us/posts/' + id
+    elif metadata['site'] == 'e-hentai':
+        id = str(metadata['gid'])
+        token = metadata['token']
+        src = f'https://e-hentai.org/g/{id}/{token}'
+    elif metadata['site'] == 'gelbooru':
+        src = 'https://gelbooru.com/index.php?page=post&s=view&id=' + id
+    elif metadata['site'] == 'konachan':
+        src = 'https://konachan.com/post/show/' + id
+    elif metadata['site'] == 'sankaku':
+        src = 'https://chan.sankakucomplex.com/post/show/' + id
+    elif metadata['site'] == 'yandere':
+        src = 'https://yande.re/post/show/' + id
+    else:
+        src = None
+
+    return src

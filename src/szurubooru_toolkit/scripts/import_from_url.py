@@ -8,9 +8,11 @@ from pathlib import Path
 from loguru import logger
 from tqdm import tqdm
 
+from szurubooru_toolkit import Danbooru
 from szurubooru_toolkit import config
 from szurubooru_toolkit.scripts import upload_media
 from szurubooru_toolkit.utils import convert_rating
+from szurubooru_toolkit.utils import generate_src
 
 
 def parse_args() -> tuple:
@@ -50,43 +52,32 @@ def parse_args() -> tuple:
     return args.range, args.urls, args.input_file
 
 
-def extract_metadata(file_path) -> tuple:
-    file_name = Path(file_path).name
-    index = file_name.index('_')
-    second_index = file_name.find('_', index + 1)
+def set_tags(metadata):
+    if metadata['site'] == 'e-hentai':
+        for tag in metadata['tags']:
+            if tag.startswith('artist'):
+                index = tag.find(':')
+                if index != -1:
+                    artist = tag[index + 1 :]  # noqa E203
 
-    site = file_name[:index]
-    id = file_name[index + 1 : second_index]  # noqa
+                    danbooru = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
+                    canon_artist = danbooru.search_artist(artist)
+                    if canon_artist:
+                        metadata['tags'] = [canon_artist]
+                    else:
+                        metadata['tags'] = []
 
-    return site, id
-
-
-def generate_src(file_path: str) -> str:
-    """Generate and return post source URL.
-
-    Args:
-        file_path (str): The path to the generated metadata file from gallery-dl.
-
-    Returns:
-        str: The source URL of the post.
-    """
-
-    site, id = extract_metadata(file_path)
-
-    if site == 'danbooru':
-        src = 'https://danbooru.donmai.us/posts/' + id
-    elif site == 'gelbooru':
-        src = 'https://gelbooru.com/index.php?page=post&s=view&id=' + id
-    elif site == 'konachan':
-        src = 'https://konachan.com/post/show/' + id
-    elif site == 'sankaku':
-        src = 'https://chan.sankakucomplex.com/post/show/' + id
-    elif site == 'yandere':
-        src = 'https://yande.re/post/show/' + id
+        if not isinstance(artist, str):
+            metadata['tags'] = []
     else:
-        src = None
+        try:
+            if isinstance(metadata['tags'], str):
+                metadata['tags'] = metadata['tags'].split()
+        except KeyError:
+            if isinstance(metadata['tag_string'], str):
+                metadata['tags'] = metadata['tag_string'].split()
 
-    return src
+    return metadata['tags']
 
 
 @logger.catch
@@ -98,7 +89,7 @@ def main() -> None:
 
     limit_range, urls, input_file = parse_args()
 
-    if config.import_from_booru['deepbooru_enabled']:
+    if config.import_from_url['deepbooru_enabled']:
         config.upload_media['auto_tag'] = True
         config.auto_tagger['saucenao_enabled'] = False
         config.auto_tagger['deepbooru_enabled'] = True
@@ -120,21 +111,31 @@ def main() -> None:
         logger.info(f'Downloading posts from URLs {urls}...')
 
     if any('sankaku' in url for url in urls):
+        site = 'sankaku'
         user = config.sankaku['user']
         password = config.sankaku['password']
     elif any('danbooru' in url for url in urls):
+        site = 'danbooru'
         user = config.danbooru['user']
         password = config.danbooru['api_key']
     elif any('gelbooru' in url for url in urls):
+        site = 'gelbooru'
         user = config.gelbooru['user']
         password = config.gelbooru['api_key']
     elif any('konachan' in url for url in urls):
+        site = 'konachan'
         user = config.konachan['user']
         password = config.konachan['password']
     elif any('yande.re' in url for url in urls):
+        site = 'yandere'
         user = config.yandere['user']
         password = config.yandere['password']
+    elif any('e-hentai' in url for url in urls):
+        site = 'e-hentai'
+        user = None
+        password = None
     else:
+        site = None
         user = None
         password = None
 
@@ -174,15 +175,10 @@ def main() -> None:
     ):
         with open(file + '.json') as f:
             metadata = json.load(f)
-            metadata['source'] = generate_src(file)
+            metadata['site'] = site
+            metadata['source'] = generate_src(metadata)
             metadata['safety'] = convert_rating(metadata['rating'])
-
-            try:
-                if isinstance(metadata['tags'], str):
-                    metadata['tags'] = metadata['tags'].split()
-            except KeyError:
-                if isinstance(metadata['tag_string'], str):
-                    metadata['tags'] = metadata['tag_string'].split()
+            metadata['tags'] = set_tags(metadata)
 
             with open(file, 'rb') as file_b:
                 upload_media.main(file_b.read(), Path(file).suffix[1:], metadata)
