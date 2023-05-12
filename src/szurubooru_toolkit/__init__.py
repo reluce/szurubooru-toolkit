@@ -1,6 +1,7 @@
 import sys
 
 from loguru import logger
+from pybooru.moebooru import Moebooru
 
 from .config import Config
 from .danbooru import Danbooru  # noqa F401
@@ -44,6 +45,12 @@ if (
 
 setup_logger(config)
 
+danbooru = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
+gelbooru = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
+konachan = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
+yandere = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
+
 szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
+
 # SauceNao imports the szuru object, so we have to include it here
 from .saucenao import SauceNao  # noqa F401

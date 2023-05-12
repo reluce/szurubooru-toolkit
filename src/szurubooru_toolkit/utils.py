@@ -29,7 +29,18 @@ total_deepbooru = 0
 total_untagged = 0
 total_skipped = 0
 
-warnings.simplefilter('error', Image.DecompressionBombWarning)
+
+# Define a filter function to ignore the DecompressionBombWarning
+def ignore_decompression_bomb_warning(message, category, filename, lineno, file=None, line=None):
+    if isinstance(message, Image.DecompressionBombWarning):
+        return
+    else:
+        return warnings.defaultaction(message, category, filename, lineno, file, line)
+
+
+# Set the filter to ignore the warning
+warnings.filterwarnings('ignore', category=Image.DecompressionBombWarning)
+warnings.showwarning = ignore_decompression_bomb_warning
 warnings.filterwarnings('ignore', '.*Palette images with Transparency.*', module='PIL')
 
 

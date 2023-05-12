@@ -11,6 +11,7 @@ from tqdm import tqdm
 from szurubooru_toolkit import Post
 from szurubooru_toolkit import SauceNao
 from szurubooru_toolkit import config
+from szurubooru_toolkit import danbooru
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import convert_rating
@@ -302,10 +303,10 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                     statistics(untagged=1)
 
                 if post.type == 'video':
-                    result = sauce.danbooru.get_by_md5(post.md5)
+                    result = danbooru.get_by_md5(post.md5)
                     if result:
-                        tags = sauce.danbooru.get_tags(result)
-                        post.safety = convert_rating(sauce.danbooru.get_rating(result))
+                        tags = danbooru.get_tags(result)
+                        post.safety = convert_rating(danbooru.get_rating(result))
                         post.source = generate_src('danbooru', str(result['id']))
 
                     if add_tags:
