@@ -97,7 +97,8 @@ def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
             similar_posts = response.json()['similarPosts']
             return exact_post, similar_posts
     except Exception as e:
-        logger.critical(f'An error occured during the similarity check: {e}')
+        logger.warning(f'An error occured during the similarity check: {e}. Skipping check...')
+        return None, []
 
 
 def upload_file(szuru: Szurubooru, post: Post) -> None:
