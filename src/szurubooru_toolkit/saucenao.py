@@ -254,7 +254,7 @@ class SauceNao:
                     response = None
                 break
         else:
-            logger.warning('Could not establish connection to SauceNAO, trying with next post...')
+            logger.debug('Could not establish connection to SauceNAO, trying with next post...')
             response = None
 
         return response
