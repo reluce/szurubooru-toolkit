@@ -269,8 +269,7 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_to_uploa
 
         # Tag post if enabled
         if config.upload_media['auto_tag']:
-            if file_ext not in ['mp4', 'webm']:
-                auto_tagger(str(post_id), post.media)
+            auto_tagger(str(post_id), post.media)
 
 
 def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = None) -> int:
