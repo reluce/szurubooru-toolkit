@@ -79,7 +79,7 @@ class Config:
             ],
             'import_from_booru': ['deepbooru_enabled', 'hide_progress'],
             'import_from_twitter': ['saucenao_enabled', 'deepbooru_enabled', 'hide_progress'],
-            'import_from_url': ['hide_progress', 'tmp_path'],
+            'import_from_url': ['deepbooru_enabled', 'hide_progress', 'tmp_path'],
             'tag_posts': ['hide_progress'],
             'delete_posts': ['hide_progress'],
             'reset_posts': ['hide_progress'],
