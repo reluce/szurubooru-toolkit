@@ -131,6 +131,7 @@ class Szurubooru:
         post.version = response['version']
         post.relations = response['relations']
         post.md5 = response['checksumMD5']
+        post.type = response['type']
         post.safety = response['safety']
 
         tags = response['tags']
@@ -251,6 +252,8 @@ class Post:
         self.relations: list = []
         self.tags: list = []
         self.safety = 'safe'
+        self.md5 = None
+        self.type = None
 
     def __repr__(self) -> str:
         """Returns the current attributes of this object.

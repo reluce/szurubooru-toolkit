@@ -38,7 +38,7 @@ disallow_untyped_defs = true
 
 [tool.poetry]
 name = "szurubooru-toolkit"
-version = "0.7.7"
+version = "0.8.1"
 description = "Python package and script collection to manage szurubooru."
 authors = ["reluce <reluce@fkosquad.moe>"]
 license = "GPL-3.0-only"
@@ -52,6 +52,7 @@ auto-tagger = 'szurubooru_toolkit.scripts.auto_tagger:main'
 upload-media = 'szurubooru_toolkit.scripts.upload_media:main'
 create-tags = 'szurubooru_toolkit.scripts.create_tags:main'
 create-relations = 'szurubooru_toolkit.scripts.create_relations:main'
+import-from-url = 'szurubooru_toolkit.scripts.import_from_url:main'
 import-from-booru = 'szurubooru_toolkit.scripts.import_from_booru:main'
 import-from-twitter = 'szurubooru_toolkit.scripts.import_from_twitter:main'
 tag-posts = 'szurubooru_toolkit.scripts.tag_posts:main'
@@ -78,6 +79,7 @@ pathvalidate = "^2.5.0"
 validators = "^0.18.2"
 lxml = "^4.8.0"
 tweepy = "^4.10.0"
+gallery-dl = "^1.25.1"
 
 [tool.poetry.dev-dependencies]
 black = "^22.1.0"

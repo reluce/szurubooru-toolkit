@@ -22,10 +22,10 @@ class Config:
                     self.config = parse(content)
                 except Exception as e:
                     logger.critical(e)
-                    exit()
+                    exit(1)
         except FileNotFoundError as e:
             logger.critical(e)
-            exit()
+            exit(1)
 
         for key, value in self.config.items():
             setattr(self, key, value)
@@ -60,6 +60,7 @@ class Config:
                 'deepbooru_forced',
                 'deepbooru_set_tag',
                 'hide_progress',
+                'use_pixiv_artist',
             ],
             'upload_media': [
                 'src_path',
@@ -78,6 +79,7 @@ class Config:
             ],
             'import_from_booru': ['deepbooru_enabled', 'hide_progress'],
             'import_from_twitter': ['saucenao_enabled', 'deepbooru_enabled', 'hide_progress'],
+            'import_from_url': ['deepbooru_enabled', 'hide_progress', 'tmp_path'],
             'tag_posts': ['hide_progress'],
             'delete_posts': ['hide_progress'],
             'reset_posts': ['hide_progress'],
@@ -87,6 +89,7 @@ class Config:
             'gelbooru': ['user', 'api_key'],
             'konachan': ['user', 'password'],
             'yandere': ['user', 'password'],
+            'sankaku': ['user', 'password'],
             'pixiv': ['user', 'password', 'token'],
             'twitter': ['user_id', 'consumer_key', 'consumer_secret', 'access_token', 'access_token_secret'],
         }
@@ -96,7 +99,7 @@ class Config:
                 getattr(self, section)
             except AttributeError:
                 logger.critical(f'The section "{section}" is not defined config.toml!')
-                exit()
+                exit(1)
 
         for section, options in req_opts.items():
             for option in options:
@@ -105,7 +108,7 @@ class Config:
                         f'The option "{option}" in the "{section}" section was not set in config.toml! '
                         'Check the README for additional information.',
                     )
-                    exit()
+                    exit(1)
 
     def validate_path(self) -> None:
         """Check if the directories in config.toml exist.
@@ -115,14 +118,20 @@ class Config:
 
         if not Path(self.upload_media['src_path']).is_dir():
             logger.critical(f'The src_path "{self.upload_media["src_path"]}" specified in config.toml does not exist!')
-            exit()
+            exit(1)
+
+        if not Path(self.import_from_url['tmp_path']).is_dir():
+            logger.critical(
+                f'The tmp_path "{self.import_from_url["tmp_path"]}" specified in config.toml does not exist!',
+            )
+            exit(1)
 
         if not Path(self.logging['log_file']).parent.is_dir():
             logger.critical(
                 f'The log_file\'s parent directory "{Path(self.logging["log_file"]).parent}" '
                 'specified in config.toml does not exist!',
             )
-            exit()
+            exit(1)
 
     def validate_url(self) -> None:
         """Sanitize the szurubooru url in config.toml.
@@ -135,14 +144,14 @@ class Config:
 
         if isinstance(result, ValidationFailure):
             logger.critical(f'Your szurubooru URL "{self.szurubooru["url"]}" in config.toml is not valid!')
-            exit()
+            exit(1)
 
         parsed_url = urllib.parse.urlsplit(self.szurubooru['url'])
 
         api_scheme = parsed_url.scheme
         if api_scheme not in ('http', 'https'):
             logger.critical('API URL must be of HTTP or HTTPS scheme!')
-            exit()
+            exit(1)
 
         if parsed_url.path.startswith('/'):
             self.szurubooru['url'] = self.szurubooru['url'].rstrip('/')
@@ -154,7 +163,7 @@ class Config:
             logger.critical(
                 f'Your Deepbooru model "{self.auto_tagger["deepbooru_model"]}" in config.toml does not exist!',
             )
-            exit()
+            exit(1)
 
     def validate_convert_attrs(self) -> None:
         """Convert the threshold from a human readable to a machine readable size."""
@@ -165,7 +174,7 @@ class Config:
             logger.critical(
                 f'Your convert_threshold "{self.upload_media["convert_threshold"]}" in config.toml is not valid!',
             )
-            exit()
+            exit(1)
 
         if 'KB' in human_readable:
             self.upload_media['convert_threshold'] = float(human_readable.replace('KB', '')) * 1000
@@ -177,7 +186,7 @@ class Config:
                 f'Your convert_quality "{self.upload_media["convert_quality"]}" in config.toml \
                     is not a numeric value!',
             )
-            exit()
+            exit(1)
         else:
             self.upload_media['convert_quality'] = int(self.upload_media['convert_quality'])
 
@@ -186,7 +195,7 @@ class Config:
                 f'Your convert_quality value "{self.upload_media["convert_quality"]}" in config.toml \
                     is higher than the max value of 95!',
             )
-            exit()
+            exit(1)
 
     def validate_shrink_attrs(self) -> None:
         """Validate that the shink dimensions matches reg exp."""
@@ -195,7 +204,7 @@ class Config:
             logger.critical(
                 f'Your shrink_dimensions "{self.upload_media["shrink_dimensions"]}" in config.toml are not valid!',
             )
-            exit()
+            exit(1)
         else:
             dimensions = re.search(r'(\d+)x(\d+)', self.upload_media['shrink_dimensions'])
             max_width = int(dimensions.group(1))
@@ -207,7 +216,7 @@ class Config:
                 f'Your shrink_threshold "{self.upload_media["shrink_dimensions"]}" in config.toml \
                     is not a numeric value!',
             )
-            exit()
+            exit(1)
         else:
             self.upload_media['shrink_threshold'] = int(self.upload_media['shrink_threshold'])
 

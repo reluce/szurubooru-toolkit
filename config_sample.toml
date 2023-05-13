@@ -13,6 +13,7 @@ deepbooru_threshold = "0.7"  # Define how accurate the matched tag from DeepBoor
 deepbooru_forced = false  # Always tag with SauceNAO and Deepbooru
 deepbooru_set_tag = true  # Tag Deepbooru post with tag "deepbooru"
 hide_progress = false  # Set this to true to hide the progress bar
+use_pixiv_artist = false  # If the artist could only be found on pixiv, create and use the pixiv artist. Category has to be 'artist'.
 
 # Leave those options as "None" if you have no accounts on these sites
 [danbooru]
@@ -25,6 +26,9 @@ api_key = "None"
 user = "None"
 password = "None"
 [yandere]
+user = "None"
+password = "None"
+[sankaku]
 user = "None"
 password = "None"
 [pixiv]
@@ -44,7 +48,7 @@ hide_progress = false  # Set this to true to hide the progress bar
 cleanup = false  # Set this to true if images in the source directory should be deleted after upload
 tags = ["tagme"]  # These tags will get set for all uploaded posts
 auto_tag = true  # Set this to true if you want your post to be automatically tagged after upload
-max_similarity = "0.99"  # 1.00 being basically the same image
+max_similarity = "0.99"  # 1.00 being basically the same image, but not necessarily. Set to 1.00 if you know there are not duplicates.
 convert_to_jpg = false  # Convert images to JPG to save disk space. This won't overwrite the source files and only affects the uploaded image. Images might slip through identical post check.
 convert_threshold = "3MB"  # Convert images only if specified threshold has been broken.
 convert_quality = "90"  # Set up to 95. Higher means better quality, but takes up more disk space.
@@ -64,6 +68,18 @@ hide_progress = false  # Set this to true to hide the progress bar
 # shrink_threshold
 # shrink_dimensions
 # default_safety
+
+[import_from_url]
+deepbooru_enabled = true  # Apply Deepbooru tagging additionally besides fetched tags from URL
+tmp_path = './tmp/gallery_dl'
+hide_progress = false  # Set this to true to hide the progress bar
+# Following settings apply from upload_media as well:
+# max_similarity
+# convert_to_jpg
+# convert_threshold
+# shrink
+# shrink_threshold
+# shrink_dimensions
 
 [import_from_twitter]
 saucenao_enabled = true  # Tag posts with SauceNAO

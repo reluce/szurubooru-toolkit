@@ -95,9 +95,13 @@ def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
         else:
             exact_post = response.json()['exactPost']
             similar_posts = response.json()['similarPosts']
-            return exact_post, similar_posts
+            errors = False
+            return exact_post, similar_posts, errors
     except Exception as e:
-        logger.critical(f'An error occured during the similarity check: {e}')
+        print('')
+        logger.warning(f'An error occured during the similarity check: {e}. Skipping post...')
+        errors = True
+        return False, [], errors
 
 
 def upload_file(szuru: Szurubooru, post: Post) -> None:
@@ -108,10 +112,12 @@ def upload_file(szuru: Szurubooru, post: Post) -> None:
     Args:
         szuru (Szurubooru): Szurubooru object to interact with the API.
         post (Post): Post object with attr `similar_posts` and `image_token`.
-        file_to_upload (str): Local file path of the file to upload.
 
     Raises:
         Exception
+
+    Returns:
+        None
     """
 
     safety = post.safety if post.safety else config.upload_media['default_safety']
@@ -137,7 +143,7 @@ def upload_file(szuru: Szurubooru, post: Post) -> None:
             return response.json()['id']
     except Exception as e:
         print('')
-        logger.warning(f'An error occured during the upload for file "{post.file_to_upload}": {e}')
+        logger.warning(f'An error occured during the upload for file "{post.file_path}": {e}')
         return None
 
 
@@ -149,6 +155,9 @@ def cleanup_dirs(dir: str) -> None:
 
     Raises:
         OSError
+
+    Returns:
+        None
     """
 
     for root, dirs, files in os.walk(dir, topdown=False):
@@ -225,23 +234,39 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
     return image
 
 
-def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_to_upload: str = None) -> None:
+def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_path: str = None) -> bool:
+    """Uploads given file to temporary file space in szurubooru.
+
+    Args:
+        file (bytes): The file as bytes
+        file_ext (str): The file extension
+        metadata (dict, optional): Attach metadata to the post. Defaults to None.
+        file_path (str, optional): The path to the file (used for debugging). Defaults to None.
+
+    Returns:
+        bool: If the upload was successful or not
+    """
+
     post = Post()
 
     if file_ext not in ['mp4', 'webm', 'gif']:
-        post.media = eval_convert_image(file, file_ext, file_to_upload)
+        post.media = eval_convert_image(file, file_ext, file_path)
     else:
         post.media = file
 
     post.token = get_media_token(szuru, post.media)
-    post.exact_post, similar_posts = check_similarity(szuru, post.token)
+    post.exact_post, similar_posts, errors = check_similarity(szuru, post.token)
+
+    if errors:
+        return False
+
     threshold = 1 - float(config.upload_media['max_similarity'])
 
     for entry in similar_posts:
         if entry['distance'] < threshold and not post.exact_post:
             print()
             logger.debug(
-                f'File "{file_to_upload} is too similar to post {entry["post"]["id"]} ({100 - entry["distance"]}%)',
+                f'File "{file_path} is too similar to post {entry["post"]["id"]} ({100 - entry["distance"]}%)',
             )
             post.exact_post = True
             break
@@ -256,7 +281,7 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_to_uploa
             post.safety = metadata['safety']
             post.source = metadata['source']
 
-        post.file_to_upload = file_to_upload
+        post.file_path = file_path
 
         post.similar_posts = []
         for entry in similar_posts:
@@ -269,8 +294,9 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_to_uploa
 
         # Tag post if enabled
         if config.upload_media['auto_tag']:
-            if file_ext not in ['mp4', 'webm']:
-                auto_tagger(str(post_id), post.media)
+            auto_tagger(str(post_id), post.media)
+
+    return True
 
 
 def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = None) -> int:
@@ -289,20 +315,20 @@ def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = No
             if not from_import_from:
                 logger.info('Found ' + str(len(files_to_upload)) + ' file(s). Starting upload...')
 
-                for file_to_upload in tqdm(
+                for file_path in tqdm(
                     files_to_upload,
                     ncols=80,
                     position=0,
                     leave=False,
                     disable=config.upload_media['hide_progress'],
                 ):
-                    with open(file_to_upload, 'rb') as f:
+                    with open(file_path, 'rb') as f:
                         file = f.read()
-                    upload_post(file, file_ext=Path(file_to_upload).suffix[1:], file_to_upload=file_to_upload)
+                    success = upload_post(file, file_ext=Path(file_path).suffix[1:], file_path=file_path)
 
-                    if config.upload_media['cleanup']:
-                        if os.path.exists(file_to_upload):
-                            os.remove(file_to_upload)
+                    if config.upload_media['cleanup'] and success:
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
 
                 if config.upload_media['cleanup']:
                     cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted

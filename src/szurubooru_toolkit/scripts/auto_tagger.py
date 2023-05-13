@@ -11,9 +11,12 @@ from tqdm import tqdm
 from szurubooru_toolkit import Post
 from szurubooru_toolkit import SauceNao
 from szurubooru_toolkit import config
+from szurubooru_toolkit import danbooru
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.utils import collect_sources
+from szurubooru_toolkit.utils import convert_rating
 from szurubooru_toolkit.utils import download_media
+from szurubooru_toolkit.utils import generate_src
 from szurubooru_toolkit.utils import sanitize_tags
 from szurubooru_toolkit.utils import scrape_sankaku
 from szurubooru_toolkit.utils import shrink_img
@@ -65,9 +68,9 @@ def parse_args() -> tuple:
 
     logger.debug(f'query = {query}')
 
-    if 'type:' in query:
-        logger.critical('Search token "type" is not allowed in queries!')
-        exit()
+    # if 'type:' in query:
+    #     logger.critical('Search token "type" is not allowed in queries!')
+    #     exit()
 
     if '\'' in query:
         logger.warning(
@@ -110,7 +113,7 @@ def parse_saucenao_results(sauce: SauceNao, post: Post, image: bytes) -> tuple[l
         # Sleep 35 seconds after short limit has been reached
         if limit_short == 0:
             print('')
-            logger.info('Short limit reached for SauceNAO, trying again in 35s...')
+            logger.debug('Short limit reached for SauceNAO, trying again in 35s...')
             sleep(35)
     else:
         limit_reached = True
@@ -193,7 +196,7 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
         if not from_upload_media:
             logger.info(f'Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
 
-        posts = szuru.get_posts(query)
+        posts = szuru.get_posts(query, videos=True)
 
         try:
             total_posts = next(posts)
@@ -234,7 +237,9 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                 # Download the file from szurubooru if its not already locally present.
                 # This might be the case if this function was called from upload_media.
                 if not file_to_upload:
-                    if not config.szurubooru['public'] or config.auto_tagger['deepbooru_enabled']:
+                    if (
+                        not config.szurubooru['public'] or config.auto_tagger['deepbooru_enabled']
+                    ) and post.type != 'video':
                         image = download_media(post.content_url, post.md5)
                         # Shrink files >2MB
                         try:
@@ -247,7 +252,7 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                 else:
                     image = file_to_upload
 
-                if config.auto_tagger['saucenao_enabled']:
+                if config.auto_tagger['saucenao_enabled'] and post.type != 'video':
                     tags, post.source, post.safety, limit_reached = parse_saucenao_results(
                         sauce,
                         post,
@@ -261,7 +266,9 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                 else:
                     limit_reached = False
 
-                if (not tags and config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']:
+                if (
+                    (not tags and config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']
+                ) and post.type != 'video':
                     result = deepbooru.tag_image(
                         image,
                         config.auto_tagger['deepbooru_threshold'],
@@ -292,8 +299,23 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                         statistics(deepbooru=1)
                     else:
                         statistics(untagged=1)
-                elif not tags:
+                elif not tags and post.type != 'video':
                     statistics(untagged=1)
+
+                if post.type == 'video':
+                    result = danbooru.get_by_md5(post.md5)
+                    if result:
+                        tags = danbooru.get_tags(result)
+                        post.safety = convert_rating(danbooru.get_rating(result))
+                        post.source = generate_src('danbooru', str(result['id']))
+
+                    if add_tags:
+                        post.tags = list(set().union(post.tags, tags, add_tags))  # Keep previous tags, add user tags
+                    else:
+                        post.tags = list(set().union(post.tags, tags))  # Keep previous tags, add user tags
+
+                    if not tags:
+                        statistics(untagged=1)
 
                 if remove_tags:
                     [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]

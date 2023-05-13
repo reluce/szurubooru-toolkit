@@ -7,13 +7,15 @@ from typing import Coroutine  # noqa TYP001
 
 from aiohttp.client_exceptions import ContentTypeError
 from loguru import logger
-from pybooru.moebooru import Moebooru
 from pysaucenao import SauceNao as PySauceNao
 from syncer import sync
 
 from szurubooru_toolkit import Config
-from szurubooru_toolkit import Danbooru
-from szurubooru_toolkit import Gelbooru
+from szurubooru_toolkit import danbooru
+from szurubooru_toolkit import gelbooru
+from szurubooru_toolkit import konachan
+from szurubooru_toolkit import szuru
+from szurubooru_toolkit import yandere
 from szurubooru_toolkit.utils import audit_rating
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import convert_rating
@@ -24,15 +26,7 @@ class SauceNao:
     """Handles everything related to SauceNAO and aggregating the results."""
 
     def __init__(self, config: Config) -> None:
-        """Initialize the SauceNAO object with Booru clients as attributes.
-
-        Following clients will be set as attributes:
-
-        * `self.danbooru`
-        * `self.gelbooru`
-        * `self.konachan`
-        * `self.pysaucenao`
-        * `self.yandere`
+        """Initialize the SauceNAO object.
 
         Args:
             config (Config): Config object with user configuration from `config.toml`.
@@ -42,10 +36,7 @@ class SauceNao:
         if not config.auto_tagger['saucenao_api_token'] == 'None':
             logger.debug('Using SauceNAO API token')
 
-        self.danbooru = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
-        self.gelbooru = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
-        self.konachan = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
-        self.yandere = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
+        self.use_pixiv_artist = config.auto_tagger['use_pixiv_artist']
 
     @sync
     async def get_metadata(self, content_url: str, image: bytes = None) -> tuple:
@@ -67,6 +58,7 @@ class SauceNao:
         metadata_san = metadata.copy()
         metadata_yan = metadata.copy()
         metadata_kona = metadata.copy()
+        metadata_pix = metadata.copy()
 
         limit_short = 1
         limit_long = 10
@@ -80,33 +72,36 @@ class SauceNao:
         gelbooru_found = False
         yandere_found = False
         konachan_found = False
+        sankaku_found = False
+
+        pixiv_artist = None
 
         if response and not response == 'Limit reached':
             for result in response:
                 if result.url is not None and 'danbooru' in result.url and not danbooru_found:
-                    result_dan = self.danbooru.get_result(result.danbooru_id)
+                    result_dan = danbooru.get_result(result.danbooru_id)
 
                     if not result_dan:
                         continue
 
-                    metadata_dan['tags'] = self.danbooru.get_tags(result_dan)
-                    metadata_dan['rating'] = convert_rating(self.danbooru.get_rating(result_dan))
+                    metadata_dan['tags'] = danbooru.get_tags(result_dan)
+                    metadata_dan['rating'] = convert_rating(danbooru.get_rating(result_dan))
                     metadata_dan['source'] = result.url
 
                     danbooru_found = True
                 elif result.url is not None and 'gelbooru' in result.url and not gelbooru_found:
-                    result_gel = await self.gelbooru.get_result(result.url)
+                    result_gel = await gelbooru.get_result(result.url)
 
                     if not result_gel:
                         continue
 
-                    metadata_gel['tags'] = self.gelbooru.get_tags(result_gel)
+                    metadata_gel['tags'] = gelbooru.get_tags(result_gel)
                     metadata_gel['rating'] = convert_rating(result_gel.rating)
                     metadata_gel['source'] = result.url
 
                     gelbooru_found = True
                 elif result.url is not None and 'yande.re' in result.url and not yandere_found:
-                    result_yan = self.yandere.post_list(tags='id:' + str(result.data['yandere_id']))[0]
+                    result_yan = yandere.post_list(tags='id:' + str(result.data['yandere_id']))[0]
 
                     if not result_yan:
                         continue
@@ -117,7 +112,7 @@ class SauceNao:
 
                     yandere_found = True
                 elif result.url is not None and 'konachan' in result.url and not konachan_found:
-                    result_kona = self.konachan.post_list(tags='id:' + str(result.data['konachan_id']))[0]
+                    result_kona = konachan.post_list(tags='id:' + str(result.data['konachan_id']))[0]
 
                     if not result_kona:
                         continue
@@ -127,9 +122,26 @@ class SauceNao:
                     metadata_kona['source'] = result.url
 
                     konachan_found = True
-                elif result.url is not None and 'sankaku' in result.url:
+                elif result.url is not None and 'sankaku' in result.url and not sankaku_found:
                     metadata_san['tags'], metadata_san['rating'] = scrape_sankaku(result.url)
                     metadata_san['source'] = result.url
+
+                    sankaku_found = True
+                elif result.url is not None and 'pixiv' in result.url:
+                    pixiv_artist = result.author_name
+
+                    metadata_pix['source'] = result.url
+
+            if pixiv_artist and not any([danbooru_found, gelbooru_found, konachan_found, yandere_found, sankaku_found]):
+                artist = danbooru.search_artist(pixiv_artist)
+
+                # Use the pixiv artist as a fallback if configured
+                if not artist and self.use_pixiv_artist:
+                    artist = pixiv_artist
+                    artist = artist.lower().replace(' ', '_')
+                    szuru.create_tag(artist, category='artist', overwrite=True)
+
+                metadata_pix['tags'] = [artist]
 
             limit_short = response.short_remaining
             logger.debug(f'Limit short: {limit_short}')
@@ -144,6 +156,7 @@ class SauceNao:
                 metadata_dan['tags'],
                 metadata_yan['tags'],
                 metadata_kona['tags'],
+                metadata_pix['tags'],
             ),
         )
 
@@ -154,6 +167,7 @@ class SauceNao:
             metadata_dan['source'],
             metadata_yan['source'],
             metadata_kona['source'],
+            metadata_pix['source'],
         )
         source_debug = source.replace('\n', '\\n')  # Don't display line breaks in logs
 
@@ -170,15 +184,17 @@ class SauceNao:
             limit_long = 0
 
         if metadata_dan['tags']:
-            logger.debug('Found result in Danbooru')
+            logger.debug('Found result on Danbooru')
         if metadata_gel['tags']:
-            logger.debug('Found result in Gelbooru')
+            logger.debug('Found result on Gelbooru')
         if metadata_san['tags']:
-            logger.debug('Found result in Sankaku')
+            logger.debug('Found result on Sankaku')
         if metadata_yan['tags']:
-            logger.debug('Found result in Yande.re')
+            logger.debug('Found result on Yande.re')
         if metadata_kona['tags']:
-            logger.debug('Found result in Konachan')
+            logger.debug('Found result on Konachan')
+        if metadata_pix['tags']:
+            logger.debug('Found result on pixiv')
 
         logger.debug(f'Returning tags: {tags}')
         logger.debug(f'Returning sources: {source_debug}')
@@ -227,7 +243,7 @@ class SauceNao:
                     response = None
                 break
         else:
-            logger.warning('Could not establish connection to SauceNAO, trying with next post...')
+            logger.debug('Could not establish connection to SauceNAO, trying with next post...')
             response = None
 
         return response

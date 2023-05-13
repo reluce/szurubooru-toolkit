@@ -17,6 +17,10 @@ class Danbooru:
             self.client = Danbooru_Module('danbooru')
             logger.debug('Using Danbooru without user and API key')
 
+        self.session = requests.Session()
+        headers = {'User-Agent': 'Danbooru dummy agent'}
+        self.session.headers.update(headers)
+
     def get_by_md5(self, md5sum):
         for _ in range(1, 12):
             try:
@@ -25,6 +29,10 @@ class Danbooru:
                 logger.debug(f'Returning result: {result}')
 
                 break
+            except PybooruHTTPError as e:
+                if 'Not Found' in e._msg:
+                    result = None
+                    break
             except (TimeoutError, PybooruError, PybooruHTTPError, PybooruAPIError):
                 logger.debug('Got no result')
                 sleep(5)
@@ -62,8 +70,42 @@ class Danbooru:
 
         return result_rating
 
-    @staticmethod
-    def download_tags(query: str = '*', min_post_count: int = 10, limit: int = 100) -> list:
+    def search_artist(self, artist) -> str:
+        """Search main artist name on Danbooru and return it
+
+        Args:
+            artist (str): The artist name. Can be an alias as well.
+        """
+
+        for _ in range(1, 12):
+            try:
+                result = self.client.artist_list(artist.lower())
+                if result:
+                    artist = result[0]['name']
+                else:
+                    artist = self.session.get(
+                        f'https://danbooru.donmai.us/artists.json?search[any_other_name_like]={artist.lower()}',
+                    ).json()[0]['name']
+                    self.session.close()
+
+                logger.debug(f'Returning artist: {artist}')
+
+                break
+            except (IndexError, KeyError):
+                logger.debug(f'Could not find artist "{artist.lower()}"')
+                artist = None
+
+                break
+            except (TimeoutError, PybooruError, PybooruHTTPError, PybooruAPIError):
+                logger.debug('Could not establish connection to Danbooru, trying again in 5s...')
+                sleep(5)
+        else:
+            logger.debug('Could not establish connection to Danbooru. Skip this artist...')
+            artist = None
+
+        return artist
+
+    def download_tags(self, query: str = '*', min_post_count: int = 10, limit: int = 100) -> list:
         """Download and return tags from Danbooru.
 
         Args:
@@ -98,14 +140,10 @@ class Danbooru:
                 + str(page)
             )
 
-            headers = {
-                'User-Agent': (
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-                    'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
-                ),
-            }
             try:
                 logger.info(f'Fetching tags from URL {tag_url}...')
-                yield requests.get(tag_url, timeout=30, headers=headers).json()
+                yield self.session.get(tag_url, timeout=30).json()
             except Exception as e:
                 logger.critical(f'Could not fetch tags: {e}')
+
+        self.session.close()

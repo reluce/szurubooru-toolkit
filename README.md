@@ -37,6 +37,7 @@ replacing with your configuration.
    `upload_src`, you may need to update the `docker-compose.yml` binding to be
    something like `./uploads:/szurubooru-toolkit/uploads`, and set
    `/szurubooru-toolkit/uploads` as the `src_path` option instead.
+1. Create the folder `tmp` in the same location.
 1. If you would like to use deepbooru or tag files, create `misc/deepbooru`
    and/or `misc/tags` in the same location and follow the instructions linked
    below
@@ -79,6 +80,7 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `auto_tagger` | `deepbooru_forced` | Always tag with SauceNAO and Deepbooru | `false` |
 | `auto_tagger` | `deepbooru_set_tag` | Tag Deepbooru post with tag `deepbooru` | `true` |
 | `auto_tagger` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `auto_tagger` | `use_pixiv_artist` | If the artist could only be found on pixiv, create and use the pixiv artist. Category has to be 'artist'. | `false` |
 | `danbooru` | `user` | Danbooru user | `"None"` |
 | `danbooru` | `api_key` | Danbooru api key | `"None"` |
 | `gelbooru` | `user` | Gelbooru user | `"None"` |
@@ -87,6 +89,8 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `konachan` | `password` | Konachan password | `"None"` |
 | `yandere` | `user` | Yandere user | `"None"` |
 | `yandere` | `password` | Yandere password | `"None"` |
+| `sankaku` | `user` | Sankaku user | `"None"` |
+| `sankaku` | `password` | Sankaku password | `"None"` |
 | `pixiv` | `user` | Pixiv user. Currently not being used. | `"None"` |
 | `pixiv` | `password` | Pixiv password. Currently not being used. | `"None"` |
 | `pixiv` | `token` | Pixiv token. Currently not being used. | `"None"` |
@@ -100,7 +104,7 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `upload_media` | `cleanup` | Set this to true if images in the `src_path` should be deleted after upload | `false` |
 | `upload_media` | `tags` | These tags will get set for all uploaded posts. Separate them by a comma. | `["tagme", "tag1", "tag2", "tagN"]` |
 | `upload_media` | `auto_tag` | Set this to true if you want your post to be automatically tagged after upload | `false` |
-| `upload_media` | `max_similarity` | Adjust this value to ignore posts if a similar post higher than the threshold has already been uploaded | `"0.99"` |
+| `upload_media` | `max_similarity` | Adjust this value to ignore posts if a similar post higher than the threshold has already been uploaded. 1.00 being basically the same image, but not necessarily. Set to 1.00 if you know there are not duplicates. | `"0.99"` |
 | `upload_media` | `convert_to_jpg` | Convert images to JPG to save disk space. This won't overwrite the source files and only affects the uploaded image. Images might slip through identical post check. | `false` |
 | `upload_media` | `convert_quality` | Only images above this threshold will be converted to jpg if `convert_to_jpg` is True. | `"3MB\|500KB"` |
 | `upload_media` | `shrink` | Set to true to shrink images to shrink_dimensions based on shrink_threshold below. Images might slip through identical post check. | `false` |
@@ -109,6 +113,8 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `upload_media` | `default_safety` | # Set the default safety in case neither SauceNAO, nor Deepbooru could determine it | `safe` |
 | `import_from_booru` | `deepbooru_enabled` | Apply Deepbooru tagging additionally besides fetched tags from Booru | `false` |
 | `import_from_booru` | `hide_progress` | Set this to true to hide the progress bar | `false` |
+| `import_from_url` | `tmp_path` | Path to directory where temporary downloads from gallery-dl script will be saved | `false` |
+| `import_from_url` | `hide_progress` | Set this to true to hide the progress bar | `false` |
 | `import_from_twitter` | `saucenao_enabled` | Tag posts with SauceNAO | `false` |
 | `import_from_twitter` | `deepbooru_enabled` | Tag posts with Deepbooru | `false` |
 | `import_from_twitter` | `hide_progress` | Set this to true to hide the progress bar | `false` |
@@ -137,6 +143,7 @@ Following scripts are currently available:
 * `delete-posts`: Batch delete of posts
 * `import-from-booru`: Batch importing of posts with their tags from various Boorus
 * `import-from-twitter`: Batch importing of Twitter favorites
+* `import-from-url`: Batch importing of URLs based on [gallery-dl](https://github.com/mikf/gallery-dl)
 * `reset-posts`: Batch resetting of posts (remove tags and sources)
 * `upload-media`: Batch upload of media files from local source folder
 * `tag-posts`: Manual batch tagging
@@ -226,6 +233,52 @@ __Examples__
 
 Note that if you specify `all` to download from all Boorus, you are limited to two tags because free Danbooru accounts are limited to two tags per query.
 If you have a Gold/Platinum account, set your credentials in `config.toml`. Note that it's currently untested if the script will work with upgraded accounts.
+
+### :link:	import-from-url
+This scripts imports posts with their tags from the URL passed to this script.
+In the background, it simply calls the [gallery-dl](https://github.com/mikf/gallery-dl) script and parses its output.
+Alternatively, an input file with multiple URLs can be specified.
+
+In the `config.toml` file, you have to specify a directory where posts will be temporarily saved to.
+Since this script is using the `upload-media` script to upload the post, following settings apply from the `upload-media` section:
+* max_similarity
+* convert_to_jpg
+* convert_threshold
+* shrink
+* shrink_threshold
+* shrink_dimensions
+
+:information_source:️ **Following Boorus are currently supported:**
+* Gelbooru
+* Danbooru
+* Sankaku
+* Konachan
+* Yandere
+
+Credentials in your `config.toml` file will be passed to the gallery-dl script if you use a single input URL to this script.
+
+__Usage__
+```
+usage: import-from-url [-h] [--range RANGE] [--input-file INPUT_FILE] [url ...]
+
+This script downloads and tags posts from various Boorus based on your input query.
+
+positional arguments:
+  url                   The URL for the posts you want to download and tag
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --range RANGE         Index range(s) specifying which files to download. These can be either a constant value, range, or slice (e.g. '5', '8-20', or '1:24:3')
+  --input-file INPUT_FILE
+                        Download URLs found in FILE.
+
+```
+
+__Examples__
+* `import-from-url "https://danbooru.donmai.us/posts?tags=foo"`
+* `import-from-url "https://chan.sankakucomplex.com/?tags=foo"`
+* `import-from-url "https://beta.sankakucomplex.com/post/show/<id>"`
+* `import-from-url --input-file urls.txt "https://danbooru.donmai.us/posts?tags=foo" "https://beta.sankakucomplex.com/post/show/<id>"`
 
 ### :dove: import-from-twitter
 This script fetches media files from your Twitter likes, uploads and optionally tags them.

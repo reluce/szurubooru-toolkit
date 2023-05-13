@@ -1,11 +1,11 @@
 import sys
 
 from loguru import logger
+from pybooru.moebooru import Moebooru
 
 from .config import Config
 from .danbooru import Danbooru  # noqa F401
 from .gelbooru import Gelbooru  # noqa F401
-from .saucenao import SauceNao  # noqa F401
 from .szurubooru import Post  # noqa F401
 from .szurubooru import Szurubooru
 from .twitter import Twitter  # noqa F401
@@ -36,9 +36,21 @@ logger.add(
 )
 
 config = Config()
-if config.auto_tagger['deepbooru_enabled']:
+if (
+    config.auto_tagger['deepbooru_enabled']
+    or config.import_from_url['deepbooru_enabled']
+    or config.import_from_booru['deepbooru_enabled']
+):
     from .deepbooru import Deepbooru  # noqa F401
 
 setup_logger(config)
 
+danbooru = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
+gelbooru = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
+konachan = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
+yandere = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
+
 szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
+
+# SauceNao imports the szuru object, so we have to include it here
+from .saucenao import SauceNao  # noqa F401
