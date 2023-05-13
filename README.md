@@ -104,7 +104,7 @@ Note that path names have to be specified with forward slashes (/) if you're usi
 | `upload_media` | `cleanup` | Set this to true if images in the `src_path` should be deleted after upload | `false` |
 | `upload_media` | `tags` | These tags will get set for all uploaded posts. Separate them by a comma. | `["tagme", "tag1", "tag2", "tagN"]` |
 | `upload_media` | `auto_tag` | Set this to true if you want your post to be automatically tagged after upload | `false` |
-| `upload_media` | `max_similarity` | Adjust this value to ignore posts if a similar post higher than the threshold has already been uploaded | `"0.99"` |
+| `upload_media` | `max_similarity` | Adjust this value to ignore posts if a similar post higher than the threshold has already been uploaded. 1.00 being basically the same image, but not necessarily. Set to 1.00 if you know there are not duplicates. | `"0.99"` |
 | `upload_media` | `convert_to_jpg` | Convert images to JPG to save disk space. This won't overwrite the source files and only affects the uploaded image. Images might slip through identical post check. | `false` |
 | `upload_media` | `convert_quality` | Only images above this threshold will be converted to jpg if `convert_to_jpg` is True. | `"3MB\|500KB"` |
 | `upload_media` | `shrink` | Set to true to shrink images to shrink_dimensions based on shrink_threshold below. Images might slip through identical post check. | `false` |
