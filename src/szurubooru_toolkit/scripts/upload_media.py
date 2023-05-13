@@ -95,10 +95,13 @@ def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
         else:
             exact_post = response.json()['exactPost']
             similar_posts = response.json()['similarPosts']
-            return exact_post, similar_posts
+            errors = False
+            return exact_post, similar_posts, errors
     except Exception as e:
-        logger.warning(f'An error occured during the similarity check: {e}. Skipping check...')
-        return None, []
+        print('')
+        logger.warning(f'An error occured during the similarity check: {e}. Skipping post...')
+        errors = True
+        return False, [], errors
 
 
 def upload_file(szuru: Szurubooru, post: Post) -> None:
@@ -235,7 +238,11 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_to_uploa
         post.media = file
 
     post.token = get_media_token(szuru, post.media)
-    post.exact_post, similar_posts = check_similarity(szuru, post.token)
+    post.exact_post, similar_posts, errors = check_similarity(szuru, post.token)
+
+    if errors:
+        return False
+
     threshold = 1 - float(config.upload_media['max_similarity'])
 
     for entry in similar_posts:
@@ -272,6 +279,8 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_to_uploa
         if config.upload_media['auto_tag']:
             auto_tagger(str(post_id), post.media)
 
+    return True
+
 
 def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = None) -> int:
     """Main logic of the script."""
@@ -298,9 +307,9 @@ def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = No
                 ):
                     with open(file_to_upload, 'rb') as f:
                         file = f.read()
-                    upload_post(file, file_ext=Path(file_to_upload).suffix[1:], file_to_upload=file_to_upload)
+                    success = upload_post(file, file_ext=Path(file_to_upload).suffix[1:], file_to_upload=file_to_upload)
 
-                    if config.upload_media['cleanup']:
+                    if config.upload_media['cleanup'] and success:
                         if os.path.exists(file_to_upload):
                             os.remove(file_to_upload)
 
