@@ -139,7 +139,11 @@ class SauceNao:
                 if not artist and self.use_pixiv_artist:
                     artist = pixiv_artist
                     artist = artist.lower().replace(' ', '_')
-                    szuru.create_tag(artist, category='artist', overwrite=True)
+                    try:
+                        szuru.create_tag(artist, category='artist', overwrite=True)
+                    except Exception as e:
+                        logger.debug(f'Could not create pixiv artist {pixiv_artist}: {e}')
+                        pass
 
                 metadata_pix['tags'] = [artist]
 
