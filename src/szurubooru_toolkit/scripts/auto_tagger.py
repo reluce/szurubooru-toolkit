@@ -280,6 +280,16 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
 
                     tags, post.safety = result
 
+                    if (not config.auto_tagger['saucenao_enabled'] or limit_reached) and config.auto_tagger[
+                        'update_relations'
+                    ]:
+                        for tag in tags:
+                            szuru_tag = szuru.api.getTag(tag)
+                            for implication in szuru_tag.implications:
+                                szuru_implication = szuru.api.getTag(implication)
+                                if szuru_implication not in post.tags:
+                                    post.tags.append(szuru_implication.primary_name)
+
                     if post.relations:
                         set_tags_from_relations(post)
 
@@ -307,7 +317,7 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                     if result:
                         tags = danbooru.get_tags(result)
                         post.safety = convert_rating(danbooru.get_rating(result))
-                        post.source = generate_src('danbooru', str(result['id']))
+                        post.source = generate_src({'site': 'danbooru', 'id': str(result['id'])})
 
                     if add_tags:
                         post.tags = list(set().union(post.tags, tags, add_tags))  # Keep previous tags, add user tags

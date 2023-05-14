@@ -61,6 +61,7 @@ class Config:
                 'deepbooru_set_tag',
                 'hide_progress',
                 'use_pixiv_artist',
+                'update_relations',
             ],
             'upload_media': [
                 'src_path',
@@ -84,6 +85,7 @@ class Config:
             'delete_posts': ['hide_progress'],
             'reset_posts': ['hide_progress'],
             'create_tags': ['hide_progress'],
+            'create_relations': ['threshold'],
             'logging': ['log_enabled', 'log_file', 'log_level', 'log_colorized'],
             'danbooru': ['user', 'api_key'],
             'gelbooru': ['user', 'api_key'],
