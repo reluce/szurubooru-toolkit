@@ -39,6 +39,65 @@ class Szurubooru:
         # Use the api object to interact with pyszuru module
         self.api = pyszuru.API(base_url=szuru_url, username=szuru_user, token=szuru_token)
 
+        self.allowed_tokens = [
+            'ar',
+            'area',
+            'aspect-ratio',
+            'comment',
+            'comment-count',
+            'comment-date',
+            'comment-time',
+            'content-checksum',
+            'creation-date',
+            'creation-time',
+            'date',
+            'disliked',
+            'edit-date',
+            'edit-time',
+            'fav',
+            'fav-count',
+            'fav-date',
+            'fav-time',
+            'feature-count',
+            'feature-date',
+            'feature-time',
+            'file-size',
+            'flag',
+            'height',
+            'id',
+            'image-ar',
+            'image-area',
+            'image-aspect-ratio',
+            'image-height',
+            'image-width',
+            'last-edit-date',
+            'last-edit-time',
+            'liked',
+            'md5',
+            'note-count',
+            'note-text',
+            'pool',
+            'rating',
+            'relation-count',
+            'safety',
+            'score',
+            'sha1',
+            'source',
+            'submit',
+            'tag',
+            'tag-count',
+            'time',
+            'type',
+            'upload',
+            'uploader',
+            'width',
+            'sort',
+            'liked',
+            'disliked',
+            'fav',
+            'tumbleweed',
+        ]
+
     def get_posts(
         self,
         query: str,
@@ -64,6 +123,15 @@ class Szurubooru:
             query = 'id:' + query
             logger.debug(f'Modified input query to "{query}"')
 
+        if ':' in query:
+            query_list = query.split()
+            for tag in query_list:
+                if ':' in tag:
+                    token = tag.split(':')[0]
+                    if token not in self.allowed_tokens and token not in ['-' + t for t in self.allowed_tokens]:
+                        sanitized_tag = tag.replace(':', '\\:')  # noqa W605
+                        query = query.replace(tag, sanitized_tag)
+
         try:
             if videos:
                 query_params = {'query': query}
@@ -79,7 +147,7 @@ class Szurubooru:
             if 'name' in response and response['name'] == 'SearchError':
                 print('')
                 logger.critical(f'{response["name"]}: {response["description"]}')
-                exit()
+                raise UnknownTokenError(response['description'])
 
             total = str(response['total'])
             logger.debug(f'Got a total of {total} results')
@@ -284,5 +352,11 @@ class SzurubooruError(Exception):
 
 class TagExistsError(SzurubooruError):
     """Raise if the tag already exists."""
+
+    pass
+
+
+class UnknownTokenError(SzurubooruError):
+    """Raise if the search token does not valid."""
 
     pass
