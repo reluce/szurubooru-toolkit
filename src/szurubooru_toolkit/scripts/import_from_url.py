@@ -52,7 +52,9 @@ def parse_args() -> tuple:
     return args.range, args.urls, args.input_file
 
 
-def set_tags(metadata):
+def set_tags(metadata) -> list:
+    artist = ''
+
     if metadata['site'] == 'e-hentai':
         for tag in metadata['tags']:
             if tag.startswith('artist'):
@@ -67,7 +69,7 @@ def set_tags(metadata):
                     else:
                         metadata['tags'] = []
 
-        if not isinstance(artist, str):
+        if not artist:
             metadata['tags'] = []
     else:
         try:
