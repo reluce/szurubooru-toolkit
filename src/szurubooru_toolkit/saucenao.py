@@ -1,228 +1,116 @@
 from __future__ import annotations
 
+import re
+from asyncio import sleep
 from asyncio.exceptions import TimeoutError
 from io import BytesIO
-from time import sleep
+from typing import Any
 from typing import Coroutine  # noqa TYP001
 
+import tldextract
 from aiohttp.client_exceptions import ContentTypeError
 from loguru import logger
 from pysaucenao import SauceNao as PySauceNao
-from syncer import sync
 
 from szurubooru_toolkit import Config
-from szurubooru_toolkit import danbooru
-from szurubooru_toolkit import gelbooru
-from szurubooru_toolkit import konachan
-from szurubooru_toolkit import szuru
-from szurubooru_toolkit import yandere
-from szurubooru_toolkit.utils import audit_rating
-from szurubooru_toolkit.utils import collect_sources
-from szurubooru_toolkit.utils import convert_rating
-from szurubooru_toolkit.utils import scrape_sankaku
 
 
 class SauceNao:
     """Handles everything related to SauceNAO and aggregating the results."""
 
     def __init__(self, config: Config) -> None:
-        """Initialize the SauceNAO object.
-
-        Args:
-            config (Config): Config object with user configuration from `config.toml`.
-        """
-
+        """Initialize the SauceNAO object."""
         self.pysaucenao = PySauceNao(api_key=config.auto_tagger['saucenao_api_token'], min_similarity=80.0)
         if not config.auto_tagger['saucenao_api_token'] == 'None':
             logger.debug('Using SauceNAO API token')
 
-        self.use_pixiv_artist = config.auto_tagger['use_pixiv_artist']
+        self.retry_attempts = 12
+        self.retry_delay = 5
 
-    @sync
-    async def get_metadata(self, content_url: str, image: bytes = None) -> tuple:
+    def get_base_domain(self, url: str) -> str:
+        extracted = tldextract.extract(url)
+        return extracted.domain
+
+    async def get_metadata(
+        self,
+        content_url: str,
+        image: bytes | None = None,
+    ) -> tuple[dict[str, dict[str, int | None] | Any], int, int]:
         """Retrieve results from SauceNAO and aggregate all metadata.
 
-        Args:
-            content_url (str): Image URL where SauceNAO should retrieve the image from.
-            image (bytes): The media file as bytes.
+        This function extracts image metadata from multiple sources such as pixiv, Danbooru, Gelbooru, Yandere,
+        Konachan and Sankaku, using the SauceNAO reverse image search tool. The metadata is then collected and
+        returned in a tuple format. The function also takes care of request limit issues, informing about the
+        remaining short and long limit.
 
-        Returns:
-            tuple: Contains `tags`, `source`, `rating`, `limit_short` and `limit_long`.
+        Parameters
+        ----------
+        content_url : str
+            The URL of the szurubooru content from where metadata needs to be extracted.
+            SauceNAO needs to be able to reach this URL.
+        image : Optional[bytes], optional
+            The image data in bytes format, if available. Defaults to None.
+
+        Returns
+        -------
+        Tuple[Dict[str, Dict[str, int | None] | Any], int, int]
+            A tuple containing a dictionary of metadata, short limit remaining, and long limit remaining.
+            The metadata dictionary keys are domain names and the values are either another dictionary containing
+            the common booru name and post_id or the result object (only with pixiv).
+            The dictionary values for 'site' are source-specific strings
+            and for 'post_id' are integers representing the post id from the source site.
+
+        Raises
+        ------
+        Exception
+            Any exceptions raised while extracting metadata or due to request limits being reached are propagated
+            upwards.
         """
-
-        # Set default values
-        # Should not affect scraped data
-        metadata = dict(tags=[], source='', rating='')
-        metadata_dan = metadata.copy()
-        metadata_gel = metadata.copy()
-        metadata_san = metadata.copy()
-        metadata_yan = metadata.copy()
-        metadata_kona = metadata.copy()
-        metadata_pix = metadata.copy()
-
-        limit_short = 1
-        limit_long = 10
 
         response = await self.get_result(content_url, image)
 
-        # Sometimes multiple results from the same Booru are found.
-        # Results are sorted by their similiarity (highest first).
-        # As soon as the highest similarity result is processed, skip other results from the same booru.
-        danbooru_found = False
-        gelbooru_found = False
-        yandere_found = False
-        konachan_found = False
-        sankaku_found = False
-
-        pixiv_artist = None
+        matches = {
+            'donmai': None,
+            'gelbooru': None,
+            'yande': None,
+            'konachan': None,
+            'sankakucomplex': None,
+            'pixiv': None,
+        }
 
         if response and not response == 'Limit reached':
+            site_keys = {
+                'pixiv': 'pixiv',
+                'donmai': 'danbooru',
+                'gelbooru': 'gelbooru',
+                'yande': 'yandere',
+                'konachan': 'konachan',
+                'sankakucomplex': 'sankaku',
+            }
+
             for result in response:
-                if result.url is not None and 'danbooru' in result.url and not danbooru_found:
-                    result_dan = danbooru.get_result(result.danbooru_id)
+                for url in result.urls:
+                    site = self.get_base_domain(url)
+                    post_id = re.findall(r'\b\d+\b', url)
+                    if site in matches and not matches[site]:
+                        logger.debug(f'Found result on {site.capitalize()}')
+                        if site == 'pixiv':
+                            matches[site] = result
+                        elif site in site_keys:
+                            matches[site] = {'site': site_keys[site], 'post_id': int(post_id[0])} if post_id else None
+                        else:
+                            continue
 
-                    if not result_dan:
-                        continue
-
-                    metadata_dan['tags'] = danbooru.get_tags(result_dan)
-                    metadata_dan['rating'] = convert_rating(danbooru.get_rating(result_dan))
-                    metadata_dan['source'] = result.url
-
-                    danbooru_found = True
-                elif result.url is not None and 'gelbooru' in result.url and not gelbooru_found:
-                    result_gel = await gelbooru.get_result(result.url)
-
-                    if not result_gel:
-                        continue
-
-                    metadata_gel['tags'] = gelbooru.get_tags(result_gel)
-                    metadata_gel['rating'] = convert_rating(result_gel.rating)
-                    metadata_gel['source'] = result.url
-
-                    gelbooru_found = True
-                elif result.url is not None and 'yande.re' in result.url and not yandere_found:
-                    result_yan = yandere.post_list(tags='id:' + str(result.data['yandere_id']))[0]
-
-                    if not result_yan:
-                        continue
-
-                    metadata_yan['tags'] = result_yan['tags'].split()
-                    metadata_yan['rating'] = convert_rating(result_yan['rating'])
-                    metadata_yan['source'] = result.url
-
-                    yandere_found = True
-                elif result.url is not None and 'konachan' in result.url and not konachan_found:
-                    result_kona = konachan.post_list(tags='id:' + str(result.data['konachan_id']))[0]
-
-                    if not result_kona:
-                        continue
-
-                    metadata_kona['tags'] = result_kona['tags'].split()
-                    metadata_kona['rating'] = convert_rating(result_kona['rating'])
-                    metadata_kona['source'] = result.url
-
-                    konachan_found = True
-                elif result.url is not None and 'sankaku' in result.url and not sankaku_found:
-                    metadata_san['tags'], metadata_san['rating'] = scrape_sankaku(result.url)
-                    metadata_san['source'] = result.url
-
-                    sankaku_found = True
-                elif result.url is not None and 'pixiv' in result.url:
-                    pixiv_artist = result.author_name
-
-                    metadata_pix['source'] = result.url
-
-            if pixiv_artist and not any([danbooru_found, gelbooru_found, konachan_found, yandere_found, sankaku_found]):
-                artist = danbooru.search_artist(pixiv_artist)
-
-                # Use the pixiv artist as a fallback if configured
-                if not artist and self.use_pixiv_artist:
-                    artist = pixiv_artist
-                    artist = artist.lower().replace(' ', '_')
-                    try:
-                        szuru.create_tag(artist, category='artist', overwrite=True)
-                    except Exception as e:
-                        logger.debug(f'Could not create pixiv artist {pixiv_artist}: {e}')
-                        pass
-
-                metadata_pix['tags'] = [artist]
-
-            limit_short = response.short_remaining
-            logger.debug(f'Limit short: {limit_short}')
-            limit_long = response.long_remaining
-            logger.debug(f'Limit long: {limit_long}')
-
-        # Collect scraped tags
-        tags = list(
-            set().union(
-                metadata_gel['tags'],
-                metadata_san['tags'],
-                metadata_dan['tags'],
-                metadata_yan['tags'],
-                metadata_kona['tags'],
-                metadata_pix['tags'],
-            ),
-        )
-
-        # Collect scraped sources. Remove empty strings/sources in the process.
-        source = collect_sources(
-            metadata_gel['source'],
-            metadata_san['source'],
-            metadata_dan['source'],
-            metadata_yan['source'],
-            metadata_kona['source'],
-            metadata_pix['source'],
-        )
-        source_debug = source.replace('\n', '\\n')  # Don't display line breaks in logs
-
-        # Get highest rating
-        rating = audit_rating(
-            metadata_gel['rating'],
-            metadata_san['rating'],
-            metadata_dan['rating'],
-            metadata_yan['rating'],
-            metadata_kona['rating'],
-        )
+            logger.debug(f'Limit short: {response.short_remaining}')
+            logger.debug(f'Limit long: {response.long_remaining}')
 
         if response == 'Limit reached':
-            limit_long = 0
+            response.long_remaining = 0
 
-        if metadata_dan['tags']:
-            logger.debug('Found result on Danbooru')
-        if metadata_gel['tags']:
-            logger.debug('Found result on Gelbooru')
-        if metadata_san['tags']:
-            logger.debug('Found result on Sankaku')
-        if metadata_yan['tags']:
-            logger.debug('Found result on Yande.re')
-        if metadata_kona['tags']:
-            logger.debug('Found result on Konachan')
-        if metadata_pix['tags']:
-            logger.debug('Found result on pixiv')
-
-        logger.debug(f'Returning tags: {tags}')
-        logger.debug(f'Returning sources: {source_debug}')
-        logger.debug(f'Returning rating: {rating}')
-
-        return tags, source, rating, limit_short, limit_long
+        return matches, response.short_remaining, response.long_remaining
 
     async def get_result(self, content_url: str, image: bytes = None) -> Coroutine | None:
-        """Fetch results from SauceNAO for supplied URL/image.
-
-        If `image` is passed, upload the image from that local path to SauceNAO.
-        Otherwise, let SauceNAO retrieve the result from `content_url`.
-
-        If this SauceNAO cannot be reached, try again every five seconds for up to a minute.
-
-        Args:
-            content_url (str): Image URL where SauceNAO should retrieve the image from.
-            image (bytes): The media as bytes.
-
-        Returns:
-            Coroutine | None: A coroutine with the pysaucenao search results or None in case of search errors.
-        """
-
-        for _ in range(1, 12):
+        for attempt in range(self.retry_attempts):
             try:
                 if image:
                     logger.debug('Trying to get result from uploaded file...')
@@ -230,24 +118,24 @@ class SauceNao:
                 else:
                     logger.debug(f'Trying to get result from content_url: {content_url}')
                     response = await self.pysaucenao.from_url(content_url)
-                logger.debug(f'Received response {response}')
 
-                break
+                logger.debug(f'Received response {response}')
+                return response
+
             except (ContentTypeError, TimeoutError):
                 logger.debug('Could not establish connection to SauceNAO, trying again in 5s...')
-                sleep(5)
+                if attempt < self.retry_attempts - 1:  # no need to sleep on the last attempt
+                    await sleep(self.retry_delay)
+
             except Exception as e:
-                if 'Daily Search Limit Exceeded' in e.args[0]:
-                    response = 'Limit reached'
+                if 'Daily Search Limit Exceeded' in str(e):
+                    return 'Limit reached'
                 else:
                     if image:
                         logger.warning(f'Could not get result from SauceNAO with uploaded image "{content_url}": {e}')
                     else:
                         logger.warning(f'Could not get result from SauceNAO with image URL "{content_url}": {e}')
-                    response = None
-                break
-        else:
-            logger.debug('Could not establish connection to SauceNAO, trying with next post...')
-            response = None
+                    return None
 
-        return response
+        logger.debug('Could not establish connection to SauceNAO, trying with next post...')
+        return None
