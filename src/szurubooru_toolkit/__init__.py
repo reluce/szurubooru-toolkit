@@ -45,10 +45,10 @@ if (
 
 setup_logger(config)
 
-danbooru = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
-gelbooru = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
-konachan = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
-yandere = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
+danbooru_client = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
+gelbooru_client = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
+konachan_client = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
+yandere_client = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
 
 szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
 
