@@ -12,6 +12,7 @@ from szurubooru_toolkit import Danbooru
 from szurubooru_toolkit import config
 from szurubooru_toolkit.scripts import upload_media
 from szurubooru_toolkit.utils import convert_rating
+from szurubooru_toolkit.utils import extract_twitter_artist
 from szurubooru_toolkit.utils import generate_src
 
 
@@ -24,7 +25,7 @@ def parse_args() -> tuple:
 
     parser.add_argument(
         '--range',
-        default='1-100',
+        default=':100',
         help=(
             'Index range(s) specifying which files to download. '
             'These can be either a constant value, range, or slice '
@@ -35,6 +36,11 @@ def parse_args() -> tuple:
     parser.add_argument(
         '--input-file',
         help='Download URLs found in FILE.',
+    )
+
+    parser.add_argument(
+        '--cookies',
+        help='Path to a cookies file for gallery-dl to consume. Used for authentication.',
     )
 
     parser.add_argument(
@@ -49,7 +55,7 @@ def parse_args() -> tuple:
         parser.print_help()
         exit(1)
 
-    return args.range, args.urls, args.input_file
+    return args.range, args.urls, args.input_file, args.cookies
 
 
 def set_tags(metadata) -> list:
@@ -89,10 +95,11 @@ def main() -> None:
     Currently supports only Danbooru, Gelbooru, Konachan, Yandere and Sankaku.
     """
 
-    limit_range, urls, input_file = parse_args()
+    limit_range, urls, input_file, cookies = parse_args()
 
     if config.import_from_url['deepbooru_enabled']:
         config.upload_media['auto_tag'] = True
+        config.auto_tagger['md5_search_enabled'] = False
         config.auto_tagger['saucenao_enabled'] = False
         config.auto_tagger['deepbooru_enabled'] = True
     else:
@@ -112,57 +119,49 @@ def main() -> None:
     else:
         logger.info(f'Downloading posts from URLs {urls}...')
 
-    if any('sankaku' in url for url in urls):
-        site = 'sankaku'
-        user = config.sankaku['user']
-        password = config.sankaku['password']
-    elif any('danbooru' in url for url in urls):
-        site = 'danbooru'
-        user = config.danbooru['user']
-        password = config.danbooru['api_key']
-    elif any('gelbooru' in url for url in urls):
-        site = 'gelbooru'
-        user = config.gelbooru['user']
-        password = config.gelbooru['api_key']
-    elif any('konachan' in url for url in urls):
-        site = 'konachan'
-        user = config.konachan['user']
-        password = config.konachan['password']
-    elif any('yande.re' in url for url in urls):
-        site = 'yandere'
-        user = config.yandere['user']
-        password = config.yandere['password']
-    elif any('e-hentai' in url for url in urls):
-        site = 'e-hentai'
-        user = None
-        password = None
-    else:
-        site = None
-        user = None
-        password = None
+    url_mappings = {
+        'sankaku': {'url_keyword': 'sankaku', 'user_key': 'user', 'password_key': 'password'},
+        'danbooru': {'url_keyword': 'danbooru', 'user_key': 'user', 'password_key': 'api_key'},
+        'gelbooru': {'url_keyword': 'gelbooru', 'user_key': 'user', 'password_key': 'api_key'},
+        'konachan': {'url_keyword': 'konachan', 'user_key': 'user', 'password_key': 'password'},
+        'yandere': {'url_keyword': 'yande.re', 'user_key': 'user', 'password_key': 'password'},
+        'e-hentai': {'url_keyword': 'e-hentai', 'user_key': None, 'password_key': None},
+        'twitter': {'url_keyword': 'twitter', 'user_key': None, 'password_key': None},
+    }
 
-    if user and password and (user != 'None' and password != 'None'):
-        if input_file:
-            command = (
-                base_command
-                + [
-                    f'--username={user}',
-                    f'--password={password}',
-                    f'--range={limit_range}',
-                    f'--input-file={input_file}',
-                ]
-                + urls
-            )
-        else:
-            command = base_command + [f'--username={user}', f'--password={password}', f'--range={limit_range}'] + urls
+    site = None
+    user = None
+    password = None
 
-        subprocess.run(command)
-    else:
-        if input_file:
-            command = base_command + [f'--range={limit_range}', f'--input-file={input_file}'] + urls
-        else:
-            command = base_command + [f'--range={limit_range}'] + urls
-        subprocess.run(command)
+    for url in urls:
+        for site_key, site_data in url_mappings.items():
+            if site_data['url_keyword'] in url:
+                site = site_key
+                try:
+                    user = getattr(config, site_key)[site_data['user_key']]
+                    password = getattr(config, site_key)[site_data['password_key']]
+                except KeyError:
+                    user = None
+                    password = None
+                break
+
+        if site is not None:
+            break
+
+    command = base_command + [f'--range={limit_range}']
+
+    if user and password and user != 'none' and password != 'none':
+        command += [f'--username={user}', f'--password={password}']
+
+    if cookies:
+        command += [f'--cookies={cookies}']
+
+    if input_file:
+        command += [f'--input-file={input_file}']
+
+    command += urls
+
+    subprocess.run(command)
 
     files = [file for file in glob.glob(config.import_from_url['tmp_path'] + '/*') if not Path(file).suffix == '.json']
 
@@ -179,8 +178,26 @@ def main() -> None:
             metadata = json.load(f)
             metadata['site'] = site
             metadata['source'] = generate_src(metadata)
-            metadata['safety'] = convert_rating(metadata['rating'])
-            metadata['tags'] = set_tags(metadata)
+
+            if 'rating' in metadata:
+                metadata['safety'] = convert_rating(metadata['rating'])
+            else:
+                metadata['safety'] = config.upload_media['default_safety']
+
+            if 'tags' in metadata:
+                metadata['tags'] = set_tags(metadata)
+            elif site == 'twitter':
+                metadata['tags'] = extract_twitter_artist(metadata)
+            else:
+                metadata['tags'] = []
+
+            # As Twitter doesn't provide any tags compared to other sources, we try to auto tag it.
+            if site == 'twitter':
+                config.auto_tagger['md5_search_enabled'] = True
+                config.auto_tagger['saucenao_enabled'] = True
+            else:
+                config.auto_tagger['md5_search_enabled'] = False
+                config.auto_tagger['saucenao_enabled'] = False
 
             with open(file, 'rb') as file_b:
                 upload_media.main(file_b.read(), Path(file).suffix[1:], metadata)
