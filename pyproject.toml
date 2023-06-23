@@ -58,7 +58,7 @@ import-from-twitter = 'szurubooru_toolkit.scripts.import_from_twitter:main'
 tag-posts = 'szurubooru_toolkit.scripts.tag_posts:main'
 delete-posts = 'szurubooru_toolkit.scripts.delete_posts:main'
 reset-posts = 'szurubooru_toolkit.scripts.reset_posts:main'
-szuru-toolkit = 'szurubooru_toolkit.scripts.szuru_toolkit:cli'
+# szuru-toolkit = 'szurubooru_toolkit.scripts.szuru_toolkit:cli'
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
