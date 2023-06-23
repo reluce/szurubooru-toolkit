@@ -3,13 +3,19 @@ from __future__ import annotations
 import hashlib
 import sys
 import warnings
+from asyncio import sleep
+from asyncio.exceptions import CancelledError
 from io import BytesIO
 from math import ceil
+from typing import Any
 from typing import Iterator
 from urllib.error import ContentTooShortError
 
 import bs4
+import cunnypy
 import requests
+from httpx import HTTPStatusError
+from httpx import ReadTimeout
 from loguru import logger
 from lxml import etree
 from PIL import Image
@@ -274,11 +280,7 @@ def collect_sources(*sources: str) -> str:
 
 
 def setup_logger(config: Config) -> None:
-    """Setup loguru logging handlers.
-
-    Args:
-        config (Config): Config object with user configuration from `config.toml`.
-    """
+    """Setup loguru logging handlers."""
 
     logger.configure(
         handlers=[
@@ -462,21 +464,123 @@ def generate_src(metadata: dict) -> str:
     if 'id' in metadata:
         id = str(metadata['id'])
 
-    if metadata['site'] == 'danbooru':
-        src = 'https://danbooru.donmai.us/posts/' + id
-    elif metadata['site'] == 'e-hentai':
-        id = str(metadata['gid'])
-        token = metadata['token']
-        src = f'https://e-hentai.org/g/{id}/{token}'
-    elif metadata['site'] == 'gelbooru':
-        src = 'https://gelbooru.com/index.php?page=post&s=view&id=' + id
-    elif metadata['site'] == 'konachan':
-        src = 'https://konachan.com/post/show/' + id
-    elif metadata['site'] == 'sankaku':
-        src = 'https://chan.sankakucomplex.com/post/show/' + id
-    elif metadata['site'] == 'yandere':
-        src = 'https://yande.re/post/show/' + id
-    else:
-        src = None
+    match metadata['site']:
+        case 'danbooru':
+            src = 'https://danbooru.donmai.us/posts/' + id
+        case 'e-hentai':
+            id = str(metadata['gid'])
+            token = metadata['token']
+            src = f'https://e-hentai.org/g/{id}/{token}'
+        case 'gelbooru':
+            src = 'https://gelbooru.com/index.php?page=post&s=view&id=' + id
+        case 'konachan':
+            src = 'https://konachan.com/post/show/' + id
+        case 'sankaku':
+            src = 'https://chan.sankakucomplex.com/post/show/' + id
+        case 'yandere':
+            src = 'https://yande.re/post/show/' + id
+        case 'twitter':
+            user = metadata['author']['name']
+            id = str(metadata['tweet_id'])
+            src = f'https://twitter.com/{user}/status/{id}'
+        case _:
+            src = None
 
     return src
+
+
+async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> dict:
+    results = {}
+
+    boorus_to_search = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere'] if booru == 'all' else [booru]
+    for booru in boorus_to_search:
+        for attempt in range(1, 12):
+            try:
+                result = await cunnypy.search(booru, query, limit, page)
+                if result:
+                    results[booru] = result
+                break
+            except (KeyError, ExceptionGroup, CancelledError):
+                logger.debug(f'No result found in {booru} with "{query}"')
+                break
+            except (HTTPStatusError, ReadTimeout):
+                logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
+                if attempt < 11:  # no need to sleep on the last attempt
+                    await sleep(5)
+            except Exception as e:
+                logger.debug(f'Could not get result from {booru} with "{query}": {e}. Trying again. in 5s...')
+                if attempt < 11:  # no need to sleep on the last attempt
+                    await sleep(5)
+        else:
+            logger.debug(f'Could not establish connection to {booru}, trying with next post...')
+            statistics(skipped=1)
+
+    return results
+
+
+def prepare_post(results: dict):
+    tags = []
+    sources = []
+    rating = []
+
+    for booru, result in results.items():
+        if booru != 'pixiv':
+            tags.append(result[0].tags.split())
+            sources.append(generate_src({'site': booru, 'id': result[0].id}))
+            rating = convert_rating(result[0].rating)
+        else:
+            pixiv_sources, pixiv_artist = extract_pixiv_artist(results['pixiv'])
+            sources.append(pixiv_sources)
+
+    final_tags = [item for sublist in tags for item in sublist]
+
+    if not final_tags and 'pixiv' in results and pixiv_artist:
+        final_tags = pixiv_artist
+
+    return final_tags, sources, rating
+
+
+def extract_pixiv_artist(result: Any) -> tuple[str, list]:
+    pixiv_artist = result.author_name
+    source = result.url
+    from szurubooru_toolkit import config
+    from szurubooru_toolkit import danbooru_client
+    from szurubooru_toolkit import szuru
+
+    if pixiv_artist:
+        artist = danbooru_client.search_artist(pixiv_artist)
+        if not artist and config.auto_tagger['use_pixiv_artist']:
+            artist = pixiv_artist.lower().replace(' ', '_')
+            try:
+                szuru.create_tag(artist, category='artist', overwrite=True)
+            except Exception as e:
+                logger.debug(f'Could not create pixiv artist {pixiv_artist}: {e}')
+    else:
+        artist = None
+
+    return source, [artist]
+
+
+def extract_twitter_artist(metadata: dict) -> str:
+    from szurubooru_toolkit import config
+    from szurubooru_toolkit import danbooru_client
+    from szurubooru_toolkit import szuru
+
+    twitter_name = metadata['author']['name']
+    twitter_nick = metadata['author']['nick']
+    artist_aliases = None
+
+    artist = danbooru_client.search_artist(twitter_name)
+    if not artist:
+        artist = danbooru_client.search_artist(twitter_nick)
+
+    if not artist and config.import_from_url['use_twitter_artist']:
+        artist_aliases = [twitter_name.lower().replace(' ', '_')]
+        artist_aliases.append(twitter_nick.lower().replace(' ', '_'))
+        for artist_alias in artist_aliases:
+            try:
+                szuru.create_tag(artist_alias, category='artist', overwrite=True)
+            except Exception as e:
+                logger.debug(f'Could not create Twitter artist {artist_alias}: {e}')
+
+    return [artist] if not artist_aliases else artist_aliases
