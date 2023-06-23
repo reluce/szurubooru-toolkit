@@ -90,19 +90,20 @@ def import_post(
         logger.warning(f'Could not download post from {file_url}: {e}')
         return
 
-    if booru == 'gelbooru':
-        tags = post.tags
-        safety = convert_rating(post.rating)
-        source = 'https://gelbooru.com/index.php?page=post&s=view&id=' + str(post.id)
-    elif booru == 'danbooru':
-        tags = post['tag_string'].split()
-        source = 'https://danbooru.donmai.us/posts/' + str(post['id'])
-    elif booru == 'yandere':
-        tags = post['tags'].split()
-        source = 'https://yande.re/post/show/' + str(post['id'])
-    elif booru == 'konachan':
-        tags = post['tags'].split()
-        source = 'https://konachan.com/post/show/' + str(post['id'])
+    match booru:
+        case 'gelbooru':
+            tags = post.tags
+            safety = convert_rating(post.rating)
+            source = 'https://gelbooru.com/index.php?page=post&s=view&id=' + str(post.id)
+        case 'danbooru':
+            tags = post['tag_string'].split()
+            source = 'https://danbooru.donmai.us/posts/' + str(post['id'])
+        case 'yandere':
+            tags = post['tags'].split()
+            source = 'https://yande.re/post/show/' + str(post['id'])
+        case 'konachan':
+            tags = post['tags'].split()
+            source = 'https://konachan.com/post/show/' + str(post['id'])
 
     if not booru == 'gelbooru':
         safety = convert_rating(post['rating'])
@@ -134,14 +135,15 @@ def main() -> None:
         for booru in boorus:
             logger.info(f'Retrieving posts from {booru} with query "{query}"...')
 
-            if booru == 'danbooru':
-                booru_client = Danbooru('danbooru', config.danbooru['user'], config.danbooru['api_key'])
-            elif booru == 'gelbooru':
-                booru_client = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
-            elif booru == 'konachan':
-                booru_client = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
-            elif booru == 'yandere':
-                booru_client = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
+            match booru:
+                case 'danbooru':
+                    booru_client = Danbooru('danbooru', config.danbooru['user'], config.danbooru['api_key'])
+                case 'gelbooru':
+                    booru_client = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
+                case 'konachan':
+                    booru_client = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
+                case 'yandere':
+                    booru_client = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
 
             posts = get_posts_from_booru(booru_client, query, limit)
 
