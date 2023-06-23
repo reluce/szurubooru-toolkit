@@ -1,25 +1,23 @@
 import re
+import tomllib
 import urllib
 from pathlib import Path
 
 import validators
 from loguru import logger
-from tomlkit import parse
 from validators import ValidationFailure
 
 
 class Config:
     """Holds the options set in config.toml as attributes."""
 
-    def __init__(self) -> None:
+    def __init__(self, config_file: str = 'config.toml') -> None:
         """Parse the user config (config.toml) and set this objects attributes accordingly."""
 
         try:
-            with open('config.toml') as f:
-                content = f.read()
-
+            with open(config_file, 'rb') as f:
                 try:
-                    self.config = parse(content)
+                    self.config = tomllib.load(f)
                 except Exception as e:
                     logger.critical(e)
                     exit(1)
@@ -54,6 +52,7 @@ class Config:
             'auto_tagger': [
                 'saucenao_api_token',
                 'saucenao_enabled',
+                'md5_search_enabled',
                 'deepbooru_enabled',
                 'deepbooru_model',
                 'deepbooru_threshold',
@@ -80,7 +79,7 @@ class Config:
             ],
             'import_from_booru': ['deepbooru_enabled', 'hide_progress'],
             'import_from_twitter': ['saucenao_enabled', 'deepbooru_enabled', 'hide_progress'],
-            'import_from_url': ['deepbooru_enabled', 'hide_progress', 'tmp_path'],
+            'import_from_url': ['deepbooru_enabled', 'hide_progress', 'tmp_path', 'use_twitter_artist'],
             'tag_posts': ['hide_progress'],
             'delete_posts': ['hide_progress'],
             'reset_posts': ['hide_progress'],

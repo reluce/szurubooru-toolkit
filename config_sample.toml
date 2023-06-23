@@ -7,6 +7,7 @@ public = false  # Is your szurubooru reachable over the internet?
 [auto_tagger]
 saucenao_api_token = "my_saucenao_api_token"  # In case you want to increase your daily query limit
 saucenao_enabled = true  # Set this to false and deepbooru_enabled to true if you only want to tag with DeepBooru
+md5_search_enabled = true  # Search file with their MD5 hash on Boorus
 deepbooru_enabled = false
 deepbooru_model = "./misc/deepbooru/model-resnet_custom_v3.h5"
 deepbooru_threshold = "0.7"  # Define how accurate the matched tag from DeepBooru has to be
@@ -36,12 +37,6 @@ password = "None"
 user = "None"
 password = "None"
 token = "None"
-[twitter]
-user_id = "None"  # The user id which should be queried.
-consumer_key = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
-consumer_secret = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
-access_token = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
-access_token_secret = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
 
 [upload_media]
 src_path = "/local/path/to/upload/dir"  # Every valid media file under this dir (recursively) will get uploaded
@@ -74,6 +69,7 @@ hide_progress = false  # Set this to true to hide the progress bar
 deepbooru_enabled = true  # Apply Deepbooru tagging additionally besides fetched tags from URL
 tmp_path = './tmp/gallery_dl'
 hide_progress = false  # Set this to true to hide the progress bar
+use_twitter_artist = false  # Set this to true to create the Twitter username + nickname as tags. Tries to query Danbooru first for these names (if they're aliases).
 # Following settings apply from upload_media as well:
 # max_similarity
 # convert_to_jpg
