@@ -464,27 +464,35 @@ def generate_src(metadata: dict) -> str:
     if 'id' in metadata:
         id = str(metadata['id'])
 
-    match metadata['site']:
-        case 'danbooru':
-            src = 'https://danbooru.donmai.us/posts/' + id
-        case 'e-hentai':
-            id = str(metadata['gid'])
-            token = metadata['token']
-            src = f'https://e-hentai.org/g/{id}/{token}'
-        case 'gelbooru':
-            src = 'https://gelbooru.com/index.php?page=post&s=view&id=' + id
-        case 'konachan':
-            src = 'https://konachan.com/post/show/' + id
-        case 'sankaku':
-            src = 'https://chan.sankakucomplex.com/post/show/' + id
-        case 'yandere':
-            src = 'https://yande.re/post/show/' + id
-        case 'twitter':
-            user = metadata['author']['name']
-            id = str(metadata['tweet_id'])
-            src = f'https://twitter.com/{user}/status/{id}'
-        case _:
-            src = None
+    try:
+        match metadata['site']:
+            case 'danbooru':
+                src = 'https://danbooru.donmai.us/posts/' + id
+            case 'e-hentai':
+                id = str(metadata['gid'])
+                token = metadata['token']
+                src = f'https://e-hentai.org/g/{id}/{token}'
+            case 'gelbooru':
+                src = 'https://gelbooru.com/index.php?page=post&s=view&id=' + id
+            case 'konachan':
+                src = 'https://konachan.com/post/show/' + id
+            case 'sankaku':
+                src = 'https://chan.sankakucomplex.com/post/show/' + id
+            case 'yandere':
+                src = 'https://yande.re/post/show/' + id
+            case 'twitter':
+                user = metadata['author']['name']
+                id = str(metadata['tweet_id'])
+                src = f'https://twitter.com/{user}/status/{id}'
+            case 'kemono':
+                user = metadata['user']
+                id = metadata['id']
+                service = metadata['service']
+                src = f'https://kemono.party/{service}/user/{user}/post/{id}'
+            case _:
+                src = None
+    except KeyError:
+        src = None
 
     return src
 

@@ -127,6 +127,7 @@ def main() -> None:
         'yandere': {'url_keyword': 'yande.re', 'user_key': 'user', 'password_key': 'password'},
         'e-hentai': {'url_keyword': 'e-hentai', 'user_key': None, 'password_key': None},
         'twitter': {'url_keyword': 'twitter', 'user_key': None, 'password_key': None},
+        'kemono': {'url_keyword': 'kemono', 'user_key': None, 'password_key': None},
     }
 
     site = None
@@ -140,7 +141,7 @@ def main() -> None:
                 try:
                     user = getattr(config, site_key)[site_data['user_key']]
                     password = getattr(config, site_key)[site_data['password_key']]
-                except KeyError:
+                except (KeyError, AttributeError):
                     user = None
                     password = None
                 break
