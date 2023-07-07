@@ -37,6 +37,12 @@ password = "None"
 user = "None"
 password = "None"
 token = "None"
+[twitter]
+user_id = "None"  # The user id which should be queried.
+consumer_key = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
+consumer_secret = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
+access_token = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
+access_token_secret = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
 
 [upload_media]
 src_path = "/local/path/to/upload/dir"  # Every valid media file under this dir (recursively) will get uploaded
