@@ -139,6 +139,7 @@ Please note that you have to set `deepbooru_enabled` if you want to use it.
 Following scripts are currently available:
 
 * `auto-tagger`: Batch tagging of posts with SauceNAO and Deepbooru
+* `create-relations`: Create relations between character and parody tag categories
 * `create-tags`: Batch creation of tags with their categories
 * `delete-posts`: Batch delete of posts
 * `import-from-booru`: Batch importing of posts with their tags from various Boorus
@@ -164,20 +165,18 @@ If you only want to use Deepbooru, set `deepbooru_enabled` to `true` and `saucen
 
 __Usage__
 ```
-usage: auto-tagger [-h] [--sankaku_url SANKAKU_URL] [--add-tags ADD_TAGS] [--remove-tags REMOVE_TAGS] query
+usage: auto-tagger [-h] [--add-tags ADD_TAGS] [--remove-tags REMOVE_TAGS] query
 
 This script will automagically tag your szurubooru posts based on your input query.
 
 positional arguments:
   query                 Specify a single post id to tag or a szuru query. E.g. "date:today tag-count:0"
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  --sankaku_url SANKAKU_URL
-                        Fetch tags from specified Sankaku URL instead of searching SauceNAO.
-  --add-tags ADD_TAGS   Specify tags, separated by a comma, which will be added to all posts matching your query
+  --add-tags ADD_TAGS   Specify tags, separated by a comma, which will be added to all posts matching your query.
   --remove-tags REMOVE_TAGS
-                        Specify tags, separated by a comma, which will be removed from all posts matching your query
+                        Specify tags, separated by a comma, which will be removed from all posts matching your query.
 ```
 
 __Examples__
@@ -248,40 +247,47 @@ Since this script is using the `upload-media` script to upload the post, followi
 * shrink_threshold
 * shrink_dimensions
 
-:information_source:️ **Following Boorus are currently supported:**
+:information_source:️ **The source URL will be generated for following sites:**
 * Gelbooru
 * Danbooru
-* Sankaku
+* E-Hentai
 * Konachan
+* Kemono
+* Sankaku
 * Yandere
 
 Credentials in your `config.toml` file will be passed to the gallery-dl script if you use a single input URL to this script.
 
+However, it's recommended to use the `--cookie` flag for authentication, check https://github.com/mikf/gallery-dl#cookies for details.
+
 __Usage__
 ```
-usage: import-from-url [-h] [--range RANGE] [--input-file INPUT_FILE] [url ...]
+usage: import-from-url [-h] [--range RANGE] [--input-file INPUT_FILE] [--cookies COOKIES] [urls ...]
 
 This script downloads and tags posts from various Boorus based on your input query.
 
 positional arguments:
-  url                   The URL for the posts you want to download and tag
+  urls                  One or multiple URLs to the posts you want to download and tag
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --range RANGE         Index range(s) specifying which files to download. These can be either a constant value, range, or slice (e.g. '5', '8-20', or '1:24:3')
   --input-file INPUT_FILE
                         Download URLs found in FILE.
-
+  --cookies COOKIES     Path to a cookies file for gallery-dl to consume. Used for authentication.
 ```
 
 __Examples__
 * `import-from-url "https://danbooru.donmai.us/posts?tags=foo"`
 * `import-from-url "https://chan.sankakucomplex.com/?tags=foo"`
 * `import-from-url "https://beta.sankakucomplex.com/post/show/<id>"`
+* `import-from-url --cookies "~/cookies.txt" --range ":100" ""https://twitter.com/<USERNAME>/likes"`
 * `import-from-url --input-file urls.txt "https://danbooru.donmai.us/posts?tags=foo" "https://beta.sankakucomplex.com/post/show/<id>"`
 
-### :dove: import-from-twitter
+### :dove: import-from-twitter (Deprecated)
 This script fetches media files from your Twitter likes, uploads and optionally tags them.
+
+:warning: __This script is deprecated. Use `import-from-url` instead.__
 
 :warning: __OAuth 1.0a credentials are required to read the likes from a user. See https://developer.twitter.com/en/docs/authentication/oauth-1-0a on how to generate them.__
 
@@ -423,6 +429,28 @@ __Examples__
 * `create-tags`
 * `create-tags --query genshin* --overwrite`
 * `create-tags --tag-file tags.txt`
+
+### :label: create-relations
+__Usage__
+```
+usage: create-relations [-h] [--hide-progress HIDE_PROGRESS] query
+
+Create relations between character and parody tag categories
+
+positional arguments:
+  query                 Search for specific tags (default: "*").
+
+options:
+  -h, --help            show this help message and exit
+  --hide-progress HIDE_PROGRESS
+                        Hide the progress bar.
+```
+
+__Examples__
+* `create-relations hitori_bocchi`
+  * Will create the implication _bocchi_the_rock_ for tag _hitori_bocchi_ if other posts are found with query _hitori_bocchi_ containing _bocchi_the_rock_ as the parody (tag has to be of category _series_ or _parody_)
+  * Will also add _hitori_bocchi_ as a suggestion to the parody tag _bocchi_the_rock_
+  * These relations will only get generated if at least X posts are found containing the tags _bocchi_the_rock_ and _hitori_bocchi_. Control X with `threshold` under `[create-relations]` in `config.toml`.
 
 ## :information_source:	Image credit
 GitHub repo icon: <a href="https://www.flaticon.com/free-icons/code" title="code icons">Code icons created by Smashicons - Flaticon</a>
