@@ -67,12 +67,12 @@ def update_tag(tag: Tag, relation: Tag) -> None:
     # Add parody/series tag as an implication for character tags
     if tag.category == 'character' and relation.category in ['parody', 'series']:
         if relation.primary_name not in [implication.primary_name for implication in tag.implications]:
-            tag.implications = tag.implications + [relation]
+            tag.implications.append(relation)
             tag.push()
     # Add character tags as a suggestion to parody/series tags
     elif tag.category in ['parody', 'series'] and relation.category == 'character':
         if relation.primary_name not in [suggestion.primary_name for suggestion in tag.suggestions]:
-            tag.suggestions = tag.suggestions + [relation]
+            tag.suggestions.append(relation)
             tag.push()
 
 
