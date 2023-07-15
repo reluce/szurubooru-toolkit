@@ -83,9 +83,12 @@ class Danbooru:
                 if result:
                     artist = result[0]['name']
                 else:
-                    artist = self.session.get(
-                        f'https://danbooru.donmai.us/artists.json?search[any_other_name_like]={artist.lower()}',
-                    ).json()[0]['name']
+                    search_url = (
+                        'https://danbooru.donmai.us/artists.json?'
+                        f'search[any_other_name_like]={artist.lower()}'
+                        '&search[is_deleted]=false'
+                    )
+                    artist = self.session.get(search_url).json()[0]['name']
                     self.session.close()
 
                 logger.debug(f'Returning artist: {artist}')
