@@ -282,9 +282,8 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
 
                 # Deepbooru detects characters, but not the parody.
                 # Set the parody based on the character if configured.
-                if (not config.auto_tagger['saucenao_enabled'] or limit_reached) and config.auto_tagger[
-                    'update_relations'
-                ]:
+                # Only do this if no previous tags where found as this operation takes quite some time
+                if not tags_by_md5 and not tags_by_sauce and config.auto_tagger['update_relations']:
                     for tag in tags_by_deepbooru:
                         szuru_tag = szuru.api.getTag(tag)
                         for implication in szuru_tag.implications:
@@ -299,9 +298,11 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
 
             # Keep previous tags and add user tags if configured
             if add_tags:
-                post.tags = list(set().union(post.tags, tags_by_md5, tags_by_sauce, tags_by_deepbooru, add_tags))
+                tags = list(set().union(post.tags, tags_by_md5, tags_by_sauce, tags_by_deepbooru, add_tags))
             else:
-                post.tags = list(set().union(post.tags, tags_by_md5, tags_by_sauce, tags_by_deepbooru))
+                tags = list(set().union(post.tags, tags_by_md5, tags_by_sauce, tags_by_deepbooru))
+
+            post.tags = [tag for tag in tags if tag is not None]
 
             if remove_tags:
                 [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]
