@@ -556,9 +556,21 @@ def extract_pixiv_artist(result: Any) -> tuple[str, list]:
     from szurubooru_toolkit import szuru
 
     if pixiv_artist:
-        artist = danbooru_client.search_artist(pixiv_artist)
-        if not artist and config.auto_tagger['use_pixiv_artist']:
-            artist = pixiv_artist.lower().replace(' ', '_')
+        artist_danbooru = danbooru_client.search_artist(pixiv_artist)
+
+        artist_pixiv_sanitized = pixiv_artist.lower().replace(' ', '_')
+        # Sometimes \3000 gets appended from the result for whatever reason
+        artist_pixiv_sanitized = artist_pixiv_sanitized.replace('\u3000', '')
+
+        if not artist_danbooru:
+            artist_danbooru = danbooru_client.search_artist(artist_pixiv_sanitized)
+
+        if artist_danbooru:
+            artist = artist_danbooru
+        else:
+            artist = artist_pixiv_sanitized
+
+        if not artist_danbooru and config.auto_tagger['use_pixiv_artist']:
             try:
                 szuru.create_tag(artist, category='artist', overwrite=True)
             except Exception as e:
