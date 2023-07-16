@@ -78,7 +78,7 @@ class SauceNao:
             'pixiv': None,
         }
 
-        if response and not response == 'Limit reached':
+        if response and response != 'Limit reached':
             site_keys = {
                 'pixiv': 'pixiv',
                 'donmai': 'danbooru',
@@ -89,25 +89,36 @@ class SauceNao:
             }
 
             for result in response:
-                for url in result.urls:
-                    site = self.get_base_domain(url)
-                    post_id = re.findall(r'\b\d+\b', url)
-                    if site in matches and not matches[site]:
-                        logger.debug(f'Found result on {site.capitalize()}')
-                        if site == 'pixiv':
-                            matches[site] = result
-                        elif site in site_keys:
-                            matches[site] = {'site': site_keys[site], 'post_id': int(post_id[0])} if post_id else None
-                        else:
-                            continue
+                if result.urls:
+                    for url in result.urls:
+                        site = self.get_base_domain(url)
+                        post_id = re.findall(r'\b\d+\b', url)
+                        if site in matches and not matches[site]:
+                            logger.debug(f'Found result on {site.capitalize()}')
+                            if site == 'pixiv':
+                                matches[site] = result
+                            elif site in site_keys:
+                                matches[site] = (
+                                    {'site': site_keys[site], 'post_id': int(post_id[0])} if post_id else None
+                                )
+                            else:
+                                continue
 
             logger.debug(f'Limit short: {response.short_remaining}')
             logger.debug(f'Limit long: {response.long_remaining}')
 
+        # Even if response evaluates to False, it can still contain the limits
+        try:
+            short_remaining = response.short_remaining
+            long_remaining = response.long_remaining
+        except AttributeError:
+            short_remaining = 1
+            long_remaining = 1
+
         if response == 'Limit reached':
             response.long_remaining = 0
 
-        return matches, response.short_remaining, response.long_remaining
+        return matches, short_remaining, long_remaining
 
     async def get_result(self, content_url: str, image: bytes = None) -> Coroutine | None:
         for attempt in range(self.retry_attempts):
