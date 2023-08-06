@@ -7,6 +7,7 @@ from time import sleep
 
 from loguru import logger
 from PIL import UnidentifiedImageError
+from pyszuru import SzurubooruHTTPError
 from tqdm import tqdm
 
 from szurubooru_toolkit import Post
@@ -285,7 +286,11 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                 # Only do this if no previous tags where found as this operation takes quite some time
                 if not tags_by_md5 and not tags_by_sauce and config.auto_tagger['update_relations']:
                     for tag in tags_by_deepbooru:
-                        szuru_tag = szuru.api.getTag(tag)
+                        try:
+                            szuru_tag = szuru.api.getTag(tag)
+                        except SzurubooruHTTPError as msg:
+                            if 'TagNotFoundError' in str(msg):
+                                szuru_tag = szuru.api.createTag(tag)
                         for implication in szuru_tag.implications:
                             szuru_implication = szuru.api.getTag(implication)
                             if szuru_implication not in post.tags:
