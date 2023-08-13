@@ -17,7 +17,6 @@ import requests
 from httpx import HTTPStatusError
 from httpx import ReadTimeout
 from loguru import logger
-from lxml import etree
 from PIL import Image
 from pybooru import Moebooru
 from pybooru.exceptions import PybooruHTTPError
@@ -396,56 +395,43 @@ def get_posts_from_booru(
             then either a GelbooruImage or a dict for the other Boorus.
     """
 
-    if not limit:
-        # Get the total count of posts for the query first
-        if isinstance(booru, Gelbooru):
-            api_url = 'https://gelbooru.com/index.php?page=dapi&s=post&q=index'
-            xml_result = requests.get(f'{api_url}&tags={query}')
-            root = etree.fromstring(xml_result.content)
-            total = root.attrib['count']
-        elif isinstance(booru, Danbooru):
-            if not limit:
-                try:
-                    total = booru.count_posts(tags=query)['counts']['posts']
-                except PybooruHTTPError:
-                    logger.critical('Importing from Danbooru accepts only a maximum of two tags for you search query!')
-                    exit()
-        else:  # Moebooru (Yandere + Konachan)
-            xml_result = requests.get(f'{booru.site_url}/post.xml?tags={query}')
-            root = etree.fromstring(xml_result.content)
-            total = root.attrib['count']
+    pages_needed = ceil(int(limit) / 100)
+    limit_last_page = limit % 100
+    results = []
 
-        pages = ceil(int(total) / 100)  # Max results per page are 100 for every Booru
-        results = []
-
-        if pages > 1:
-            for page in range(1, pages + 1):
+    if limit > 100:
+        for page in range(1, pages_needed + 1):
+            if page == pages_needed:
+                if isinstance(booru, Gelbooru):
+                    results.append(
+                        sync(booru.client.search_posts(limit=limit_last_page, page=page, tags=query.split())),
+                    )
+                else:
+                    try:
+                        results.append(booru.post_list(limit=limit_last_page, page=page, tags=query))
+                    except PybooruHTTPError:
+                        logger.critical(
+                            'Importing from Danbooru accepts only a maximum of two tags for you search query!',
+                        )
+                        exit()
+            else:
                 if isinstance(booru, Gelbooru):
                     results.append(sync(booru.client.search_posts(page=page, tags=query.split())))
                 else:
                     try:
-                        results.append(booru.post_list(page=page, tags=query))
+                        results.append(booru.post_list(limit=100, page=page, tags=query))
                     except PybooruHTTPError:
                         logger.critical(
                             'Importing from Danbooru accepts only a maximum of two tags for you search query!',
                         )
                         exit()
 
-            results = [result for result in results for result in result]
-        else:
-            if isinstance(booru, Gelbooru):
-                results = sync(booru.client.search_posts(tags=query.split()))
-            else:
-                results = booru.post_list(tags=query)
+        results = [result for result in results for result in result]
     else:
         if isinstance(booru, Gelbooru):
-            results = sync(booru.client.search_posts(limit=limit, tags=query.split()))
+            results = sync(booru.client.search_posts(tags=query.split()), limit=limit)
         else:
-            try:
-                results = booru.post_list(limit=limit, tags=query)
-            except PybooruHTTPError:
-                logger.critical('Importing from Danbooru accepts only a maximum of two tags for you search query!')
-                exit()
+            results = booru.post_list(tags=query)
 
     yield len(results)
     yield from results
