@@ -416,10 +416,12 @@ def get_posts_from_booru(
                         exit()
             else:
                 if isinstance(booru, Gelbooru):
-                    results.append(sync(booru.client.search_posts(page=page, tags=query.split())))
+                    results.append(sync(booru.client.search_posts(limit=100, page=page, tags=query.split())))
                 else:
                     try:
                         results.append(booru.post_list(limit=100, page=page, tags=query))
+                        if len(results) < 100:
+                            break
                     except PybooruHTTPError:
                         logger.critical(
                             'Importing from Danbooru accepts only a maximum of two tags for you search query!',
@@ -429,9 +431,9 @@ def get_posts_from_booru(
         results = [result for result in results for result in result]
     else:
         if isinstance(booru, Gelbooru):
-            results = sync(booru.client.search_posts(tags=query.split()), limit=limit)
+            results = sync(booru.client.search_posts(tags=query.split(), limit=limit))
         else:
-            results = booru.post_list(tags=query)
+            results = booru.post_list(limit=limit, tags=query)
 
     yield len(results)
     yield from results
