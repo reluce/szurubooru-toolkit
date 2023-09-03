@@ -116,7 +116,7 @@ class SauceNao:
             long_remaining = 1
 
         if response == 'Limit reached':
-            response.long_remaining = 0
+            long_remaining = 0
 
         return matches, short_remaining, long_remaining
 
