@@ -44,6 +44,13 @@ def parse_args() -> tuple:
     )
 
     parser.add_argument(
+        '-v',
+        '--verbose',
+        action='store_true',
+        help='Show download progress of gallery-dl script.',
+    )
+
+    parser.add_argument(
         'urls',
         nargs='*',
         help='One or multiple URLs to the posts you want to download and tag',
@@ -55,7 +62,7 @@ def parse_args() -> tuple:
         parser.print_help()
         exit(1)
 
-    return args.range, args.urls, args.input_file, args.cookies
+    return args.range, args.urls, args.input_file, args.cookies, args.verbose
 
 
 def set_tags(metadata) -> list:
@@ -95,7 +102,7 @@ def main() -> None:
     Currently supports only Danbooru, Gelbooru, Konachan, Yandere and Sankaku.
     """
 
-    limit_range, urls, input_file, cookies = parse_args()
+    limit_range, urls, input_file, cookies, verbose = parse_args()
 
     if config.import_from_url['deepbooru_enabled']:
         config.upload_media['auto_tag'] = True
@@ -160,6 +167,9 @@ def main() -> None:
     if input_file:
         command += [f'--input-file={input_file}']
 
+    if verbose:
+        command.remove('-q')
+
     command += urls
 
     subprocess.run(command)
@@ -167,6 +177,8 @@ def main() -> None:
     files = [file for file in glob.glob(config.import_from_url['tmp_path'] + '/*') if not Path(file).suffix == '.json']
 
     logger.info(f'Downloaded {len(files)} post(s). Start importing...')
+
+    saucenao_limit_reached = False
 
     for file in tqdm(
         files,
@@ -201,7 +213,7 @@ def main() -> None:
                 config.auto_tagger['saucenao_enabled'] = False
 
             with open(file, 'rb') as file_b:
-                upload_media.main(file_b.read(), Path(file).suffix[1:], metadata)
+                saucenao_limit_reached = upload_media.main(file_b.read(), Path(file).suffix[1:], metadata, saucenao_limit_reached)
 
             if os.path.exists(file):
                 os.remove(file)
