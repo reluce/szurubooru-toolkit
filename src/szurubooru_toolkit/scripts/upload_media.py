@@ -13,6 +13,7 @@ from tqdm import tqdm
 from szurubooru_toolkit import Post
 from szurubooru_toolkit import Szurubooru
 from szurubooru_toolkit import config
+from szurubooru_toolkit import get_md5sum
 from szurubooru_toolkit import shrink_img
 from szurubooru_toolkit.scripts.auto_tagger import main as auto_tagger
 
@@ -185,9 +186,11 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
 
     Returns:
         bytes: The (converted) file as a byte string.
+        original_md5 (str): The md5 sum of the original file.
     """
 
     file_size = len(file)
+    original_md5 = get_md5sum(file)
     image = file
 
     try:
@@ -207,11 +210,7 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
                 convert=True,
                 convert_quality=config.upload_media['convert_quality'],
             )
-        elif (
-            config.upload_media['convert_to_jpg']
-            and file_ext == 'png'
-            and file_size > config.upload_media['convert_threshold']
-        ):
+        elif config.upload_media['convert_to_jpg'] and file_ext == 'png' and file_size > config.upload_media['convert_threshold']:
             logger.debug(
                 f'Converting file, size {file_size} > {config.upload_media["convert_threshold"]}',
             )
@@ -231,10 +230,10 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
         print('')
         logger.warning(f'Could not shrink image {file_to_upload}. Keeping dimensions...')
 
-    return image
+    return image, original_md5
 
 
-def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_path: str = None) -> bool:
+def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_path: str = None, saucenao_limit_reached: bool = False) -> bool:
     """Uploads given file to temporary file space in szurubooru.
 
     Args:
@@ -248,9 +247,10 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_path: st
     """
 
     post = Post()
+    original_md5 = ''
 
     if file_ext not in ['mp4', 'webm', 'gif']:
-        post.media = eval_convert_image(file, file_ext, file_path)
+        post.media, original_md5 = eval_convert_image(file, file_ext, file_path)
     else:
         post.media = file
 
@@ -294,12 +294,12 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_path: st
 
         # Tag post if enabled
         if config.upload_media['auto_tag']:
-            auto_tagger(str(post_id), post.media)
+            saucenao_limit_reached = auto_tagger(str(post_id), post.media, saucenao_limit_reached, original_md5)
 
-    return True
+    return True, saucenao_limit_reached
 
 
-def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = None) -> int:
+def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = None, saucenao_limit_reached: bool = False) -> int:
     """Main logic of the script."""
 
     try:
@@ -324,7 +324,12 @@ def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = No
                 ):
                     with open(file_path, 'rb') as f:
                         file = f.read()
-                    success = upload_post(file, file_ext=Path(file_path).suffix[1:], file_path=file_path)
+                    success, saucenao_limit_reached = upload_post(
+                        file,
+                        file_ext=Path(file_path).suffix[1:],
+                        file_path=file_path,
+                        saucenao_limit_reached=saucenao_limit_reached,
+                    )
 
                     if config.upload_media['cleanup'] and success:
                         if os.path.exists(file_path):
@@ -335,8 +340,11 @@ def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = No
 
                 if not from_import_from:
                     logger.success('Script has finished uploading!')
+
             else:
-                upload_post(file_to_upload, file_ext, metadata)
+                _, saucenao_limit_reached = upload_post(file_to_upload, file_ext, metadata, saucenao_limit_reached=saucenao_limit_reached)
+
+            return saucenao_limit_reached
         else:
             logger.info('No files found to upload.')
     except KeyboardInterrupt:
