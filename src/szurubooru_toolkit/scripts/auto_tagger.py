@@ -64,8 +64,7 @@ def parse_args() -> tuple:
 
     if '\'' in query:
         logger.warning(
-            'Your query contains single quotes (\'). '
-            'Consider using double quotes (") if the script doesn\'t behave as intended.',
+            'Your query contains single quotes (\'). ' 'Consider using double quotes (") if the script doesn\'t behave as intended.',
         )
 
     add_tags = args.add_tags
@@ -139,20 +138,19 @@ def set_tags_from_relations(post: Post) -> None:
                 post.tags.append(relation_tag.primary_name)
 
 
-def print_statistics(from_upload_media, total_posts):
-    if not from_upload_media:
-        total_tagged, total_deepbooru, total_untagged, total_skipped = statistics()
+def print_statistics(total_posts):
+    total_tagged, total_deepbooru, total_untagged, total_skipped = statistics()
 
-        logger.success('Script has finished tagging.')
-        logger.success(f'Total:     {total_posts}')
-        logger.success(f'Tagged:    {str(total_tagged)}')
-        logger.success(f'Deepbooru: {str(total_deepbooru)}')
-        logger.success(f'Untagged:  {str(total_untagged)}')
-        logger.success(f'Skipped:   {str(total_skipped)}')
+    logger.success('Script has finished tagging.')
+    logger.success(f'Total:     {total_posts}')
+    logger.success(f'Tagged:    {str(total_tagged)}')
+    logger.success(f'Deepbooru: {str(total_deepbooru)}')
+    logger.success(f'Untagged:  {str(total_untagged)}')
+    logger.success(f'Skipped:   {str(total_skipped)}')
 
 
 @logger.catch
-def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C901
+def main(post_id: str = None, file_to_upload: bytes = None, limit_reached: bool = False, md5: str = '') -> None:  # noqa C901
     """Automatically tag posts with SauceNAO and/or Deepbooru.
 
     To auto tag a specific post, supply the `post_id` of the szurubooru post.
@@ -164,6 +162,7 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
     Args:
         post_id (str, optional): The `post_id` of the szurubooru post. Defaults to None.
         file_to_upload (bytes, optional): If set, will be uploaded to SauceNAO directly. Defaults to None.
+        md5 (str): If set, will search boorus with given md5 hash instead of the one from the post. Defaults to ''.
     """
 
     try:
@@ -222,7 +221,10 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
         ):
             # Search boorus by md5 hash of the file
             if config.auto_tagger['md5_search_enabled']:
-                md5_results = asyncio.run(search_boorus('all', 'md5:' + post.md5, 1, 0))
+                if md5:
+                    md5_results = asyncio.run(search_boorus('all', 'md5:' + md5, 1, 0))
+                else:
+                    md5_results = asyncio.run(search_boorus('all', 'md5:' + post.md5, 1, 0))
 
                 if md5_results:
                     tags_by_md5, sources, post.rating = prepare_post(md5_results)
@@ -236,8 +238,7 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
             # This might be the case if this function was called from upload_media.
             if not file_to_upload:
                 if (
-                    (not config.szurubooru['public'] or config.auto_tagger['deepbooru_enabled'])
-                    or config.auto_tagger['deepbooru_forced']
+                    (not config.szurubooru['public'] or config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']
                 ) and post.type != 'video':
                     image = download_media(post.content_url, post.md5)
                     # Shrink files >2MB
@@ -252,7 +253,7 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                 image = file_to_upload
 
             # Search SauceNAO with file
-            if config.auto_tagger['saucenao_enabled'] and post.type != 'video':
+            if config.auto_tagger['saucenao_enabled'] and post.type != 'video' and not limit_reached:
                 sauce_results, limit_reached = get_saucenao_results(sauce, post, image)
 
                 if sauce_results:
@@ -261,7 +262,6 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                 else:
                     tags_by_sauce = []
             else:
-                limit_reached = False
                 tags_by_sauce = []
 
             # Tag with Deepbooru.
@@ -333,7 +333,10 @@ def main(post_id: str = None, file_to_upload: bytes = None) -> None:  # noqa C90
                 statistics(untagged=int(total_posts) - index - 1)  # Index starts at 0
                 break
 
-        print_statistics(from_upload_media, total_posts)
+        if not from_upload_media:
+            print_statistics(total_posts)
+        else:
+            return limit_reached
     except KeyboardInterrupt:
         print('')
         logger.info('Received keyboard interrupt from user.')
