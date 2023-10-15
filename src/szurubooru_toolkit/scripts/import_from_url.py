@@ -2,7 +2,9 @@ import argparse
 import glob
 import json
 import os
+import shutil
 import subprocess
+from datetime import datetime
 from pathlib import Path
 
 from loguru import logger
@@ -96,13 +98,12 @@ def set_tags(metadata) -> list:
 
 
 @logger.catch
-def main() -> None:
-    """Calls gallery-dl and parse output.
-
-    Currently supports only Danbooru, Gelbooru, Konachan, Yandere and Sankaku.
-    """
-
-    limit_range, urls, input_file, cookies, verbose = parse_args()
+def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
+    if not urls:
+        limit_range, urls, input_file, cookies, verbose = parse_args()
+    else:
+        input_file = ''
+        verbose = False
 
     if config.import_from_url['deepbooru_enabled']:
         config.upload_media['auto_tag'] = True
@@ -112,11 +113,14 @@ def main() -> None:
     else:
         config.upload_media['auto_tag'] = False
 
+    current_time = datetime.now()
+    timestamp = current_time.timestamp()
+    download_dir = f'{config.import_from_url["tmp_path"]}/{timestamp}'
     base_command = [
         'gallery-dl',
         '-q',
         '--write-metadata',
-        f'-D={config.import_from_url["tmp_path"]}',
+        f'-D={download_dir}',
     ]
 
     if input_file and not urls:
@@ -174,7 +178,9 @@ def main() -> None:
 
     subprocess.run(command)
 
-    files = [file for file in glob.glob(config.import_from_url['tmp_path'] + '/*') if not Path(file).suffix == '.json']
+    files = [
+        file for file in glob.glob(f'{config.import_from_url["tmp_path"]}/{timestamp}/*') if Path(file).suffix not in ['.psd', '.json']
+    ]
 
     logger.info(f'Downloaded {len(files)} post(s). Start importing...')
 
@@ -215,10 +221,8 @@ def main() -> None:
             with open(file, 'rb') as file_b:
                 saucenao_limit_reached = upload_media.main(file_b.read(), Path(file).suffix[1:], metadata, saucenao_limit_reached)
 
-            if os.path.exists(file):
-                os.remove(file)
-            if os.path.exists(file + '.json'):
-                os.remove(file + '.json')
+        if os.path.exists(download_dir):
+            shutil.rmtree(download_dir)
 
     logger.success('Script finished importing!')
 
