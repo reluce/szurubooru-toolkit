@@ -5,6 +5,7 @@ config.toml
 crontab
 szurubooru_toolkit.log
 temp/
+tmp/
 upload_src/
 urls.txt
 
