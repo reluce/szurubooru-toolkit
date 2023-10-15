@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>szurubooru-toolkit</title>
+  <style>
+    button {
+      background-color: #3498db;
+      color: #ffffff;
+      border: none;
+      border-radius: 5px;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      white-space: nowrap; /* Prevent line breaks */
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      white-space: nowrap; /* Prevent line breaks */
+      text-align: center; /* Center align the heading */
+    }
+
+    #inputCookieLocation, #inputRange {
+      width: 100%;
+      margin-bottom: 10px;
+      box-sizing: border-box; /* Include padding in the width */
+    }
+
+    #extension-icon {
+      width: 64px;
+      height: 64px;
+      display: block;
+      margin: 0 auto; /* Center the icon horizontally */
+    }
+
+    body {
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <img id="extension-icon" src="images/icon64.png" alt="Extension Icon">
+
+  <h1>szurubooru-toolkit</h1>
+  <input type="text" id="inputCookieLocation" placeholder="Location to cookie file (optional)">
+  <input type="text" id="inputRange" placeholder="Enter download range (optional)">
+
+  <button id="executeButton">Import current tab to szurubooru</button>
+  <script src="popup.js"></script>
+</body>
+</html>
