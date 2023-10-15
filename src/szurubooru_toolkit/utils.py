@@ -289,8 +289,7 @@ def setup_logger(config: Config) -> None:
                 level=config.logging['log_level'],
                 diagnose=False,
                 format=''.join(
-                    '<lm>[{level}]</lm> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> '
-                    '<ly>[{module}.{function}]</ly>: {message}',
+                    '<lm>[{level}]</lm> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> ' '<ly>[{module}.{function}]</ly>: {message}',
                 ),
             ),
             dict(
@@ -310,8 +309,7 @@ def setup_logger(config: Config) -> None:
                 level='WARNING',
                 filter=lambda record: record['level'].no < 40,
                 format=''.join(
-                    '<ly>[{level}]</ly> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> '
-                    '<ly>[{module}.{function}]</ly>: {message}',
+                    '<ly>[{level}]</ly> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> ' '<ly>[{module}.{function}]</ly>: {message}',
                 ),
             ),
             dict(
@@ -321,8 +319,7 @@ def setup_logger(config: Config) -> None:
                 colorize=True,
                 level='ERROR',
                 format=''.join(
-                    '<lr>[{level}]</lr> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> '
-                    '<ly>[{module}.{function}]</ly>: {message}',
+                    '<lr>[{level}]</lr> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> ' '<ly>[{module}.{function}]</ly>: {message}',
                 ),
             ),
         ],
@@ -584,7 +581,7 @@ def extract_twitter_artist(metadata: dict) -> str:
 
     if not artist and config.import_from_url['use_twitter_artist']:
         artist_aliases = [twitter_name.lower().replace(' ', '_')]
-        artist_aliases.append(twitter_nick.lower().replace(' ', '_'))
+        artist_aliases.append(twitter_nick.lower().replace(' ', '_').replace('\u3000', ''))
         for artist_alias in artist_aliases:
             try:
                 szuru.create_tag(artist_alias, category='artist', overwrite=True)
