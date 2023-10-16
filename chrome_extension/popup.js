@@ -24,3 +24,23 @@ document.getElementById('executeButton').addEventListener('click', function () {
     chrome.runtime.sendMessage({ action: 'run_import_from_url', url: currentURL, inputCookieLocation: userInputCookieLocation, inputRange: userInputRange });
   });
 });
+
+// Function to toggle between light and dark mode styles
+function toggleMode() {
+  const darkMode = window.matchMedia('(prefers-color-scheme: dark)');
+  const body = document.body;
+
+  if (darkMode.matches) {
+    // User prefers dark mode
+    body.classList.add('dark-mode');
+  } else {
+    // User prefers light mode or default mode
+    body.classList.remove('dark-mode');
+  }
+}
+
+// Call the toggleMode function when the popup is loaded
+toggleMode();
+
+// Add an event listener to react to changes in the system settings
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', toggleMode);
