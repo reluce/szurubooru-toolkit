@@ -221,8 +221,8 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
             with open(file, 'rb') as file_b:
                 saucenao_limit_reached = upload_media.main(file_b.read(), Path(file).suffix[1:], metadata, saucenao_limit_reached)
 
-        if os.path.exists(download_dir):
-            shutil.rmtree(download_dir)
+    if os.path.exists(download_dir):
+        shutil.rmtree(download_dir)
 
     logger.success('Script finished importing!')
 
