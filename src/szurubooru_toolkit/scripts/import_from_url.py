@@ -102,6 +102,8 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
     if not urls:
         limit_range, urls, input_file, cookies, verbose = parse_args()
     else:
+        if not limit_range:
+            limit_range = ':100'
         input_file = ''
         verbose = False
 
