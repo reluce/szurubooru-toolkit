@@ -18,8 +18,7 @@ def run_import_from_url():
     if limit_range:
         print(f'Limit range: {limit_range}')
 
-    if limit_range and cookie_location:
-        import_from_url([current_url], cookie_location, limit_range)
+    import_from_url([current_url], cookie_location, limit_range)
     return 'Script executed for URL: ' + current_url
 
 
