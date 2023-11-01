@@ -70,22 +70,25 @@ def parse_args() -> tuple:
 def set_tags(metadata) -> list:
     artist = ''
 
-    if metadata['site'] == 'e-hentai':
-        for tag in metadata['tags']:
-            if tag.startswith('artist'):
-                index = tag.find(':')
-                if index != -1:
-                    artist = tag[index + 1 :]  # noqa E203
+    if metadata['site'] in ['e-hentai', 'fanbox']:
+        danbooru = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
 
-                    danbooru = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
-                    canon_artist = danbooru.search_artist(artist)
-                    if canon_artist:
-                        metadata['tags'] = [canon_artist]
-                    else:
-                        metadata['tags'] = []
+        if metadata['site'] == 'e-hentai':
+            for tag in metadata['tags']:
+                if tag.startswith('artist'):
+                    index = tag.find(':')
+                    if index != -1:
+                        artist = tag[index + 1 :]  # noqa E203
 
-        if not artist:
-            metadata['tags'] = []
+            if not artist:
+                metadata['tags'] = []
+
+        if artist or metadata['site'] == 'fanbox':
+            canon_artist = danbooru.search_artist(metadata['user']['name'])
+            if canon_artist:
+                metadata['tags'] = [canon_artist]
+            else:
+                metadata['tags'] = []
     else:
         try:
             if isinstance(metadata['tags'], str):
@@ -141,6 +144,7 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
         'e-hentai': {'url_keyword': 'e-hentai', 'user_key': None, 'password_key': None},
         'twitter': {'url_keyword': 'twitter', 'user_key': None, 'password_key': None},
         'kemono': {'url_keyword': 'kemono', 'user_key': None, 'password_key': None},
+        'fanbox': {'url_keyword': 'fanbox', 'user_key': None, 'password_key': None},
     }
 
     site = None
@@ -205,7 +209,7 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
             else:
                 metadata['safety'] = config.upload_media['default_safety']
 
-            if 'tags' in metadata:
+            if 'tags' or 'tag_string' in metadata:
                 metadata['tags'] = set_tags(metadata)
             elif site == 'twitter':
                 metadata['tags'] = extract_twitter_artist(metadata)
