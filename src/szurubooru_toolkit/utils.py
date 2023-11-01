@@ -471,9 +471,11 @@ def generate_src(metadata: dict) -> str:
                 src = f'https://twitter.com/{user}/status/{id}'
             case 'kemono':
                 user = metadata['user']
-                id = metadata['id']
                 service = metadata['service']
                 src = f'https://kemono.party/{service}/user/{user}/post/{id}'
+            case 'fanbox':
+                user = metadata['creatorId']
+                src = f'https://fanbox.cc/@{user}/posts/{id}'
             case _:
                 src = None
     except KeyError:
