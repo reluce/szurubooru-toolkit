@@ -209,7 +209,7 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
             else:
                 metadata['safety'] = config.upload_media['default_safety']
 
-            if 'tags' or 'tag_string' in metadata:
+            if 'tags' in metadata or 'tag_string' in metadata:
                 metadata['tags'] = set_tags(metadata)
             elif site == 'twitter':
                 metadata['tags'] = extract_twitter_artist(metadata)
