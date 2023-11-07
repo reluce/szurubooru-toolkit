@@ -10,8 +10,8 @@ from pathlib import Path
 from loguru import logger
 from tqdm import tqdm
 
-from szurubooru_toolkit import Danbooru
 from szurubooru_toolkit import config
+from szurubooru_toolkit import danbooru_client
 from szurubooru_toolkit.scripts import upload_media
 from szurubooru_toolkit.utils import convert_rating
 from szurubooru_toolkit.utils import extract_twitter_artist
@@ -70,32 +70,31 @@ def parse_args() -> tuple:
 def set_tags(metadata) -> list:
     artist = ''
 
-    if metadata['site'] in ['e-hentai', 'fanbox']:
-        danbooru = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
+    match metadata['site']:
+        case 'fanbox' | 'e-hentai':
+            if metadata['site'] == 'e-hentai':
+                for tag in metadata['tags']:
+                    if tag.startswith('artist'):
+                        index = tag.find(':')
+                        if index != -1:
+                            artist = tag[index + 1 :]  # noqa E203
+                            artist = artist.replace(' ', '_')
+            elif metadata['site'] == 'fanbox':
+                try:
+                    artist = metadata['user']['name']
+                except KeyError:
+                    pass
 
-        if metadata['site'] == 'e-hentai':
-            for tag in metadata['tags']:
-                if tag.startswith('artist'):
-                    index = tag.find(':')
-                    if index != -1:
-                        artist = tag[index + 1 :]  # noqa E203
-
-            if not artist:
-                metadata['tags'] = []
-
-        if artist or metadata['site'] == 'fanbox':
-            canon_artist = danbooru.search_artist(metadata['user']['name'])
-            if canon_artist:
-                metadata['tags'] = [canon_artist]
-            else:
-                metadata['tags'] = []
-    else:
-        try:
-            if isinstance(metadata['tags'], str):
-                metadata['tags'] = metadata['tags'].split()
-        except KeyError:
-            if isinstance(metadata['tag_string'], str):
-                metadata['tags'] = metadata['tag_string'].split()
+            if artist:
+                canon_artist = danbooru_client.search_artist(artist)
+                metadata['tags'] = [canon_artist] if canon_artist else []
+        case _:
+            try:
+                if isinstance(metadata['tags'], str):
+                    metadata['tags'] = metadata['tags'].split()
+            except KeyError:
+                if isinstance(metadata['tag_string'], str):
+                    metadata['tags'] = metadata['tag_string'].split()
 
     return metadata['tags']
 
