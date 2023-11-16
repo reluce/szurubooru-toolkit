@@ -92,6 +92,8 @@ def set_tags(metadata) -> list:
             try:
                 if isinstance(metadata['tags'], str):
                     metadata['tags'] = metadata['tags'].split()
+                else:
+                    metadata['tags'] = []
             except KeyError:
                 if isinstance(metadata['tag_string'], str):
                     metadata['tags'] = metadata['tag_string'].split()
