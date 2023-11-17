@@ -227,7 +227,7 @@ def main(post_id: str = None, file_to_upload: bytes = None, limit_reached: bool 
                     md5_results = asyncio.run(search_boorus('all', 'md5:' + post.md5, 1, 0))
 
                 if md5_results:
-                    tags_by_md5, sources, post.rating = prepare_post(md5_results)
+                    tags_by_md5, sources, post.rating = prepare_post(md5_results, config)
                     post.source = collect_sources(*sources, *post.source.splitlines())
                 else:
                     tags_by_md5 = []
@@ -257,7 +257,7 @@ def main(post_id: str = None, file_to_upload: bytes = None, limit_reached: bool 
                 sauce_results, limit_reached = get_saucenao_results(sauce, post, image)
 
                 if sauce_results:
-                    tags_by_sauce, sources, post.rating = prepare_post(sauce_results)
+                    tags_by_sauce, sources, post.rating = prepare_post(sauce_results, config)
                     post.source = collect_sources(*sources, *post.source.splitlines())
                 else:
                     tags_by_sauce = []
