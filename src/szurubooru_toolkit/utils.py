@@ -526,28 +526,24 @@ def prepare_post(results: dict, config: Config):
             rating = convert_rating(result[0].rating)
             booru_found = True
         else:
-            pixiv = Pixiv(config.pixiv['token'])
-            #print(results['pixiv'])
-            pixiv_result = pixiv.get_result(results['pixiv'].url)
-            pixiv_tags = pixiv.get_tags(pixiv_result)
-            pixiv_rating = pixiv.get_rating(pixiv_result)
-            #print(pixiv_tags)
-            #tags.extend(pixiv_tags)
-            #print(tags)
+            if config.auto_tagger['pixiv_tags']:
+                pixiv = Pixiv(config.pixiv['token'])
+                pixiv_result = pixiv.get_result(results['pixiv'].url)
+                pixiv_tags = pixiv.get_tags(pixiv_result)
+                pixiv_rating = pixiv.get_rating(pixiv_result)
             pixiv_sources, pixiv_artist = extract_pixiv_artist(results['pixiv'])
             sources.append(pixiv_sources)
 
     final_tags = [item for sublist in tags for item in sublist]
-    if 'pixiv' in results and pixiv_tags:
-        final_tags.extend(pixiv_tags)
-    #print(final_tags)
+    if config.auto_tagger['pixiv_tags']:
+        if 'pixiv' in results and pixiv_tags:
+            final_tags.extend(pixiv_tags)
+        if not booru_found and 'pixiv' in results and pixiv_rating:
+            rating = pixiv_rating
+            final_tags.append('check_safety')
+        
     if not booru_found and 'pixiv' in results and pixiv_artist:
         final_tags.append(pixiv_artist)
-        #print(final_tags)
-    if not booru_found and 'pixiv' in results and pixiv_rating:
-        rating = pixiv_rating
-        final_tags.append('check_safety')
-
     return final_tags, sources, rating
 
 
