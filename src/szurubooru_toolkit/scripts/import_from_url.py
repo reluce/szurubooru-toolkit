@@ -8,8 +8,8 @@ from pathlib import Path
 from loguru import logger
 from tqdm import tqdm
 
-from szurubooru_toolkit import config
 from szurubooru_toolkit import Pixiv
+from szurubooru_toolkit import config
 from szurubooru_toolkit.scripts import upload_media
 from szurubooru_toolkit.utils import convert_rating
 from szurubooru_toolkit.utils import convert_tags
@@ -69,15 +69,7 @@ def parse_args() -> tuple:
 
 def set_tags(metadata) -> list:
     artist = ''
-    allow_tags_for_sites = [
-        'sankaku',
-        'danbooru',
-        'gelbooru',
-        'konachan',
-        'yandere',
-        'fanbox',
-        'pixiv'
-    ]
+    allow_tags_for_sites = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere', 'fanbox', 'pixiv']
 
     if metadata['site'] in allow_tags_for_sites:
         try:
@@ -119,7 +111,7 @@ def set_tags(metadata) -> list:
             canon_artist = Pixiv.extract_pixiv_artist(artist)
             if canon_artist:
                 metadata['tags'].append(canon_artist)
-    
+
     return metadata['tags']
 
 
@@ -194,11 +186,9 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
     if verbose:
         params.remove('-q')
 
-    download_dir = invoke_gallery_dl(urls, config.import_from_url["tmp_path"], params)
+    download_dir = invoke_gallery_dl(urls, config.import_from_url['tmp_path'], params)
 
-    files = [
-        file for file in glob.glob(f'{download_dir}/*') if Path(file).suffix not in ['.psd', '.json']
-    ]
+    files = [file for file in glob.glob(f'{download_dir}/*') if Path(file).suffix not in ['.psd', '.json']]
 
     logger.info(f'Downloaded {len(files)} post(s). Start importing...')
 

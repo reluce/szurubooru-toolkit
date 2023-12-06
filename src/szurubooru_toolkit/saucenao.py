@@ -98,9 +98,7 @@ class SauceNao:
                             if site == 'pixiv':
                                 matches[site] = result
                             elif site in site_keys:
-                                matches[site] = (
-                                    {'site': site_keys[site], 'post_id': int(post_id[0])} if post_id else None
-                                )
+                                matches[site] = {'site': site_keys[site], 'post_id': int(post_id[0])} if post_id else None
                             else:
                                 continue
 

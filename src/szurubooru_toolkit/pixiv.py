@@ -1,7 +1,9 @@
-from pixivpy3 import AppPixivAPI as Pixiv_Module
+from time import sleep
+
 from aiohttp.client_exceptions import ClientConnectorError
 from loguru import logger
-from time import sleep
+from pixivpy3 import AppPixivAPI as Pixiv_Module
+
 
 class Pixiv:
     def __init__(self, token):
@@ -9,7 +11,6 @@ class Pixiv:
         self.client.auth(refresh_token=token)
 
     def get_result(self, result_url):
-        temp = result_url.split('=')
         post_id = int(result_url.split('=')[-1])
         logger.debug(f'Getting result from id {post_id}')
         for _ in range(1, 12):
@@ -34,8 +35,8 @@ class Pixiv:
         if result.illust and result.illust.tags:
             for tag in result.illust.tags:
                 temp = tag['name']
-                if not temp == None:
-                    if not temp == "R-18":
+                if temp is not None:
+                    if not temp == 'R-18':
                         tags.append(temp)
         logger.debug(f'Returning tags {tags}')
         return tags
@@ -43,7 +44,7 @@ class Pixiv:
     def get_rating(self, result):
         if result.illust and result.illust.tags:
             for tag in result.illust.tags:
-                if tag['name'] == "R-18":
+                if tag['name'] == 'R-18':
                     return 'unsafe'
         return 'safe'
 

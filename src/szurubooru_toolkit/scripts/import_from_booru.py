@@ -54,8 +54,7 @@ def parse_args() -> tuple:
     if '\'' in query:
         print('')
         logger.warning(
-            'Your query contains single quotes (\'). '
-            'Consider using double quotes (") if the script doesn\'t behave as intended.',
+            'Your query contains single quotes (\'). ' 'Consider using double quotes (") if the script doesn\'t behave as intended.',
         )
 
     return booru, query, limit

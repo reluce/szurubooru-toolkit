@@ -130,8 +130,7 @@ class Config:
 
         if not Path(self.logging['log_file']).parent.is_dir():
             logger.critical(
-                f'The log_file\'s parent directory "{Path(self.logging["log_file"]).parent}" '
-                'specified in config.toml does not exist!',
+                f'The log_file\'s parent directory "{Path(self.logging["log_file"]).parent}" ' 'specified in config.toml does not exist!',
             )
             exit(1)
 

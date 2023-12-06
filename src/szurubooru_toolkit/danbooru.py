@@ -57,7 +57,7 @@ class Danbooru:
             result = None
 
         return result
-    
+
     def get_other_names_tag(self, other_tag: str) -> str:
         """Search for the main tag name of the supplied tag.
 
@@ -70,10 +70,7 @@ class Danbooru:
 
         for _ in range(1, 12):
             try:
-                search_url = (
-                    'https://danbooru.donmai.us/wiki_pages.json?'
-                    f'search[other_names_match]={other_tag}&only=title'
-                )
+                search_url = 'https://danbooru.donmai.us/wiki_pages.json?' f'search[other_names_match]={other_tag}&only=title'
 
                 tag = self.session.get(search_url).json()[0]['title']
                 self.session.close()
