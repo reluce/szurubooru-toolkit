@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import hashlib
+import subprocess
 import sys
 import warnings
 from asyncio import sleep
 from asyncio.exceptions import CancelledError
+from datetime import datetime
 from io import BytesIO
 from math import ceil
-from typing import Any
 from typing import Iterator
 from urllib.error import ContentTooShortError
 
@@ -18,6 +19,7 @@ from httpx import HTTPStatusError
 from httpx import ReadTimeout
 from loguru import logger
 from PIL import Image
+from pixivpy3.utils import PixivError
 from pybooru import Moebooru
 from pybooru.exceptions import PybooruHTTPError
 from pygelbooru.gelbooru import GelbooruImage
@@ -477,6 +479,8 @@ def generate_src(metadata: dict) -> str:
             case 'fanbox':
                 user = metadata['creatorId']
                 src = f'https://fanbox.cc/@{user}/posts/{id}'
+            case 'pixiv':
+                src = 'https://www.pixiv.net/artworks/' + id
             case _:
                 src = None
     except KeyError:
@@ -514,6 +518,19 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> di
     return results
 
 
+def convert_tags(tags: list) -> list:
+    from szurubooru_toolkit import danbooru_client
+
+    unfiltered_tags = []
+
+    for tag in tags:
+        unfiltered_tags.append(danbooru_client.get_other_names_tag(tag))
+
+    filtered_tags = [tag for tag in unfiltered_tags if tag is not None]
+
+    return filtered_tags
+
+
 def prepare_post(results: dict, config: Config):
     tags = []
     sources = []
@@ -526,58 +543,53 @@ def prepare_post(results: dict, config: Config):
             rating = convert_rating(result[0].rating)
             booru_found = True
         else:
-            if config.auto_tagger['pixiv_tags']:
-                pixiv = Pixiv(config.pixiv['token'])
-                pixiv_result = pixiv.get_result(results['pixiv'].url)
-                pixiv_tags = pixiv.get_tags(pixiv_result)
-                pixiv_rating = pixiv.get_rating(pixiv_result)
-            pixiv_sources, pixiv_artist = extract_pixiv_artist(results['pixiv'])
-            sources.append(pixiv_sources)
+            if config.pixiv['token']:
+                try:
+                    pixiv = Pixiv(config.pixiv['token'])
+                    pixiv_result = pixiv.get_result(results['pixiv'].url)
+                    pixiv_tags = pixiv.get_tags(pixiv_result)
+                    tags.append(convert_tags(pixiv_tags))
+                    pixiv_rating = pixiv.get_rating(pixiv_result)
+                except PixivError as e:
+                    logger.warning(f'Could not get result from pixiv: {e}')
+                    pixiv_rating = None
+
+            if not tags and config.auto_tagger['use_pixiv_tags']:
+                tags = pixiv_tags
+
+            sources.append(results['pixiv'].url)
+            pixiv_artist = Pixiv.extract_pixiv_artist(results['pixiv'].author_name)
+            if pixiv_artist:
+                tags.append([pixiv_artist])
 
     final_tags = [item for sublist in tags for item in sublist]
-    if config.auto_tagger['pixiv_tags']:
-        if 'pixiv' in results and pixiv_tags:
-            final_tags.extend(pixiv_tags)
-        if not booru_found and 'pixiv' in results and pixiv_rating:
-            rating = pixiv_rating
-            final_tags.append('check_safety')
-        
-    if not booru_found and 'pixiv' in results and pixiv_artist:
+
+    if not booru_found and pixiv_rating:
+        rating = pixiv_rating
+
+    if not booru_found and pixiv_artist:
         final_tags.append(pixiv_artist)
+
     return final_tags, sources, rating
 
 
-def extract_pixiv_artist(result: Any) -> tuple[str, list]:
-    pixiv_artist = result.author_name
-    source = result.url
-    from szurubooru_toolkit import config
-    from szurubooru_toolkit import danbooru_client
-    from szurubooru_toolkit import szuru
+def invoke_gallery_dl(urls: list, tmp_path: str, params: list = []) -> str:
+    current_time = datetime.now()
+    timestamp = current_time.timestamp()
+    download_dir = f'{tmp_path}/{timestamp}'
+    base_command = [
+        'gallery-dl',
+        '-q',
+        f'-D={download_dir}',
+    ]
 
-    if pixiv_artist:
-        artist_danbooru = danbooru_client.search_artist(pixiv_artist)
+    command = base_command
+    command += params
+    command += urls
 
-        artist_pixiv_sanitized = pixiv_artist.lower().replace(' ', '_')
-        # Sometimes \3000 gets appended from the result for whatever reason
-        artist_pixiv_sanitized = artist_pixiv_sanitized.replace('\u3000', '')
+    subprocess.run(command)
 
-        if not artist_danbooru:
-            artist_danbooru = danbooru_client.search_artist(artist_pixiv_sanitized)
-
-        if artist_danbooru:
-            artist = artist_danbooru
-        else:
-            artist = artist_pixiv_sanitized
-
-        if not artist_danbooru and config.auto_tagger['use_pixiv_artist']:
-            try:
-                szuru.create_tag(artist, category='artist', overwrite=True)
-            except Exception as e:
-                logger.debug(f'Could not create pixiv artist {pixiv_artist}: {e}')
-    else:
-        artist = None
-
-    return source, artist
+    return download_dir
 
 
 def extract_twitter_artist(metadata: dict) -> str:
