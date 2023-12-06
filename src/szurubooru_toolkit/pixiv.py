@@ -1,12 +1,12 @@
 from pixivpy3 import AppPixivAPI as Pixiv_Module
 from aiohttp.client_exceptions import ClientConnectorError
 from loguru import logger
+from time import sleep
 
 class Pixiv:
     def __init__(self, token):
         self.client = Pixiv_Module()
         self.client.auth(refresh_token=token)
-
 
     def get_result(self, result_url):
         temp = result_url.split('=')
