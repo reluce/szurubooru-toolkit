@@ -3,19 +3,19 @@ import glob
 import json
 import os
 import shutil
-import subprocess
-from datetime import datetime
 from pathlib import Path
 
 from loguru import logger
 from tqdm import tqdm
 
 from szurubooru_toolkit import config
-from szurubooru_toolkit import danbooru_client
+from szurubooru_toolkit import Pixiv
 from szurubooru_toolkit.scripts import upload_media
 from szurubooru_toolkit.utils import convert_rating
+from szurubooru_toolkit.utils import convert_tags
 from szurubooru_toolkit.utils import extract_twitter_artist
 from szurubooru_toolkit.utils import generate_src
+from szurubooru_toolkit.utils import invoke_gallery_dl
 
 
 def parse_args() -> tuple:
@@ -69,35 +69,57 @@ def parse_args() -> tuple:
 
 def set_tags(metadata) -> list:
     artist = ''
+    allow_tags_for_sites = [
+        'sankaku',
+        'danbooru',
+        'gelbooru',
+        'konachan',
+        'yandere',
+        'fanbox',
+        'pixiv'
+    ]
 
-    match metadata['site']:
-        case 'fanbox' | 'e-hentai':
-            if metadata['site'] == 'e-hentai':
-                for tag in metadata['tags']:
-                    if tag.startswith('artist'):
-                        index = tag.find(':')
-                        if index != -1:
-                            artist = tag[index + 1 :]  # noqa E203
-                            artist = artist.replace(' ', '_')
-            elif metadata['site'] == 'fanbox':
-                try:
-                    artist = metadata['user']['name']
-                except KeyError:
-                    pass
-
-            if artist:
-                canon_artist = danbooru_client.search_artist(artist)
-                metadata['tags'] = [canon_artist] if canon_artist else []
-        case _:
-            try:
-                if isinstance(metadata['tags'], str):
-                    metadata['tags'] = metadata['tags'].split()
+    if metadata['site'] in allow_tags_for_sites:
+        try:
+            if metadata['site'] in ['fanbox', 'pixiv']:
+                if isinstance(metadata['tags'], list):
+                    metadata['tags'] = convert_tags(metadata['tags'])
                 else:
                     metadata['tags'] = []
-            except KeyError:
-                if isinstance(metadata['tag_string'], str):
-                    metadata['tags'] = metadata['tag_string'].split()
+            else:
+                if isinstance(metadata['tags'], str):
+                    metadata['tags'] = metadata['tags'].split()
+                elif isinstance(metadata['tags'], list):
+                    pass
+                else:
+                    metadata['tags'] = []
+        except KeyError:
+            if isinstance(metadata['tag_string'], str):
+                metadata['tags'] = metadata['tag_string'].split()
+            else:
+                metadata['tags'] = []
+    else:
+        metadata['tags'] = []
 
+    if metadata['site'] in ['fanbox', 'pixiv', 'e-hentai']:
+        if metadata['site'] == 'e-hentai':
+            for tag in metadata['tags']:
+                if tag.startswith('artist'):
+                    index = tag.find(':')
+                    if index != -1:
+                        artist = tag[index + 1 :]  # noqa E203
+                        artist = artist.replace(' ', '_')
+        elif metadata['site'] in ['fanbox', 'pixiv']:
+            try:
+                artist = metadata['user']['name']
+            except KeyError:
+                pass
+
+        if artist:
+            canon_artist = Pixiv.extract_pixiv_artist(artist)
+            if canon_artist:
+                metadata['tags'].append(canon_artist)
+    
     return metadata['tags']
 
 
@@ -119,16 +141,6 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
     else:
         config.upload_media['auto_tag'] = False
 
-    current_time = datetime.now()
-    timestamp = current_time.timestamp()
-    download_dir = f'{config.import_from_url["tmp_path"]}/{timestamp}'
-    base_command = [
-        'gallery-dl',
-        '-q',
-        '--write-metadata',
-        f'-D={download_dir}',
-    ]
-
     if input_file and not urls:
         logger.info(f'Downloading posts from input file "{input_file}"...')
     elif input_file and urls:
@@ -146,6 +158,7 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
         'twitter': {'url_keyword': 'twitter', 'user_key': None, 'password_key': None},
         'kemono': {'url_keyword': 'kemono', 'user_key': None, 'password_key': None},
         'fanbox': {'url_keyword': 'fanbox', 'user_key': None, 'password_key': None},
+        'pixiv': {'url_keyword': 'pixiv', 'user_key': None, 'password_key': None},
     }
 
     site = None
@@ -167,26 +180,24 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
         if site is not None:
             break
 
-    command = base_command + [f'--range={limit_range}']
+    params = [f'--range={limit_range}', '--write-metadata']
 
     if user and password and user != 'none' and password != 'none':
-        command += [f'--username={user}', f'--password={password}']
+        params += [f'--username={user}', f'--password={password}']
 
     if cookies:
-        command += [f'--cookies={cookies}']
+        params += [f'--cookies={cookies}']
 
     if input_file:
-        command += [f'--input-file={input_file}']
+        params += [f'--input-file={input_file}']
 
     if verbose:
-        command.remove('-q')
+        params.remove('-q')
 
-    command += urls
-
-    subprocess.run(command)
+    download_dir = invoke_gallery_dl(urls, config.import_from_url["tmp_path"], params)
 
     files = [
-        file for file in glob.glob(f'{config.import_from_url["tmp_path"]}/{timestamp}/*') if Path(file).suffix not in ['.psd', '.json']
+        file for file in glob.glob(f'{download_dir}/*') if Path(file).suffix not in ['.psd', '.json']
     ]
 
     logger.info(f'Downloaded {len(files)} post(s). Start importing...')
