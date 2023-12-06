@@ -57,6 +57,43 @@ class Danbooru:
             result = None
 
         return result
+    
+    def get_other_names_tag(self, other_tag: str) -> str:
+        """Search for the main tag name of the supplied tag.
+
+        Args:
+            other_tag (str): The tag you want to search for.
+
+        Returns:
+            str: The main tag.
+        """
+
+        for _ in range(1, 12):
+            try:
+                search_url = (
+                    'https://danbooru.donmai.us/wiki_pages.json?'
+                    f'search[other_names_match]={other_tag}&only=title'
+                )
+
+                tag = self.session.get(search_url).json()[0]['title']
+                self.session.close()
+
+                logger.debug(f'Returning found tag for {other_tag}: {tag}')
+
+                break
+            except (IndexError, KeyError):
+                logger.debug(f'Could not find tag for other_tag "{other_tag}"')
+                tag = None
+
+                break
+            except (TimeoutError, PybooruError, PybooruHTTPError, PybooruAPIError):
+                logger.debug('Could not establish connection to Danbooru, trying again in 5s...')
+                sleep(5)
+        else:
+            logger.debug('Could not establish connection to Danbooru. Skip search for other tag...')
+            tag = None
+
+        return tag
 
     def get_tags(self, result):
         result = result['tag_string'].split()
