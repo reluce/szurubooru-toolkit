@@ -16,6 +16,7 @@ deepbooru_set_tag = true  # Tag Deepbooru post with tag "deepbooru"
 hide_progress = false  # Set this to true to hide the progress bar
 use_pixiv_artist = false  # If the artist could only be found on pixiv, create and use the pixiv artist. Category has to be 'artist'.
 update_relations = true  # Set character <> parody relation if SauceNAO is disabled (or limit reached) and Deepbooru enabled
+pixiv_tags = false  # Tag posts with pixiv tags
 
 # Leave those options as "None" if you have no accounts on these sites
 [danbooru]

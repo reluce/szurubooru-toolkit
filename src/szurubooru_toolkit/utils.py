@@ -26,6 +26,7 @@ from syncer import sync
 from szurubooru_toolkit import Config
 from szurubooru_toolkit import Danbooru
 from szurubooru_toolkit import Gelbooru
+from szurubooru_toolkit import Pixiv
 
 
 # Keep track of total tagged posts
@@ -513,25 +514,36 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> di
     return results
 
 
-def prepare_post(results: dict):
+def prepare_post(results: dict, config: Config):
     tags = []
     sources = []
     rating = []
-
+    booru_found = False
     for booru, result in results.items():
         if booru != 'pixiv':
             tags.append(result[0].tags.split())
             sources.append(generate_src({'site': booru, 'id': result[0].id}))
             rating = convert_rating(result[0].rating)
+            booru_found = True
         else:
+            if config.auto_tagger['pixiv_tags']:
+                pixiv = Pixiv(config.pixiv['token'])
+                pixiv_result = pixiv.get_result(results['pixiv'].url)
+                pixiv_tags = pixiv.get_tags(pixiv_result)
+                pixiv_rating = pixiv.get_rating(pixiv_result)
             pixiv_sources, pixiv_artist = extract_pixiv_artist(results['pixiv'])
             sources.append(pixiv_sources)
 
     final_tags = [item for sublist in tags for item in sublist]
-
-    if not final_tags and 'pixiv' in results and pixiv_artist:
-        final_tags = pixiv_artist
-
+    if config.auto_tagger['pixiv_tags']:
+        if 'pixiv' in results and pixiv_tags:
+            final_tags.extend(pixiv_tags)
+        if not booru_found and 'pixiv' in results and pixiv_rating:
+            rating = pixiv_rating
+            final_tags.append('check_safety')
+        
+    if not booru_found and 'pixiv' in results and pixiv_artist:
+        final_tags.append(pixiv_artist)
     return final_tags, sources, rating
 
 
@@ -565,7 +577,7 @@ def extract_pixiv_artist(result: Any) -> tuple[str, list]:
     else:
         artist = None
 
-    return source, [artist]
+    return source, artist
 
 
 def extract_twitter_artist(metadata: dict) -> str:

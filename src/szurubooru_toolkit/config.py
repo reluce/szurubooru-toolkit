@@ -61,6 +61,7 @@ class Config:
                 'hide_progress',
                 'use_pixiv_artist',
                 'update_relations',
+                'pixiv_tags',
             ],
             'upload_media': [
                 'src_path',

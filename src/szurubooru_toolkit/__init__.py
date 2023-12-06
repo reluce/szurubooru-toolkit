@@ -6,6 +6,7 @@ from pybooru.moebooru import Moebooru
 from .config import Config
 from .danbooru import Danbooru  # noqa F401
 from .gelbooru import Gelbooru  # noqa F401
+from .pixiv import Pixiv
 from .szurubooru import Post  # noqa F401
 from .szurubooru import Szurubooru
 from .twitter import Twitter  # noqa F401
