@@ -60,8 +60,8 @@ class Config:
                 'deepbooru_set_tag',
                 'hide_progress',
                 'use_pixiv_artist',
+                'use_pixiv_tags',
                 'update_relations',
-                'pixiv_tags',
             ],
             'upload_media': [
                 'src_path',
