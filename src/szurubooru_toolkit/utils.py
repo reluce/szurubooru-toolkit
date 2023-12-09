@@ -547,9 +547,12 @@ def prepare_post(results: dict, config: Config):
                 try:
                     pixiv = Pixiv(config.pixiv['token'])
                     pixiv_result = pixiv.get_result(results['pixiv'].url)
-                    pixiv_tags = pixiv.get_tags(pixiv_result)
-                    tags.append(convert_tags(pixiv_tags))
-                    pixiv_rating = pixiv.get_rating(pixiv_result)
+                    if pixiv_result:
+                        pixiv_tags = pixiv.get_tags(pixiv_result)
+                        tags.append(convert_tags(pixiv_tags))
+                        pixiv_rating = pixiv.get_rating(pixiv_result)
+                    else:
+                        pixiv_rating = None
                 except PixivError as e:
                     logger.warning(f'Could not get result from pixiv: {e}')
                     pixiv_rating = None
