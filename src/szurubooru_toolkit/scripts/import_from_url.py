@@ -69,22 +69,17 @@ def parse_args() -> tuple:
 
 def set_tags(metadata) -> list:
     artist = ''
-    allow_tags_for_sites = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere', 'fanbox', 'pixiv']
+    allow_tags_for_sites = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere', 'fanbox', 'pixiv', 'twitter']
 
     if metadata['site'] in allow_tags_for_sites:
         try:
             if metadata['site'] in ['fanbox', 'pixiv']:
-                if isinstance(metadata['tags'], list):
-                    metadata['tags'] = convert_tags(metadata['tags'])
-                else:
-                    metadata['tags'] = []
+                metadata['tags'] = convert_tags(metadata['tags'])
+            elif metadata['site'] == 'twitter':
+                metadata['tags'] = convert_tags(metadata['hashtags'])
             else:
                 if isinstance(metadata['tags'], str):
                     metadata['tags'] = metadata['tags'].split()
-                elif isinstance(metadata['tags'], list):
-                    pass
-                else:
-                    metadata['tags'] = []
         except KeyError:
             if isinstance(metadata['tag_string'], str):
                 metadata['tags'] = metadata['tag_string'].split()
@@ -183,8 +178,8 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
     if input_file:
         params += [f'--input-file={input_file}']
 
-    if verbose:
-        params.remove('-q')
+    if not verbose:
+        params.append('-q')
 
     download_dir = invoke_gallery_dl(urls, config.import_from_url['tmp_path'], params)
 
@@ -211,15 +206,14 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
             else:
                 metadata['safety'] = config.upload_media['default_safety']
 
-            if 'tags' in metadata or 'tag_string' in metadata:
+            if 'tags' in metadata or 'tag_string' in metadata or 'hashtags' in metadata:
                 metadata['tags'] = set_tags(metadata)
-            elif site == 'twitter':
-                metadata['tags'] = extract_twitter_artist(metadata)
             else:
                 metadata['tags'] = []
 
             # As Twitter doesn't provide any tags compared to other sources, we try to auto tag it.
             if site == 'twitter':
+                metadata['tags'] += extract_twitter_artist(metadata)
                 config.auto_tagger['md5_search_enabled'] = True
                 config.auto_tagger['saucenao_enabled'] = True
             else:
