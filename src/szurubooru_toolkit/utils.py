@@ -582,7 +582,6 @@ def invoke_gallery_dl(urls: list, tmp_path: str, params: list = []) -> str:
     download_dir = f'{tmp_path}/{timestamp}'
     base_command = [
         'gallery-dl',
-        '-q',
         f'-D={download_dir}',
     ]
 
