@@ -258,7 +258,7 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_path: st
     post.exact_post, similar_posts, errors = check_similarity(szuru, post.token)
 
     if errors:
-        return False
+        return False, False  # Assume the saucenao_limit_reached is False
 
     threshold = 1 - float(config.upload_media['max_similarity'])
 
