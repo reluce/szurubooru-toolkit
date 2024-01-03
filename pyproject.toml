@@ -2,19 +2,9 @@
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-
 [tool.black]
 line-length = 140
 skip-string-normalization = true
-
-
-[tool.interrogate]
-verbose = 2
-fail-under = 95
-exclude = ["tests"]
-ignore-init-module = true
-ignore-init-method = true
-
 
 [tool.isort]
 line_length = 120
@@ -24,17 +14,6 @@ known_first_party = ["szurubooru_toolkit"]
 known_local_folder = ["src/szurubooru_toolkit"]
 multi_line_output = 3
 force_single_line = true
-
-
-[tool.mypy]
-warn_return_any = false
-warn_unused_configs = true
-ignore_missing_imports = true
-follow_imports = "silent"
-check_untyped_defs = true
-disallow_incomplete_defs = true
-disallow_untyped_defs = true
-
 
 [tool.poetry]
 name = "szurubooru-toolkit"
@@ -62,7 +41,6 @@ reset-posts = 'szurubooru_toolkit.scripts.reset_posts:main'
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
-beautifulsoup4="^4.10.0"
 Pillow = "^9.5.0"
 Pybooru="^4.2.2"
 pygelbooru="^0.5.0"
@@ -78,23 +56,15 @@ loguru = "^0.7.0"
 pathvalidate = "^2.5.2"
 validators = "^0.20.0"
 lxml = "^4.9.2"
-tweepy = "^4.14.0"
-gallery-dl = "^1.25.4"
+gallery-dl = "^1.26.5"
 cunnypy = "^2.0.0"
 tldextract = "^3.4.4"
 flask = "^3.0.0"
 pixivpy3 = "^3.7.4"
 
 [tool.poetry.dev-dependencies]
-black = "^22.1.0"
-flake8 = "^4.0.1"
+black = "^23.0.0"
+flake8 = "^6.0.0"
 interrogate = "^1.5.0"
 isort = "^5.10.1"
-mkdocs = "^1.2.3"
-mkdocs-material = "^8.2.5"
-mkdocstrings = "^0.18.1"
-mypy = "^0.941"
-pre-commit = "^2.17.0"
-Pygments = "^2.11.2"
-pytest = "^7.1.0"
-pytest-cov = "^3.0.0"
+pre-commit = "^3.0.0"
