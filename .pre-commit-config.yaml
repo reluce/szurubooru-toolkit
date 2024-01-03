@@ -3,26 +3,26 @@ default_language_version:
 
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.5.0
     hooks:
     -   id: check-docstring-first
+    -   id: check-toml
     -   id: check-yaml
     -   id: debug-statements
         description: Check for breakpoints
     -   id: double-quote-string-fixer
         description: Replace double quotes with single quotes
-    # -   id: name-tests-test
-    #     description: Check for correct file name of tests
-    #     args: [--django]  # Match test*.py instead of _test.py
+    -   id: end-of-file-fixer
+        description: Makes sure files end in a newline and only a newline
 
 -   repo: https://github.com/PyCQA/flake8
-    rev: 6.0.0
+    rev: 6.1.0
     hooks:
     -   id: flake8
-        additional_dependencies: [flake8-typing-imports==1.12.0]
+        additional_dependencies: [flake8-typing-imports==1.15.0]
 
 -   repo: https://github.com/psf/black
-    rev: 23.3.0
+    rev: 23.12.1
     hooks:
     -   id: black
 
@@ -38,22 +38,15 @@ repos:
         args: [--py37-plus]
 
 -   repo: https://github.com/PyCQA/isort
-    rev: 5.12.0
+    rev: 5.13.2
     hooks:
     -   id: isort
 
 -   repo: https://github.com/asottile/add-trailing-comma
-    rev: v2.5.1
+    rev: v3.1.0
     hooks:
     -   id: add-trailing-comma
         args: [--py36-plus]
-
-# -   repo: https://github.com/pre-commit/mirrors-mypy
-    # rev: v0.941
-    # hooks:
-    # -   id: mypy
-    #     additional_dependencies: [types-all]
-    #     exclude: ^tests
 
 -   repo: meta
     hooks:
