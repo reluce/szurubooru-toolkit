@@ -17,12 +17,12 @@ SZURUBOORU_DEFAULTS = {
 }
 
 GLOBALS_DEFAULTS = {
-    'max_similarity': '0.95',
+    'max_similarity': 0.95,
     'convert_to_jpg': False,
     'convert_threshold': '3MB',
-    'convert_quality': '90',
+    'convert_quality': 90,
     'shrink': False,
-    'shrink_threshold': '6000000',
+    'shrink_threshold': 6000000,
     'shrink_dimensions': '2500x2500',
     'default_safety': 'safe',
 }
@@ -331,9 +331,7 @@ class Config:
         self.validate_szurubooru()
         self.validate_url()
         self.validate_safety()
-
-        if self.globals['convert_to_jpg']:
-            self.validate_convert_attrs()
+        self.validate_convert_attrs()
 
         if self.auto_tagger['deepbooru']:
             self.validate_deepbooru()
