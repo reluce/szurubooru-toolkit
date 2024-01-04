@@ -1,57 +1,88 @@
-import sys
-
-from loguru import logger
-from pybooru.moebooru import Moebooru
-
-from .config import Config
-from .danbooru import Danbooru  # noqa F401
-from .gelbooru import Gelbooru  # noqa F401
-from .pixiv import Pixiv
-from .szurubooru import Post  # noqa F401
-from .szurubooru import Szurubooru
-from .twitter import Twitter  # noqa F401
-from .utils import audit_rating  # noqa F401
-from .utils import collect_sources  # noqa F401
-from .utils import convert_rating  # noqa F401
-from .utils import download_media  # noqa F401
-from .utils import get_md5sum  # noqa F401
-from .utils import get_posts_from_booru  # noqa F401
-from .utils import sanitize_tags  # noqa F401
-from .utils import scrape_sankaku  # noqa F401
-from .utils import setup_logger  # noqa F401
-from .utils import shrink_img  # noqa F401
-from .utils import statistics  # noqa F401
+from szurubooru_toolkit.config import Config
 
 
-logger.remove(0)
-logger.add(
-    sink=sys.stderr,
-    backtrace=False,
-    colorize=True,
-    level='ERROR',
-    enqueue=True,
-    diagnose=False,
-    format=''.join(
-        '<lr>[{level}]</lr> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> ' '<ly>[{module}.{function}]</ly>: {message}',
-    ),
-)
+def setup_config():
+    global config
 
-config = Config()
-if (
-    config.auto_tagger['deepbooru_enabled']
-    or config.import_from_url['deepbooru_enabled']
-    or config.import_from_booru['deepbooru_enabled']
-):
-    from .deepbooru import Deepbooru  # noqa F401
+    config = Config()
 
-setup_logger(config)
 
-danbooru_client = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
-gelbooru_client = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
-konachan_client = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
-yandere_client = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
+def setup_logger() -> None:
+    """Setup loguru logging handlers."""
 
-szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
+    import sys
 
-# SauceNao imports the szuru object, so we have to include it here
-from .saucenao import SauceNao  # noqa F401
+    from loguru import logger
+
+    logger.remove(0)
+    logger.add(
+        sink=sys.stderr,
+        backtrace=False,
+        colorize=True,
+        level='ERROR',
+        enqueue=True,
+        diagnose=False,
+        format=''.join(
+            '<lr>[{level}]</lr> <ly>[{module}.{function}]</ly>: {message}',
+        ),
+    )
+
+    logger.configure(
+        handlers=[
+            dict(
+                sink=config.logging['log_file'],
+                colorize=config.logging['log_colorized'],
+                level=config.logging['log_level'],
+                diagnose=False,
+                format=''.join(
+                    '<lm>[{level}]</lm> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> ' '<ly>[{module}.{function}]</ly> {message}',
+                ),
+            ),
+            dict(
+                sink=sys.stderr,
+                backtrace=False,
+                diagnose=False,
+                colorize=True,
+                level='INFO',
+                filter=lambda record: record['level'].no < 30,
+                format='<le>[{level}]</le> {message}',
+            ),
+            dict(
+                sink=sys.stderr,
+                backtrace=False,
+                diagnose=False,
+                colorize=True,
+                level='WARNING',
+                filter=lambda record: record['level'].no < 40,
+                format=''.join(
+                    '<ly>[{level}]</ly> <ly>[{module}.{function}]</ly> {message}',
+                ),
+            ),
+            dict(
+                sink=sys.stderr,
+                backtrace=False,
+                diagnose=False,
+                colorize=True,
+                level='ERROR',
+                format=''.join(
+                    '<lr>[{level}]</lr> <ly>[{module}.{function}]</ly> {message}',
+                ),
+            ),
+        ],
+    )
+
+    if not config.logging['log_enabled']:
+        logger.remove(2)  # Assume id 2 is the handler with the log file sink
+
+
+def setup_clients():
+    from szurubooru_toolkit.danbooru import Danbooru  # noqa F401
+    from szurubooru_toolkit.gelbooru import Gelbooru  # noqa F401
+    from szurubooru_toolkit.szurubooru import Szurubooru
+
+    global danbooru_client, gelbooru_client, szuru
+
+    danbooru_client = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
+    gelbooru_client = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
+
+    szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
