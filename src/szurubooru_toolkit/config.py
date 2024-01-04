@@ -193,6 +193,8 @@ class Config:
                     logger.critical(e)
                     exit(1)
 
+            self.validate_config()
+
     def override_config(self, overrides: dict) -> None:
         """Override options with command line arguments.
 
@@ -205,6 +207,8 @@ class Config:
             for item in items:
                 section_dict[item] = items[item]
             setattr(self, section, section_dict)
+
+        self.validate_config()
 
     def validate_path(self) -> None:
         """Check if the directories exist and create them if not."""
