@@ -33,7 +33,6 @@ def setup_module(module_name: str, click_context: click.core.Context) -> types.M
     from szurubooru_toolkit import config
 
     config.override_config(click_context.obj)
-    config.validate_config()
 
     setup_clients()
     module = importlib.import_module('szurubooru_toolkit.scripts.' + module_name)
