@@ -1,4 +1,6 @@
 from time import sleep
+from typing import List
+from typing import Optional
 
 import requests
 from loguru import logger
@@ -9,7 +11,22 @@ from pybooru.exceptions import PybooruHTTPError
 
 
 class Danbooru:
-    def __init__(self, danbooru_user, danbooru_api_key):
+    def __init__(self, danbooru_user: str, danbooru_api_key: str) -> None:
+        """
+        Initialize a Danbooru client.
+
+        This method initializes a Danbooru client with or without user credentials. If both a username and API key are
+        provided, they are used to authenticate the client. Otherwise, an unauthenticated client is created. A requests
+        session is also created and its headers are updated with a user agent.
+
+        Args:
+            danbooru_user (str): The username for the Danbooru client.
+            danbooru_api_key (str): The API key for the Danbooru client.
+
+        Returns:
+            None
+        """
+
         if not danbooru_user == 'None' and not danbooru_api_key == 'None':
             self.client = Danbooru_Module('danbooru', username=danbooru_user, api_key=danbooru_api_key)
             logger.debug(f'Using Danbooru user {danbooru_user} with API key')
@@ -21,7 +38,27 @@ class Danbooru:
         headers = {'User-Agent': 'Danbooru dummy agent'}
         self.session.headers.update(headers)
 
-    def get_by_md5(self, md5sum):
+    def get_by_md5(self, md5sum: str) -> Optional[dict]:
+        """
+        Retrieve a post from Danbooru by its MD5 hash.
+
+        This method retrieves a post from Danbooru by its MD5 hash. It tries to fetch the post up to 11 times, with a 5
+        second delay between each attempt. If the post is not found, it returns None. If an error occurs during the request,
+        it logs the error and tries again. If it fails to establish a connection after 11 attempts, it logs the failure and
+        returns None.
+
+        Args:
+            md5sum (str): The MD5 hash of the post to retrieve.
+
+        Returns:
+            Optional[dict]: The post as a dictionary if found, None otherwise.
+
+        Raises:
+            PybooruHTTPError: If a HTTP error occurs during the request.
+            PybooruError: If a general error occurs during the request.
+            PybooruAPIError: If an API error occurs during the request.
+        """
+
         for _ in range(1, 12):
             try:
                 logger.debug(f'Trying to fetch result by md5sum {md5sum}')
@@ -42,7 +79,27 @@ class Danbooru:
 
         return result
 
-    def get_result(self, post_id):
+    def get_result(self, post_id: int) -> Optional[dict]:
+        """
+        Retrieve a post from Danbooru by its post ID.
+
+        This method retrieves a post from Danbooru by its post ID. It tries to fetch the post up to 11 times, with a 5
+        second delay between each attempt. If the post is not found, it returns None. If an error occurs during the request,
+        it logs the error and tries again. If it fails to establish a connection after 11 attempts, it logs the failure and
+        returns None.
+
+        Args:
+            post_id (int): The ID of the post to retrieve.
+
+        Returns:
+            Optional[dict]: The post as a dictionary if found, None otherwise.
+
+        Raises:
+            PybooruHTTPError: If a HTTP error occurs during the request.
+            PybooruError: If a general error occurs during the request.
+            PybooruAPIError: If an API error occurs during the request.
+        """
+
         for _ in range(1, 12):
             try:
                 result = self.client.post_show(post_id)
@@ -59,13 +116,24 @@ class Danbooru:
         return result
 
     def get_other_names_tag(self, other_tag: str) -> str:
-        """Search for the main tag name of the supplied tag.
+        """
+        Search for the main tag name of the given tag.
+
+        This method searches for the main tag name of the supplied tag on Danbooru. It tries to fetch the tag up to 11 times,
+        with a 5 second delay between each attempt. If the tag is not found, it returns None. If an error occurs during the
+        request, it logs the error and tries again. If it fails to establish a connection after 11 attempts, it logs the
+        failure and returns None.
 
         Args:
             other_tag (str): The tag you want to search for.
 
         Returns:
-            str: The main tag.
+            str: The main tag if found, None otherwise.
+
+        Raises:
+            PybooruHTTPError: If a HTTP error occurs during the request.
+            PybooruError: If a general error occurs during the request.
+            PybooruAPIError: If an API error occurs during the request.
         """
 
         for _ in range(1, 12):
@@ -92,23 +160,60 @@ class Danbooru:
 
         return tag
 
-    def get_tags(self, result):
+    def get_tags(self, result: dict) -> List[str]:
+        """
+        Extracts tags from the result.
+
+        This method extracts the tags from the result dictionary and returns them as a list of strings.
+
+        Args:
+            result (dict): The result dictionary from which to extract the tags.
+
+        Returns:
+            List[str]: The list of tags extracted from the result.
+        """
+
         result = result['tag_string'].split()
         logger.debug(f'Returning tags: {result}')
 
         return result
 
-    def get_rating(self, result):
+    def get_rating(self, result: dict) -> str:
+        """
+        Extracts the rating from the result.
+
+        This method extracts the rating from the result dictionary and returns it as a string.
+
+        Args:
+            result (dict): The result dictionary from which to extract the rating.
+
+        Returns:
+            str: The rating extracted from the result.
+        """
+
         result_rating = result['rating']
         logger.debug(f'Returning rating: {result_rating}')
 
         return result_rating
 
-    def search_artist(self, artist) -> str:
-        """Search main artist name on Danbooru and return it
+    def search_artist(self, artist: str) -> str:
+        """
+        Search for the main artist name on Danbooru and return it.
+
+        This method searches for the main artist name on Danbooru. It tries to fetch the artist up to 11 times, with a 5
+        second delay between each attempt. If the artist is not found, it returns None. If an error occurs during the
+        request, it logs the error and tries again. If it fails to establish a connection after 11 attempts, it logs the
+        failure and returns None.
 
         Args:
             artist (str): The artist name. Can be an alias as well.
+
+        Returns:
+            str: The main artist name if found, None otherwise.
+
+        Raises:
+            IndexError: If the artist is not found in the response.
+            KeyError: If the 'name' key is not found in the response.
         """
 
         for _ in range(1, 12):
@@ -142,19 +247,28 @@ class Danbooru:
 
         return artist
 
-    def download_tags(self, query: str = '*', min_post_count: int = 10, limit: int = 100) -> list:
-        """Download and return tags from Danbooru.
+    def download_tags(self, query: str = '*', min_post_count: int = 10, limit: int = 100) -> List[dict]:
+        """
+        Download and return tags from Danbooru.
+
+        This method downloads tags from Danbooru. It builds a URL with the provided query, minimum post count, and limit,
+        and fetches the tags from that URL. It tries to fetch the tags up to the number of pages calculated from the limit,
+        with a 5 second delay between each attempt. If an error occurs during the request, it logs the error and tries again.
 
         Args:
-            query (str, optional): Search for specific tag, accepts wildcard (*).
-                If not specified, download all tags. Defaults to '*'.
-            min_post_count (int, optional): The minimum amount of posts the tag should have been used in.
-                Defaults to 10.
+            query (str, optional): Search for specific tag, accepts wildcard (*). If not specified, download all tags.
+                                Defaults to '*'.
+            min_post_count (int, optional): The minimum amount of posts the tag should have been used in. Defaults to 10.
             limit (int, optional): The amount of tags that should be downloaded. Start from the most recent ones.
-                Defaults to 100.
+                                Defaults to 100.
 
         Returns:
-            list: A list with found tags.
+            List[dict]: A list with found tags.
+
+        Raises:
+            PybooruHTTPError: If a HTTP error occurs during the request.
+            PybooruError: If a general error occurs during the request.
+            PybooruAPIError: If an API error occurs during the request.
         """
 
         tag_base_url = 'https://danbooru.donmai.us/tags.json'
