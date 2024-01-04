@@ -263,26 +263,24 @@ class Config:
     def validate_convert_attrs(self) -> None:
         """Convert the threshold from a human readable to a machine readable size."""
 
-        human_readable = self.globals['convert_threshold']
+        convert_threshold = self.globals['convert_threshold']
 
-        if not any(x in human_readable for x in ['KB', 'MB']):
-            logger.critical(
-                f'Your convert_threshold "{self.globals["convert_threshold"]}" is not valid!',
-            )
-            exit(1)
+        # Since this function gets called twice (CLI param + config.toml check) we have to check if the value is already converted
+        try:
+            if not any(x in convert_threshold for x in ['KB', 'MB']):
+                logger.critical(
+                    f'Your convert_threshold "{self.globals["convert_threshold"]}" is not valid!',
+                )
+                exit(1)
 
-        if 'KB' in human_readable:
-            self.globals['convert_threshold'] = float(human_readable.replace('KB', '')) * 1000
-        elif 'MB' in human_readable:
-            self.globals['convert_threshold'] = float(human_readable.replace('MB', '')) * 1000000
+            if 'KB' in convert_threshold:
+                self.globals['convert_threshold'] = float(convert_threshold.replace('KB', '')) * 1000
+            elif 'MB' in convert_threshold:
+                self.globals['convert_threshold'] = float(convert_threshold.replace('MB', '')) * 1000000
+        except TypeError:
+            pass
 
-        if not self.globals['convert_quality'].isnumeric():
-            logger.critical(
-                f'Your convert_quality "{self.globals["convert_quality"]}" is not a numeric value!',
-            )
-            exit(1)
-        else:
-            self.globals['convert_quality'] = int(self.globals['convert_quality'])
+        self.globals['convert_quality'] = int(self.globals['convert_quality'])
 
         if self.globals['convert_quality'] > 95:
             logger.critical(
@@ -293,24 +291,22 @@ class Config:
     def validate_shrink_attrs(self) -> None:
         """Validate that the shink dimensions matches reg exp."""
 
-        if not re.match(r'\d+x\d+', self.globals['shrink_dimensions']):
-            logger.critical(
-                f'Your shrink_dimensions "{self.globals["shrink_dimensions"]}" are not valid!',
-            )
-            exit(1)
-        else:
-            dimensions = re.search(r'(\d+)x(\d+)', self.globals['shrink_dimensions'])
-            max_width = int(dimensions.group(1))
-            max_height = int(dimensions.group(2))
-            self.globals['shrink_dimensions'] = (int(max_width), (max_height))
+        # Since this function gets called twice (CLI param + config.toml check) we have to check if the value is already converted
+        try:
+            if not re.match(r'\d+x\d+', self.globals['shrink_dimensions']):
+                logger.critical(
+                    f'Your shrink_dimensions "{self.globals["shrink_dimensions"]}" are not valid!',
+                )
+                exit(1)
+            else:
+                dimensions = re.search(r'(\d+)x(\d+)', self.globals['shrink_dimensions'])
+                max_width = int(dimensions.group(1))
+                max_height = int(dimensions.group(2))
+                self.globals['shrink_dimensions'] = (int(max_width), (max_height))
+        except TypeError:
+            pass
 
-        if not self.globals['shrink_threshold'].isnumeric():
-            logger.critical(
-                f'Your shrink_threshold "{self.globals["shrink_dimensions"]}" is not a numeric value!',
-            )
-            exit(1)
-        else:
-            self.globals['shrink_threshold'] = int(self.globals['shrink_threshold'])
+        self.globals['shrink_threshold'] = int(self.globals['shrink_threshold'])
 
     def validate_safety(self) -> None:
         """Check if default_safety is set correctly."""
