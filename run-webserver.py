@@ -38,6 +38,7 @@ def run_import_from_url():
         logger.info(f'Limit range: "{range}"')
 
     config.override_config(overrides)
+    config.validate_config()
     import_from_url(urls=[current_url])
 
     return 'Script executed for URL: ' + current_url
