@@ -1,4 +1,3 @@
-import argparse
 from pathlib import Path
 from typing import Literal  # noqa TYP001
 
@@ -8,56 +7,13 @@ from pybooru.moebooru import Moebooru
 from tqdm import tqdm
 
 from szurubooru_toolkit import Gelbooru
-from szurubooru_toolkit import Post
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.scripts import upload_media
+from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.utils import convert_rating
 from szurubooru_toolkit.utils import download_media
 from szurubooru_toolkit.utils import get_posts_from_booru
-
-
-def parse_args() -> tuple:
-    """Parse the input args to the script auto_tagger.py and set the object attributes accordingly."""
-
-    parser = argparse.ArgumentParser(
-        description='This script downloads and tags posts from various Boorus based on your input query.',
-    )
-
-    parser.add_argument(
-        '--limit',
-        type=int,
-        default=100,
-        help='Limit the search results to be returned (default: 100)',
-    )
-
-    parser.add_argument(
-        'booru',
-        choices=['danbooru', 'gelbooru', 'konachan', 'yandere', 'all'],
-        help='Specify the Booru which you want to query. Use all to query all Boorus.',
-    )
-
-    parser.add_argument(
-        'query',
-        help='The search query for the posts you want to download and tag',
-    )
-
-    args = parser.parse_args()
-
-    limit = args.limit
-
-    booru = args.booru
-    logger.debug(f'booru = {booru}')
-
-    query = args.query
-    logger.debug(f'query = {query}')
-    if '\'' in query:
-        print('')
-        logger.warning(
-            'Your query contains single quotes (\'). ' 'Consider using double quotes (") if the script doesn\'t behave as intended.',
-        )
-
-    return booru, query, limit
 
 
 def import_post(
@@ -78,15 +34,13 @@ def import_post(
     try:
         file_url = post.file_url if booru == 'gelbooru' else post['file_url']
     except KeyError:
-        print('')
-        logger.warning('Could not find file url for post. It got probably removed from the site.')
+        logger.warning('\nCould not find file url for post. It got probably removed from the site.')
         return
 
     try:
         file = download_media(file_url, md5)
     except Exception as e:
-        print('')
-        logger.warning(f'Could not download post from {file_url}: {e}')
+        logger.warning(f'\nCould not download post from {file_url}: {e}')
         return
 
     match booru:
@@ -113,16 +67,21 @@ def import_post(
 
 
 @logger.catch
-def main() -> None:
+def main(booru: str, query: str) -> None:
     """Call respective functions to retrieve and upload posts based on user input."""
 
     try:
-        booru, query, limit = parse_args()
+        try:
+            hide_progress = config.globals['hide_progress']
+        except KeyError:
+            hide_progress = config.import_from_booru['hide_progress']
 
-        if config.import_from_booru['deepbooru_enabled']:
+        limit = config.import_from_booru['limit']
+
+        if config.import_from_booru['deepbooru']:
             config.upload_media['auto_tag'] = True
-            config.auto_tagger['saucenao_enabled'] = False
-            config.auto_tagger['deepbooru_enabled'] = True
+            config.auto_tagger['saucenao'] = False
+            config.auto_tagger['deepbooru'] = True
         else:
             config.upload_media['auto_tag'] = False
 
@@ -155,7 +114,7 @@ def main() -> None:
                 position=0,
                 leave=False,
                 total=int(total_posts),
-                disable=config.import_from_booru['hide_progress'],
+                disable=hide_progress,
             ):
                 # Check by md5 hash if file is already uploaded
                 try:
@@ -164,8 +123,7 @@ def main() -> None:
                     else:
                         md5 = post['md5']
                 except KeyError:
-                    print('')
-                    logger.warning('Post has no MD5 attribute, it probably got removed from the site.')
+                    logger.warning('\nPost has no MD5 attribute, it probably got removed from the site.')
                     continue
 
                 try:
@@ -184,8 +142,7 @@ def main() -> None:
 
         logger.success('Script finished importing!')
     except KeyboardInterrupt:
-        print('')
-        logger.info('Received keyboard interrupt from user.')
+        logger.info('\nReceived keyboard interrupt from user.')
         exit(1)
 
 

@@ -1,4 +1,3 @@
-import argparse
 import glob
 import json
 import os
@@ -8,8 +7,8 @@ from pathlib import Path
 from loguru import logger
 from tqdm import tqdm
 
-from szurubooru_toolkit import Pixiv
 from szurubooru_toolkit import config
+from szurubooru_toolkit.pixiv import Pixiv
 from szurubooru_toolkit.scripts import upload_media
 from szurubooru_toolkit.utils import convert_rating
 from szurubooru_toolkit.utils import convert_tags
@@ -18,56 +17,27 @@ from szurubooru_toolkit.utils import generate_src
 from szurubooru_toolkit.utils import invoke_gallery_dl
 
 
-def parse_args() -> tuple:
-    """Parse the input args to the script import_from_url.py and set the object attributes accordingly."""
+def set_tags(metadata: dict) -> list:
+    """
+    Processes the tags from the metadata of a post from various sites.
 
-    parser = argparse.ArgumentParser(
-        description='This script downloads and tags posts from various Boorus based on your input query.',
-    )
+    This function checks if the site from the metadata is in the allowed list. If it is, it tries to convert the tags
+    from the metadata into a list. If the site is 'fanbox', 'pixiv', or 'twitter', it uses the `convert_tags` function
+    to convert the tags to known tags from Danbooru. If the site is not in the allowed list, it sets the tags to an
+    empty list.
 
-    parser.add_argument(
-        '--range',
-        default=':100',
-        help=(
-            'Index range(s) specifying which files to download. '
-            'These can be either a constant value, range, or slice '
-            "(e.g. '5', '8-20', or '1:24:3')"
-        ),
-    )
+    For 'fanbox', 'pixiv', and 'e-hentai', it also tries to extract the artist's name from the metadata, tries to find
+    the artist's name on Danbooru, and adds the artist's name to the list of tags if it exists.
 
-    parser.add_argument(
-        '--input-file',
-        help='Download URLs found in FILE.',
-    )
+    Args:
+        metadata (dict): A dictionary containing the metadata of a post. It should have a 'site' key and may have
+                         'tags', 'hashtags', 'tag_string', and 'user' keys.
 
-    parser.add_argument(
-        '--cookies',
-        help='Path to a cookies file for gallery-dl to consume. Used for authentication.',
-    )
+    Returns:
+        list: The processed list of tags. If the site is not in the allowed list or if an error occurs, it returns an
+              empty list.
+    """
 
-    parser.add_argument(
-        '-v',
-        '--verbose',
-        action='store_true',
-        help='Show download progress of gallery-dl script.',
-    )
-
-    parser.add_argument(
-        'urls',
-        nargs='*',
-        help='One or multiple URLs to the posts you want to download and tag',
-    )
-
-    args = parser.parse_args()
-
-    if not args.urls and not args.input_file:
-        parser.print_help()
-        exit(1)
-
-    return args.range, args.urls, args.input_file, args.cookies, args.verbose
-
-
-def set_tags(metadata) -> list:
     artist = ''
     allow_tags_for_sites = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere', 'fanbox', 'pixiv', 'twitter']
 
@@ -111,20 +81,52 @@ def set_tags(metadata) -> list:
 
 
 @logger.catch
-def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
-    if not urls:
-        limit_range, urls, input_file, cookies, verbose = parse_args()
-    else:
-        if not limit_range:
-            limit_range = ':100'
-        input_file = ''
-        verbose = False
+def main(urls: list = [], input_file: str = '', verbose: bool = False) -> None:
+    """
+    Main function to handle the downloading of posts from URLs or an input file.
 
-    if config.import_from_url['deepbooru_enabled']:
+    This function first checks the configuration for various settings related to progress hiding and auto-tagging.
+    Depending on these settings, it adjusts the configuration for the auto-tagger.
+
+    It then checks if an input file is provided and whether URLs are also provided. Depending on the presence of these,
+    it logs an appropriate message.
+
+    The function then invokes gallery-dl to download the posts from the provided URLs or the URLs in the input file.
+    For each downloaded post, it opens the associated JSON file to load the metadata. It sets the 'site' and 'source'
+    keys in the metadata and converts the 'rating' key to a 'safety' key. If the metadata contains 'tags', 'tag_string',
+    or 'hashtags', it sets the 'tags' key in the metadata to the result of the `set_tags` function. If not, it sets
+    'tags' to an empty list. If the site is 'twitter', it also extracts the artist's name and adds it to the 'tags'.
+
+    The function then opens the downloaded file and calls the `upload_media.main` function to upload the file and its
+    metadata. If the SauceNAO limit is reached during the upload, it logs a message and continues with the next file.
+
+    After all files have been processed, it removes the download directory and logs a success message.
+
+    Args:
+        urls (list, optional): A list of URLs from which to download posts. Defaults to an empty list.
+        input_file (str, optional): A string representing the path to an input file containing URLs from which to
+                                     download posts. Defaults to an empty string.
+        verbose (bool, optional): A boolean indicating whether to log verbose messages. Defaults to False.
+
+    Returns:
+        None
+    """
+
+    try:
+        hide_progress = config.globals['hide_progress']
+    except KeyError:
+        hide_progress = config.import_from_url['hide_progress']
+
+    if any([config.import_from_url['deepbooru'], config.import_from_url['md5_search'], config.import_from_url['saucenao']]):
         config.upload_media['auto_tag'] = True
-        config.auto_tagger['md5_search_enabled'] = False
-        config.auto_tagger['saucenao_enabled'] = False
-        config.auto_tagger['deepbooru_enabled'] = True
+
+        if config.import_from_url['deepbooru']:
+            config.auto_tagger['deepbooru'] = True
+        else:
+            config.auto_tagger['deepbooru'] = False
+            config.auto_tagger['deepbooru_forced'] = False
+        config.auto_tagger['md5_search'] = True if config.import_from_url['md5_search'] else False
+        config.auto_tagger['saucenao'] = True if config.import_from_url['saucenao'] else False
     else:
         config.upload_media['auto_tag'] = False
 
@@ -167,13 +169,13 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
         if site is not None:
             break
 
-    params = [f'--range={limit_range}', '--write-metadata']
+    params = [f'--range={config.import_from_url["range"]}', '--write-metadata']
 
     if user and password and user != 'none' and password != 'none':
         params += [f'--username={user}', f'--password={password}']
 
-    if cookies:
-        params += [f'--cookies={cookies}']
+    if config.import_from_url['cookies']:
+        params += [f'--cookies={config.import_from_url["cookies"]}']
 
     if input_file:
         params += [f'--input-file={input_file}']
@@ -194,7 +196,7 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
         ncols=80,
         position=0,
         leave=False,
-        disable=config.import_from_url['hide_progress'],
+        disable=hide_progress,
     ):
         with open(file + '.json') as f:
             metadata = json.load(f)
@@ -204,24 +206,23 @@ def main(urls: list = [], cookies: str = '', limit_range: str = ':100') -> None:
             if 'rating' in metadata:
                 metadata['safety'] = convert_rating(metadata['rating'])
             else:
-                metadata['safety'] = config.upload_media['default_safety']
+                metadata['safety'] = config.globals['default_safety']
 
             if 'tags' in metadata or 'tag_string' in metadata or 'hashtags' in metadata:
                 metadata['tags'] = set_tags(metadata)
             else:
                 metadata['tags'] = []
 
-            # As Twitter doesn't provide any tags compared to other sources, we try to auto tag it.
             if site == 'twitter':
                 metadata['tags'] += extract_twitter_artist(metadata)
-                config.auto_tagger['md5_search_enabled'] = True
-                config.auto_tagger['saucenao_enabled'] = True
-            else:
-                config.auto_tagger['md5_search_enabled'] = False
-                config.auto_tagger['saucenao_enabled'] = False
 
             with open(file, 'rb') as file_b:
-                saucenao_limit_reached = upload_media.main(file_b.read(), Path(file).suffix[1:], metadata, saucenao_limit_reached)
+                saucenao_limit_reached = upload_media.main(
+                    file_to_upload=file_b.read(),
+                    file_ext=Path(file).suffix[1:],
+                    metadata=metadata,
+                    saucenao_limit_reached=saucenao_limit_reached,
+                )
 
     if os.path.exists(download_dir):
         shutil.rmtree(download_dir)
