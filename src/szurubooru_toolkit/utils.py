@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import subprocess
-import sys
 import warnings
 from asyncio import sleep
 from asyncio.exceptions import CancelledError
@@ -12,7 +11,6 @@ from math import ceil
 from typing import Iterator
 from urllib.error import ContentTooShortError
 
-import bs4
 import cunnypy
 import requests
 from httpx import HTTPStatusError
@@ -25,10 +23,10 @@ from pybooru.exceptions import PybooruHTTPError
 from pygelbooru.gelbooru import GelbooruImage
 from syncer import sync
 
-from szurubooru_toolkit import Config
-from szurubooru_toolkit import Danbooru
-from szurubooru_toolkit import Gelbooru
-from szurubooru_toolkit import Pixiv
+from szurubooru_toolkit.config import Config
+from szurubooru_toolkit.danbooru import Danbooru
+from szurubooru_toolkit.gelbooru import Gelbooru
+from szurubooru_toolkit.pixiv import Pixiv
 
 
 # Keep track of total tagged posts
@@ -107,7 +105,7 @@ def shrink_img(
 
 
 def convert_rating(rating: str) -> str:
-    """Map different ratings to szuru compatible rating.
+    """Map different ratings to szurubooru compatible rating.
 
     Args:
         rating (str): The rating you want to convert
@@ -138,34 +136,6 @@ def convert_rating(rating: str) -> str:
     logger.debug(f'Converted rating {rating} to {new_rating}')
 
     return new_rating
-
-
-def scrape_sankaku(sankaku_url: str) -> tuple[list, str]:
-    """Scrape the tags and rating from given `sankaku_url`.
-
-    Args:
-        sankaku_url (str): The Sankaku URL of the post.
-
-    Returns:
-        Tuple[list, str]: Contains `tags` as a `list` and `rating` as `str` of the post.
-    """
-
-    response = requests.get(sankaku_url)
-    result_page = bs4.BeautifulSoup(response.text, 'html.parser')
-
-    rating_raw = str(result_page.select('#stats li'))
-    rating_sankaku = rating_raw.partition('Rating: ')[2]
-    rating_sankaku = rating_sankaku.replace('</li>]', '')
-    rating = convert_rating(rating_sankaku)
-
-    tags_raw = str(result_page.title.string)
-    tags = tags_raw.replace(' | Sankaku Channel', '')
-    tags = tags.replace(' ', '_')
-    tags = tags.replace(',_', ' ')
-
-    tags = tags.split()
-
-    return tags, rating
 
 
 def statistics(tagged=0, deepbooru=0, untagged=0, skipped=0) -> tuple:
@@ -281,65 +251,18 @@ def collect_sources(*sources: str) -> str:
     return source_collected
 
 
-def setup_logger(config: Config) -> None:
-    """Setup loguru logging handlers."""
-
-    logger.configure(
-        handlers=[
-            dict(
-                sink=config.logging['log_file'],
-                colorize=config.logging['log_colorized'],
-                level=config.logging['log_level'],
-                diagnose=False,
-                format=''.join(
-                    '<lm>[{level}]</lm> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> ' '<ly>[{module}.{function}]</ly>: {message}',
-                ),
-            ),
-            dict(
-                sink=sys.stderr,
-                backtrace=False,
-                diagnose=False,
-                colorize=True,
-                level='INFO',
-                filter=lambda record: record['level'].no < 30,
-                format='<le>[{level}]</le> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg>: {message}',
-            ),
-            dict(
-                sink=sys.stderr,
-                backtrace=False,
-                diagnose=False,
-                colorize=True,
-                level='WARNING',
-                filter=lambda record: record['level'].no < 40,
-                format=''.join(
-                    '<ly>[{level}]</ly> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> ' '<ly>[{module}.{function}]</ly>: {message}',
-                ),
-            ),
-            dict(
-                sink=sys.stderr,
-                backtrace=False,
-                diagnose=False,
-                colorize=True,
-                level='ERROR',
-                format=''.join(
-                    '<lr>[{level}]</lr> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> ' '<ly>[{module}.{function}]</ly>: {message}',
-                ),
-            ),
-        ],
-    )
-
-    if not config.logging['log_enabled']:
-        logger.remove(2)  # Assume id 2 is the handler with the log file sink
-
-
 def get_md5sum(file: bytes) -> str:
-    """Retrieve and return the MD5 checksum from supplied `file`.
+    """
+    Calculates the MD5 checksum of the provided file.
+
+    This function calculates the MD5 checksum of the provided file. It uses the hashlib.md5 function to calculate the
+    checksum and then converts the result to a hexadecimal string. It returns the hexadecimal string.
 
     Args:
-        file (bytes): The file as a byte string.
+        file (bytes): The file for which to calculate the MD5 checksum.
 
     Returns:
-        str: The calculated MD5 checksum.
+        str: The MD5 checksum of the file.
     """
 
     md5sum = hashlib.md5(file).hexdigest()
@@ -348,14 +271,22 @@ def get_md5sum(file: bytes) -> str:
 
 
 def download_media(content_url: str, md5: str = None) -> bytes:
-    """Download the file from `content_url` and return it if the md5 hashes match.
+    """
+    Downloads media from the specified content URL and verifies its MD5 checksum.
+
+    This function downloads media from the specified content URL and verifies its MD5 checksum. It tries to download
+    the media twice. If the download fails due to a ContentTooShortError, it tries to download the media again. If the
+    download fails due to any other exception, it logs a warning and continues. If an MD5 checksum is provided, it
+    calculates the MD5 checksum of the downloaded media and compares it to the provided checksum. If the checksums
+    match, it breaks out of the loop. If no MD5 checksum is provided, it breaks out of the loop after the first
+    download attempt.
 
     Args:
-        content_url (str): The URL of the file to download.
-        md5 (str): The expected md5 hash of the file.
+        content_url (str): The URL from which to download the media.
+        md5 (str, optional): The MD5 checksum to verify. Defaults to None.
 
     Returns:
-        bytes: The downloaded file as a byte string.
+        bytes: The downloaded media.
     """
 
     for _ in range(1, 3):
@@ -383,16 +314,22 @@ def get_posts_from_booru(
     query: str,
     limit: int,
 ) -> Iterator[int | dict | GelbooruImage]:
-    """Retrieve posts from Boorus based on search query and yields them.
+    """
+    Retrieves posts from the specified `booru` based on the given `query` and `limit`.
+
+    This function retrieves posts from the specified `booru` based on the given query and limit. It first calculates the
+    number of pages needed and the limit for the last page. It then iterates over the pages and retrieves the posts
+    from the Booru. If the Booru is Gelbooru, it uses the Gelbooru client to search for posts. If the Booru is
+    Danbooru or Moebooru, it uses the post_list method to retrieve the posts. If a PybooruHTTPError occurs while
+    retrieving posts from Danbooru, it logs a critical error message.
 
     Args:
-        booru (Danbooru | Gelbooru | Moebooru): Booru object
-        query (str): The search query which results will be retrieved.
-        limit (int): The search limit. If not set, use defaults from module (100).
+        booru (Union[Danbooru, Gelbooru, Moebooru]): The Booru from which to retrieve posts.
+        query (str): The query to search for.
+        limit (int): The maximum number of posts to retrieve.
 
-    Yields:
-        Iterator[int | dict | GelbooruImage]: Yields the total count of posts first,
-            then either a GelbooruImage or a dict for the other Boorus.
+    Returns:
+        Iterator[Union[int, dict, GelbooruImage]]: An iterator over the retrieved posts.
     """
 
     pages_needed = ceil(int(limit) / 100)
@@ -440,13 +377,20 @@ def get_posts_from_booru(
 
 
 def generate_src(metadata: dict) -> str:
-    """Generate and return post source URL.
+    """
+    Generates the source URL for a post based on its metadata.
+
+    This function generates the source URL for a post based on its metadata. It first checks if the metadata contains
+    an 'id' key and, if so, stores the value in a variable. It then uses a match statement to determine the site from
+    which the post originates. Depending on the site, it constructs the source URL in a different way. If the site is
+    not recognized, it sets the source URL to None. If a KeyError occurs while constructing the source URL, it catches
+    the exception and continues.
 
     Args:
-        metadata (dict): Contains the site and id of the post
+        metadata (dict): The metadata from which to generate the source URL.
 
     Returns:
-        str: The source URL of the post.
+        str: The source URL for the post, or None if the site is not recognized.
     """
 
     if 'id' in metadata:
@@ -490,6 +434,25 @@ def generate_src(metadata: dict) -> str:
 
 
 async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> dict:
+    """
+    Searches the specified Boorus for the given query.
+
+    This function searches the specified Boorus for the given query. It first determines which Boorus to search based
+    on the provided `booru` parameter. It then iterates over the Boorus to search and tries to get the search results
+    from each Booru. If it gets a result, it adds the result to the results dictionary with the Booru as the key. If
+    it encounters an error, it logs the error and tries again after 5 seconds. If it cannot establish a connection to
+    the Booru after 11 attempts, it moves on to the next Booru. It returns the results dictionary.
+
+    Args:
+        Booru (str): The Booru or Boorus to search. If 'all', it searches all Boorus.
+        query (str): The query to search for.
+        limit (int): The maximum number of results to return.
+        page (int, optional): The page of results to return. Defaults to 1.
+
+    Returns:
+        dict: The search results, with the Booru as the key and the results as the value.
+    """
+
     results = {}
 
     boorus_to_search = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere'] if booru == 'all' else [booru]
@@ -519,6 +482,16 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> di
 
 
 def convert_tags(tags: list) -> list:
+    """
+    Search for tags that don't follow the Booru convention in Danbooru and convert them.
+
+    Args:
+        tags (list): The tags to convert.
+
+    Returns:
+        list: The converted tags.
+    """
+
     from szurubooru_toolkit import danbooru_client
 
     unfiltered_tags = []
@@ -531,7 +504,24 @@ def convert_tags(tags: list) -> list:
     return filtered_tags
 
 
-def prepare_post(results: dict, config: Config):
+def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], str]:
+    """
+    Prepares a post for upload to szurubooru.
+
+    This function prepares a post for upload to szurubooru. It extracts the tags, sources, and rating from the results
+    and config. It checks each booru in the results and adds the tags, source, and rating to their respective lists. If
+    the booru is Pixiv and a token is provided, it gets the result from Pixiv and adds the tags and rating. If no tags
+    are found and the configuration is set to use Pixiv tags, it uses the Pixiv tags. It also extracts the Pixiv artist
+    and adds it to the tags. It then flattens the tags list and returns the tags, sources, and rating.
+
+    Args:
+        results (dict): The results from which to extract the tags, sources, and rating.
+        config (Config): The configuration from which to extract the Pixiv token and whether to use Pixiv tags.
+
+    Returns:
+        Tuple[List[str], List[str], str]: The tags, sources, and rating for the post.
+    """
+
     tags = []
     sources = []
     rating = []
@@ -577,6 +567,23 @@ def prepare_post(results: dict, config: Config):
 
 
 def invoke_gallery_dl(urls: list, tmp_path: str, params: list = []) -> str:
+    """
+    Invokes the gallery-dl command with the provided URLs and parameters.
+
+    This function invokes the gallery-dl command with the provided URLs and parameters. It first creates a timestamp
+    and a download directory based on the timestamp. It then constructs the base command with the gallery-dl command
+    and the download directory. It adds the provided parameters and URLs to the command and runs the command using
+    subprocess. It returns the download directory.
+
+    Args:
+        urls (list): The URLs to download.
+        tmp_path (str): The temporary path where the downloads should be stored.
+        params (list, optional): The parameters to pass to the gallery-dl command. Defaults to [].
+
+    Returns:
+        str: The download directory.
+    """
+
     current_time = datetime.now()
     timestamp = current_time.timestamp()
     download_dir = f'{tmp_path}/{timestamp}'
@@ -595,6 +602,22 @@ def invoke_gallery_dl(urls: list, tmp_path: str, params: list = []) -> str:
 
 
 def extract_twitter_artist(metadata: dict) -> str:
+    """
+    Extracts the Twitter artist from the metadata.
+
+    This function extracts the Twitter artist from the metadata. It first tries to find the artist by their Twitter
+    name in Danbooru. If it cannot find the artist, it tries to find the artist by their Twitter nickname. If it still
+    cannot find the artist and the configuration is set to use the Twitter artist, it creates a new artist tag in
+    szurubooru with the Twitter name and nickname as aliases. If an error occurs while creating the tag, it logs the
+    error and continues. It returns the artist if it exists, otherwise it returns the aliases.
+
+    Args:
+        metadata (dict): The metadata from which to extract the Twitter artist.
+
+    Returns:
+        str: The artist if it exists, otherwise the aliases.
+    """
+
     from szurubooru_toolkit import config
     from szurubooru_toolkit import danbooru_client
     from szurubooru_toolkit import szuru
