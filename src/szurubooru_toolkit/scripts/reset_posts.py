@@ -52,7 +52,7 @@ def main(query: str, except_ids: list = [], add_tags: list = []) -> None:
 
         logger.success('Script finished resetting!')
     except KeyboardInterrupt:
-        logger.info('\nReceived keyboard interrupt from user.')
+        logger.info('Received keyboard interrupt from user.')
         exit(1)
 
 

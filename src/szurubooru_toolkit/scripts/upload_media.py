@@ -420,7 +420,7 @@ def main(
         else:
             logger.info('No files found to upload.')
     except KeyboardInterrupt:
-        logger.info('\nReceived keyboard interrupt from user.')
+        logger.info('Received keyboard interrupt from user.')
         exit(1)
 
 

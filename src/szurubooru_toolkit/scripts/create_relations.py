@@ -199,7 +199,7 @@ def main(query: str) -> None:
         logger.success('Script finished creating relations!')
         exit(0)
     except KeyboardInterrupt:
-        logger.info('\nReceived keyboard interrupt from user.')
+        logger.info('Received keyboard interrupt from user.')
         exit(1)
 
 

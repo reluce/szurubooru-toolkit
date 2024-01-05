@@ -313,7 +313,7 @@ def main(  # noqa C901
         else:
             return limit_reached
     except KeyboardInterrupt:
-        logger.info('\nReceived keyboard interrupt from user.')
+        logger.info('Received keyboard interrupt from user.')
         try:
             print_statistics(total_posts)
         except UnboundLocalError:

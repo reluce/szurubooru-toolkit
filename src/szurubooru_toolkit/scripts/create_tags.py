@@ -98,7 +98,7 @@ def main(tag_file: str = '') -> None:
 
         logger.success('Script finished creating tags!')
     except KeyboardInterrupt:
-        logger.info('\nReceived keyboard interrupt from user.')
+        logger.info('Received keyboard interrupt from user.')
         exit(1)
 
 

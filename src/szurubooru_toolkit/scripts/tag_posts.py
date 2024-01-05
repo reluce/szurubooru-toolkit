@@ -69,7 +69,7 @@ def main(query: str, add_tags: list = [], remove_tags: list = []) -> None:
 
         logger.success('Script finished tagging!')
     except KeyboardInterrupt:
-        logger.info('\nReceived keyboard interrupt from user.')
+        logger.info('Received keyboard interrupt from user.')
         exit(1)
 
 

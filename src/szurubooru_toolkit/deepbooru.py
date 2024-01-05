@@ -50,7 +50,7 @@ class Deepbooru:
             self.model = tf.keras.models.load_model(model_path, compile=False)
         except Exception as e:
             logger.debug(e)
-            logger.critical('\nModel could not be read. Download it from https://github.com/KichangKim/DeepDanbooru')
+            logger.critical('Model could not be read. Download it from https://github.com/KichangKim/DeepDanbooru')
             exit()
 
         with open('./misc/deepbooru/tags.txt') as tags_stream:
@@ -81,7 +81,7 @@ class Deepbooru:
             with Image.open(BytesIO(image)) as opened_image:
                 image = np.array(opened_image.convert('RGB').resize((512, 512))) / 255.0
         except Exception:
-            logger.warning('\nFailed to convert image to Deepbooru format')
+            logger.warning('Failed to convert image to Deepbooru format')
             return
 
         results = self.model(np.array([image])).reshape(self.tags.shape[0])
@@ -97,14 +97,14 @@ class Deepbooru:
         rating = 'unsafe'
 
         if not tags:
-            logger.warning('\nDeepbooru could not guess tags for image!')
+            logger.warning('Deepbooru could not guess tags for image!')
         else:
             try:
                 rating = convert_rating(tags[-1])
                 logger.debug(f'Guessed rating {rating}')
                 del tags[-1]
             except IndexError:
-                logger.warning('\nCould not guess rating for image! Defaulting to unsafe.')
+                logger.warning('Could not guess rating for image! Defaulting to unsafe.')
 
             if set_tag:
                 tags.append('deepbooru')

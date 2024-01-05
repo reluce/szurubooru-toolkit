@@ -55,7 +55,7 @@ def main(query: str, except_ids: str) -> None:
 
         logger.success('Script finished deleting!')
     except KeyboardInterrupt:
-        logger.info('\nReceived keyboard interrupt from user.')
+        logger.info('Received keyboard interrupt from user.')
         exit(1)
 
 
