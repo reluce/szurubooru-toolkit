@@ -77,12 +77,10 @@ def setup_logger() -> None:
 
 def setup_clients():
     from szurubooru_toolkit.danbooru import Danbooru  # noqa F401
-    from szurubooru_toolkit.gelbooru import Gelbooru  # noqa F401
     from szurubooru_toolkit.szurubooru import Szurubooru
 
     global danbooru_client, gelbooru_client, szuru
 
     danbooru_client = Danbooru()
-    gelbooru_client = Gelbooru()
 
     szuru = Szurubooru(config.globals['url'], config.globals['username'], config.globals['api_token'])
