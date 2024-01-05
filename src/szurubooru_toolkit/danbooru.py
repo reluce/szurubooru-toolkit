@@ -11,28 +11,15 @@ from pybooru.exceptions import PybooruHTTPError
 
 
 class Danbooru:
-    def __init__(self, danbooru_user: str, danbooru_api_key: str) -> None:
+    def __init__(self) -> None:
         """
-        Initialize a Danbooru client.
-
-        This method initializes a Danbooru client with or without user credentials. If both a username and API key are
-        provided, they are used to authenticate the client. Otherwise, an unauthenticated client is created. A requests
-        session is also created and its headers are updated with a user agent.
-
-        Args:
-            danbooru_user (str): The username for the Danbooru client.
-            danbooru_api_key (str): The API key for the Danbooru client.
+        Initialize a Danbooru and a requests session client.
 
         Returns:
             None
         """
 
-        if not danbooru_user == 'None' and not danbooru_api_key == 'None':
-            self.client = Danbooru_Module('danbooru', username=danbooru_user, api_key=danbooru_api_key)
-            logger.debug(f'Using Danbooru user {danbooru_user} with API key')
-        else:
-            self.client = Danbooru_Module('danbooru')
-            logger.debug('Using Danbooru without user and API key')
+        self.client = Danbooru_Module('danbooru')
 
         self.session = requests.Session()
         headers = {'User-Agent': 'Danbooru dummy agent'}

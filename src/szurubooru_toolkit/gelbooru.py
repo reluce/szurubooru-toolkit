@@ -6,24 +6,15 @@ from pygelbooru import Gelbooru as Gelbooru_Module
 
 
 class Gelbooru:
-    def __init__(self, gelbooru_user: str, gelbooru_api_key: str) -> None:
+    def __init__(self) -> None:
         """
         Initializes a Gelbooru object and sets up the client.
 
-        This method initializes a Gelbooru object and sets up the client. If a user and API key are provided, it uses them
-        to authenticate with the Gelbooru API. Otherwise, it uses the API without authentication.
-
-        Args:
-            gelbooru_user (str): The username for the Gelbooru API.
-            gelbooru_api_key (str): The API key for the Gelbooru API.
+        Returns:
+            None
         """
 
-        if not gelbooru_user == 'None' and not gelbooru_api_key == 'None':
-            self.client = Gelbooru_Module(gelbooru_user, gelbooru_api_key)
-            logger.debug(f'Using Gelbooru user {gelbooru_user} with API key')
-        else:
-            self.client = Gelbooru_Module()
-            logger.debug('Using Gelbooru without user and API key')
+        self.client = Gelbooru_Module()
 
     async def get_result(self, result_url: str) -> dict:
         """

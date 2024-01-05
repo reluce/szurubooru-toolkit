@@ -93,27 +93,7 @@ UPLOAD_MEDIA_DEFAULTS = {
 }
 
 CREDENTIALS_DEFAULTS = {
-    'danbooru': {
-        'user': None,
-        'api_key': None,
-    },
-    'gelbooru': {
-        'user': None,
-        'api_key': None,
-    },
-    'konachan': {
-        'user': None,
-        'password': None,
-    },
     'pixiv': {'token': None},
-    'sankaku': {
-        'user': None,
-        'password': None,
-    },
-    'yandere': {
-        'user': None,
-        'password': None,
-    },
 }
 
 
@@ -196,6 +176,9 @@ class Config:
             for item in items:
                 section_dict[item] = items[item]
             setattr(self, section, section_dict)
+
+            if section in ['import_from_booru', 'import_from_url']:
+                self.update_upload_media_config(section)
 
         self.validate_config()
 
@@ -321,27 +304,25 @@ class Config:
         self.validate_url()
         self.validate_safety()
         self.validate_convert_attrs()
+        self.validate_shrink_attrs()
 
         if self.auto_tagger['deepbooru']:
             self.validate_deepbooru()
         else:
             self.auto_tagger['deepbooru_forced'] = False
 
-        if self.upload_media['shrink']:
-            self.validate_shrink_attrs()
-
-    def update_upload_media_config(self, config_src: str) -> None:
+    def update_upload_media_config(self, section: str) -> None:
         """
-        Updates the upload media configuration with the options from the specified source.
+        Updates the upload media configuration with the options from the specified section.
 
         This method updates the upload media configuration (`self.upload_media`) with the options from the specified
-        source (`config_src`). The source should be an attribute of `self` that is a dictionary. The options that are
+        section. The section should be an attribute of `self` that is a dictionary. The options that are
         updated are 'max_similarity', 'convert_to_jpg', 'convert_threshold', 'convert_quality', 'shrink',
-        'shrink_threshold', 'shrink_dimensions', and 'default_safety'. If an option does not exist in the source, it is
+        'shrink_threshold', 'shrink_dimensions', and 'default_safety'. If an option does not exist in the section, it is
         ignored.
 
         Args:
-            config_src (str): The name of the attribute of `self` that contains the source configuration.
+            section (str): The name of the attribute of `self` that contains the section configuration.
 
         Raises:
             AttributeError: If `config_src` is not an attribute of `self`.
@@ -358,7 +339,7 @@ class Config:
             'default_safety',
         ]
 
-        config_src_obj = getattr(self, config_src)
+        config_src_obj = getattr(self, section)
 
         for option in upload_media_options:
             try:
