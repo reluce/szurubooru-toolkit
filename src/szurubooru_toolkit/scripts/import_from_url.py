@@ -193,7 +193,7 @@ def main(urls: list = [], input_file: str = '', verbose: bool = False) -> None:
     if os.path.exists(download_dir):
         shutil.rmtree(download_dir)
 
-    logger.success('Script finished importing!')
+    logger.success('Finished importing!')
 
 
 if __name__ == '__main__':

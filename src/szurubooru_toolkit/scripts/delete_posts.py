@@ -53,7 +53,7 @@ def main(query: str, except_ids: str) -> None:
             if post.id not in except_ids:
                 szuru.delete_post(post)
 
-        logger.success('Script finished deleting!')
+        logger.success('Finished deleting!')
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
         exit(1)

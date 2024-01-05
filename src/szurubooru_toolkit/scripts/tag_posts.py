@@ -67,7 +67,7 @@ def main(query: str, add_tags: list = [], remove_tags: list = []) -> None:
 
             szuru.update_post(post)
 
-        logger.success('Script finished tagging!')
+        logger.success('Finished tagging!')
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
         exit(1)

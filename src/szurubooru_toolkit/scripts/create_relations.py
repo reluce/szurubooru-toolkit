@@ -196,7 +196,7 @@ def main(query: str) -> None:
             related_tags = collect_related_tags(post.tags)
             check_found_relations(related_tags, found_relations)
 
-        logger.success('Script finished creating relations!')
+        logger.success('Finished creating relations!')
         exit(0)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')

@@ -50,7 +50,7 @@ def main(query: str, except_ids: list = [], add_tags: list = []) -> None:
                 post.source = ''
                 szuru.update_post(post)
 
-        logger.success('Script finished resetting!')
+        logger.success('Finished resetting!')
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
         exit(1)

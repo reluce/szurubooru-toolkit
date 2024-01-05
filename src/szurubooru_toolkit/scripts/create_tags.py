@@ -96,7 +96,7 @@ def main(tag_file: str = '') -> None:
                     except TagExistsError as e:  # noqa F841
                         pass
 
-        logger.success('Script finished creating tags!')
+        logger.success('Finished creating tags!')
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
         exit(1)
