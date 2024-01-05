@@ -312,7 +312,7 @@ def click_delete_posts(ctx, query, except_ids):
 @click.argument('query')
 @click.option(
     '--booru',
-    type=click.Choice(['danbooru', 'gelbooru', 'konachan', 'yandere', 'all'], case_sensitive=False),
+    type=click.Choice(['danbooru', 'gelbooru', 'konachan', 'sankaku', 'yandere', 'all'], case_sensitive=False),
     required=True,
     help='Specify the booru you want to download posts from.',
 )
