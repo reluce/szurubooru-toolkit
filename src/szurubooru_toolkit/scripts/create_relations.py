@@ -182,7 +182,7 @@ def main(query: str) -> None:
                     break
                 except SzurubooruHTTPError as e:
                     if 'SearchError: Unknown named token' in str(e):
-                        logger.warning(f'\nSkipping tag: {str(e)}')
+                        logger.warning(f'Skipping tag: {str(e)}')
                         continue
 
         for post in tqdm(

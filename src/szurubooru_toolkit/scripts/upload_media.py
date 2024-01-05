@@ -109,7 +109,7 @@ def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
             errors = False
             return exact_post, similar_posts, errors
     except Exception as e:
-        logger.warning(f'\nAn error occured during the similarity check: {e}. Skipping post...')
+        logger.warning(f'An error occured during the similarity check: {e}. Skipping post...')
         errors = True
         return False, [], errors
 
@@ -156,7 +156,7 @@ def upload_file(szuru: Szurubooru, post: Post) -> None:
         else:
             return response.json()['id']
     except Exception as e:
-        logger.warning(f'\nAn error occured during the upload for file "{post.file_path}": {e}')
+        logger.warning(f'An error occured during the upload for file "{post.file_path}": {e}')
         return None
 
 
@@ -249,7 +249,7 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
                 shrink_dimensions=config.upload_media['shrink_dimensions'],
             )
     except OSError:
-        logger.warning(f'\nCould not shrink image {file_to_upload}. Keeping dimensions...')
+        logger.warning(f'Could not shrink image {file_to_upload}. Keeping dimensions...')
 
     return image, original_md5
 
@@ -299,7 +299,7 @@ def upload_post(
     for entry in similar_posts:
         if entry['distance'] < threshold and not post.exact_post:
             logger.debug(
-                f'\nFile "{file_path} is too similar to post {entry["post"]["id"]} ({100 - entry["distance"]}%)',
+                f'File "{file_path} is too similar to post {entry["post"]["id"]} ({100 - entry["distance"]}%)',
             )
             post.exact_post = True
             break

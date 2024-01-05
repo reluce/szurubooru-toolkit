@@ -158,7 +158,7 @@ class Szurubooru:
             # logger.debug(f'Got following response: {response}')
 
             if 'name' in response and response['name'] in ['SearchError', 'UserNotFoundError']:
-                logger.critical(f'\n{response["name"]}: {response["description"]}')
+                logger.critical(f'{response["name"]}: {response["description"]}')
                 raise UnknownTokenError(response['description'])
 
             total = str(response['total'])
@@ -256,7 +256,7 @@ class Szurubooru:
             if 'description' in response.json():
                 raise Exception(response.json()['description'])
         except Exception as e:
-            logger.warning(f'\nCould not edit your post: {e}')
+            logger.warning(f'Could not edit your post: {e}')
 
     @staticmethod
     def encode_auth_headers(user: str, token: str) -> str:
@@ -346,7 +346,7 @@ class Szurubooru:
             if 'description' in response.json():
                 raise Exception(response.json()['description'])
         except Exception as e:
-            logger.warning(f'\nCould not delete your post: {e}')
+            logger.warning(f'Could not delete your post: {e}')
 
 
 class Post:
