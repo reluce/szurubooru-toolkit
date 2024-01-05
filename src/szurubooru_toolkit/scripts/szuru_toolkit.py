@@ -56,11 +56,6 @@ CONTEXT_SETTINGS = {'help_option_names': ['-h', '--help'], 'max_content_width': 
     is_flag=True,
     help=f'If your szurubooru instance is reachable from the internet (default: {config.GLOBALS_DEFAULTS["public"]}).',
 )
-@click.option(
-    '--hide-progress',
-    is_flag=True,
-    help='Hides the progress bar (default: False).',
-)  # Don't use config.GLOBALS_DEFAULTS here, because we use that option with a try/except block
 # Logging options
 @click.option('--log-enabled', is_flag=True, help=f'Create a log file (default: {config.LOGGING_DEFAULTS["log_enabled"]}).')
 @click.option('--log-colorized', is_flag=True, help=f'Colorize the log output (default: {config.LOGGING_DEFAULTS["log_colorized"]}).')
@@ -70,6 +65,11 @@ CONTEXT_SETTINGS = {'help_option_names': ['-h', '--help'], 'max_content_width': 
     type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], case_sensitive=True),
     help=f'Set the log level (default: {config.LOGGING_DEFAULTS["log_level"]}).',
 )
+@click.option(
+    '--hide-progress',
+    is_flag=True,
+    help='Hides the progress bar (default: False).',
+)  # Don't use config.GLOBALS_DEFAULTS here, because we use that option with a try/except block
 @click.pass_context
 def cli(
     ctx,
@@ -149,6 +149,13 @@ def cli(
     help=f'Tag Deepbooru posts with tag "deepbooru" (default: {config.AUTO_TAGGER_DEFAULTS["deepbooru_set_tag"]}).',
 )
 @click.option(
+    '--update-relations/--dont-update-relations',
+    help=(
+        'Set character <> parody relation if SauceNAO is disabled (or limit reached) and Deepbooru enabled (default:'
+        f' {config.AUTO_TAGGER_DEFAULTS["update_relations"]}).'
+    ),
+)
+@click.option(
     '--use-pixiv-artist/--dont-use-pixiv-artist',
     is_flag=True,
     help=(
@@ -162,13 +169,6 @@ def cli(
     help=(
         'If the post could only be found on pixiv, create and use the pixiv tags (default:'
         f' {config.AUTO_TAGGER_DEFAULTS["use_pixiv_tags"]}).'
-    ),
-)
-@click.option(
-    '--update-relations/--dont-update-relations',
-    help=(
-        'Set character <> parody relation if SauceNAO is disabled (or limit reached) and Deepbooru enabled (default:'
-        f' {config.AUTO_TAGGER_DEFAULTS["update_relations"]}).'
     ),
 )
 @click.pass_context
@@ -185,9 +185,9 @@ def click_auto_tagger(
     deepbooru_threshold,
     deepbooru_forced,
     deepbooru_set_tag,
+    update_relations,
     use_pixiv_artist,
     use_pixiv_tags,
-    update_relations,
 ):
     """
     Tag posts automatically
@@ -250,16 +250,16 @@ def click_create_relations(ctx, query, threshold):
 )
 @click.option('--query', help=f'Search for specific tags (default: {config.CREATE_TAGS_DEFAULTS["query"]}).')
 @click.option(
-    '--min-post-count',
-    type=int,
-    help=f'The minimum amount of posts the tag should have been used in (default: {config.CREATE_TAGS_DEFAULTS["min_post_count"]}).',
-)
-@click.option(
     '--limit',
     type=int,
     help=(
         f'The amount of tags that should be downloaded. Start from the most recent ones (default: {config.CREATE_TAGS_DEFAULTS["limit"]}).'
     ),
+)
+@click.option(
+    '--min-post-count',
+    type=int,
+    help=f'The minimum amount of posts the tag should have been used in (default: {config.CREATE_TAGS_DEFAULTS["min_post_count"]}).',
 )
 @click.option(
     '--overwrite/--no-overwrite',
@@ -317,6 +317,11 @@ def click_delete_posts(ctx, query, except_ids):
     help='Specify the booru you want to download posts from.',
 )
 @click.option(
+    '--limit',
+    type=int,
+    help=f'The amount of posts that should be imported (default: {config.IMPORT_FROM_BOORU_DEFAULTS["limit"]}).',
+)
+@click.option(
     '--deepbooru/--no-deepbooru',
     help=f'Tag posts additionally with Deepbooru (default: {config.IMPORT_FROM_BOORU_DEFAULTS["deepbooru"]}).',
 )
@@ -358,10 +363,10 @@ def click_delete_posts(ctx, query, except_ids):
 @click.pass_context
 def click_import_from_booru(
     ctx,
-    booru,
     query,
-    deepbooru,
+    booru,
     limit,
+    deepbooru,
     convert_to_jpg,
     convert_threshold,
     default_safety,
@@ -387,16 +392,7 @@ def click_import_from_booru(
 
 @cli.command('import-from-url')
 @click.argument('urls', nargs=-1)
-@click.option('--cookies', help='Path to a cookies file for gallery-dl to consume. Used for authentication.')
-@click.option(
-    '--deepbooru/--no-deepbooru',
-    help=f'Tag posts additionally with Deepbooru (default: {config.IMPORT_FROM_URL_DEFAULTS["deepbooru"]}).',
-)
 @click.option('--input-file', help='Download URLs found in FILE')
-@click.option(
-    '--md5-search/--no-md5-search',
-    help=f'Search for posts with the same MD5 hash on popular boorus (default: {config.IMPORT_FROM_URL_DEFAULTS["md5_search"]}).',
-)
 @click.option(
     '--range',
     help=(
@@ -404,12 +400,20 @@ def click_import_from_booru(
         f' {config.IMPORT_FROM_URL_DEFAULTS["range"]}).'
     ),
 )
+@click.option('--cookies', help='Path to a cookies file for gallery-dl to consume. Used for authentication.')
+@click.option(
+    '--deepbooru/--no-deepbooru',
+    help=f'Tag posts additionally with Deepbooru (default: {config.IMPORT_FROM_URL_DEFAULTS["deepbooru"]}).',
+)
+@click.option(
+    '--md5-search/--no-md5-search',
+    help=f'Search for posts with the same MD5 hash on popular boorus (default: {config.IMPORT_FROM_URL_DEFAULTS["md5_search"]}).',
+)
 @click.option('--saucenao/--no-saucenao', help=f'Search for posts with SauceNAO (default: {config.IMPORT_FROM_URL_DEFAULTS["saucenao"]}).')
 @click.option(
     '--use-twitter-artist/--dont-use-twitter-artist',
     help=f'Create Twitter username and nickname tags for the artist (default: {config.IMPORT_FROM_URL_DEFAULTS["use_twitter_artist"]}).',
 )
-@click.option('--verbose', help='Show download progress of gallery-dl script.')
 @click.option(
     '--convert-to-jpg/--no-convert-to-jpg',
     help=f'Convert images to JPG if convert-threshold is exceeded (default: {config.UPLOAD_MEDIA_DEFAULTS["convert_to_jpg"]}).',
@@ -444,18 +448,18 @@ def click_import_from_booru(
     '--shrink-dimensions',
     help=f'Maximum width and height of the shrunken image (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_dimensions"]}).',
 )
+@click.option('--verbose', help='Show download progress of gallery-dl script.')
 @click.pass_context
 def click_import_from_url(
     ctx,
     urls,
+    input_file,
+    range,
     cookies,
     deepbooru,
-    input_file,
     md5_search,
-    range,
     saucenao,
     use_twitter_artist,
-    verbose,
     convert_to_jpg,
     convert_threshold,
     default_safety,
@@ -463,6 +467,7 @@ def click_import_from_url(
     shrink,
     shrink_threshold,
     shrink_dimensions,
+    verbose,
 ):
     """
     Download images from URLS or file containing URLs
