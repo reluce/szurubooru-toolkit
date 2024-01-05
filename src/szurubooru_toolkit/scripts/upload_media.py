@@ -11,14 +11,12 @@ from loguru import logger
 from tqdm import tqdm
 
 from szurubooru_toolkit import config
+from szurubooru_toolkit import szuru
 from szurubooru_toolkit.scripts import auto_tagger
 from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.szurubooru import Szurubooru
 from szurubooru_toolkit.utils import get_md5sum
 from szurubooru_toolkit.utils import shrink_img
-
-
-szuru = Szurubooru(config.globals['url'], config.globals['username'], config.globals['api_token'])
 
 
 def get_files(upload_dir: str) -> list:
@@ -136,7 +134,7 @@ def upload_file(szuru: Szurubooru, post: Post) -> None:
         None
     """
 
-    safety = post.safety if post.safety else config.globals['default_safety']
+    safety = post.safety if post.safety else config.upload_media['default_safety']
     source = post.source if post.source else ''
 
     post_url = szuru.szuru_api_url + '/posts'
@@ -219,36 +217,36 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
 
     try:
         if (
-            config.globals['convert_to_jpg']
+            config.upload_media['convert_to_jpg']
             and file_ext == 'png'
-            and file_size > config.globals['convert_threshold']
-            and config.globals['shrink']
+            and file_size > config.upload_media['convert_threshold']
+            and config.upload_media['shrink']
         ):
             logger.debug(
-                f'Converting and shrinking file, size {file_size} > {config.globals["convert_threshold"]}',
+                f'Converting and shrinking file, size {file_size} > {config.upload_media["convert_threshold"]}',
             )
             image = shrink_img(
                 file,
-                shrink_threshold=config.globals['shrink_threshold'],
-                shrink_dimensions=config.globals['shrink_dimensions'],
+                shrink_threshold=config.upload_media['shrink_threshold'],
+                shrink_dimensions=config.upload_media['shrink_dimensions'],
                 convert=True,
-                convert_quality=config.globals['convert_quality'],
+                convert_quality=config.upload_media['convert_quality'],
             )
-        elif config.globals['convert_to_jpg'] and file_ext == 'png' and file_size > config.globals['convert_threshold']:
+        elif config.upload_media['convert_to_jpg'] and file_ext == 'png' and file_size > config.upload_media['convert_threshold']:
             logger.debug(
-                f'Converting file, size {file_size} > {config.globals["convert_threshold"]}',
+                f'Converting file, size {file_size} > {config.upload_media["convert_threshold"]}',
             )
             image = shrink_img(
                 file,
                 convert=True,
-                convert_quality=config.globals['convert_quality'],
+                convert_quality=config.upload_media['convert_quality'],
             )
-        elif config.globals['shrink']:
+        elif config.upload_media['shrink']:
             logger.debug('Shrinking file...')
             image = shrink_img(
                 file,
-                shrink_threshold=config.globals['shrink_threshold'],
-                shrink_dimensions=config.globals['shrink_dimensions'],
+                shrink_threshold=config.upload_media['shrink_threshold'],
+                shrink_dimensions=config.upload_media['shrink_dimensions'],
             )
     except OSError:
         logger.warning(f'\nCould not shrink image {file_to_upload}. Keeping dimensions...')
@@ -296,7 +294,7 @@ def upload_post(
     if errors:
         return False, False  # Assume the saucenao_limit_reached is False
 
-    threshold = 1 - float(config.globals['max_similarity'])
+    threshold = 1 - float(config.upload_media['max_similarity'])
 
     for entry in similar_posts:
         if entry['distance'] < threshold and not post.exact_post:
