@@ -7,8 +7,6 @@ from asyncio import sleep
 from asyncio.exceptions import CancelledError
 from datetime import datetime
 from io import BytesIO
-from math import ceil
-from typing import Iterator
 from urllib.error import ContentTooShortError
 
 import cunnypy
@@ -18,14 +16,8 @@ from httpx import ReadTimeout
 from loguru import logger
 from PIL import Image
 from pixivpy3.utils import PixivError
-from pybooru import Moebooru
-from pybooru.exceptions import PybooruHTTPError
-from pygelbooru.gelbooru import GelbooruImage
-from syncer import sync
 
 from szurubooru_toolkit.config import Config
-from szurubooru_toolkit.danbooru import Danbooru
-from szurubooru_toolkit.gelbooru import Gelbooru
 from szurubooru_toolkit.pixiv import Pixiv
 
 
@@ -306,73 +298,6 @@ def download_media(content_url: str, md5: str = None) -> bytes:
             break
 
     return file
-
-
-def get_posts_from_booru(
-    booru: Danbooru | Gelbooru | Moebooru,
-    query: str,
-    limit: int,
-) -> Iterator[int | dict | GelbooruImage]:
-    """
-    Retrieves posts from the specified `booru` based on the given `query` and `limit`.
-
-    This function retrieves posts from the specified `booru` based on the given query and limit. It first calculates the
-    number of pages needed and the limit for the last page. It then iterates over the pages and retrieves the posts
-    from the Booru. If the Booru is Gelbooru, it uses the Gelbooru client to search for posts. If the Booru is
-    Danbooru or Moebooru, it uses the post_list method to retrieve the posts. If a PybooruHTTPError occurs while
-    retrieving posts from Danbooru, it logs a critical error message.
-
-    Args:
-        booru (Union[Danbooru, Gelbooru, Moebooru]): The Booru from which to retrieve posts.
-        query (str): The query to search for.
-        limit (int): The maximum number of posts to retrieve.
-
-    Returns:
-        Iterator[Union[int, dict, GelbooruImage]]: An iterator over the retrieved posts.
-    """
-
-    pages_needed = ceil(int(limit) / 100)
-    limit_last_page = limit % 100
-    results = []
-
-    if limit > 100:
-        for page in range(1, pages_needed + 1):
-            if page == pages_needed:
-                if isinstance(booru, Gelbooru):
-                    results.append(
-                        sync(booru.client.search_posts(limit=limit_last_page, page=page, tags=query.split())),
-                    )
-                else:
-                    try:
-                        results.append(booru.post_list(limit=limit_last_page, page=page, tags=query))
-                    except PybooruHTTPError:
-                        logger.critical(
-                            'Importing from Danbooru accepts only a maximum of two tags for you search query!',
-                        )
-                        exit()
-            else:
-                if isinstance(booru, Gelbooru):
-                    results.append(sync(booru.client.search_posts(limit=100, page=page, tags=query.split())))
-                else:
-                    try:
-                        results.append(booru.post_list(limit=100, page=page, tags=query))
-                        if len(results) < 100:
-                            break
-                    except PybooruHTTPError:
-                        logger.critical(
-                            'Importing from Danbooru accepts only a maximum of two tags for you search query!',
-                        )
-                        exit()
-
-        results = [result for result in results for result in result]
-    else:
-        if isinstance(booru, Gelbooru):
-            results = sync(booru.client.search_posts(tags=query.split(), limit=limit))
-        else:
-            results = booru.post_list(limit=limit, tags=query)
-
-    yield len(results)
-    yield from results
 
 
 def generate_src(metadata: dict) -> str:
