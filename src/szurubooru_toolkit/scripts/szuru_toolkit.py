@@ -266,13 +266,14 @@ def click_create_relations(ctx, query, threshold):
     help=f'Overwrite tag category if the tag already exists (default: {config.CREATE_TAGS_DEFAULTS["overwrite"]}).',
 )
 @click.pass_context
-def click_create_tags(ctx, tag_file, query, min_post_count, limit, overwrite):
+def click_create_tags(ctx, tag_file, query, limit, min_post_count, overwrite):
     """
     Create tags based on a tag file or query
     """
 
     if not tag_file and not query:
-        click.echo('No --query or --tag-file set!')
+        click.echo(ctx.get_help())
+        click.echo('\nError: No option --query or --tag-file set!')
         exit(1)
 
     for param in ctx.command.params:
@@ -448,7 +449,7 @@ def click_import_from_booru(
     '--shrink-dimensions',
     help=f'Maximum width and height of the shrunken image (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_dimensions"]}).',
 )
-@click.option('--verbose', help='Show download progress of gallery-dl script.')
+@click.option('--verbose', is_flag=True, help='Show download progress of gallery-dl script.')
 @click.pass_context
 def click_import_from_url(
     ctx,
@@ -476,7 +477,8 @@ def click_import_from_url(
     """
 
     if not urls and not input_file:
-        click.echo('You need to specify either URLs or --input-file!')
+        click.echo(ctx.get_help())
+        click.echo('\nYou need to specify either URLs or --input-file!')
         exit(1)
 
     for param in ctx.command.params:
