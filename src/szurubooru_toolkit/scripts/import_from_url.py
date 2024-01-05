@@ -172,7 +172,7 @@ def main(urls: list = [], input_file: str = '', verbose: bool = False) -> None:
             if 'rating' in metadata:
                 metadata['safety'] = convert_rating(metadata['rating'])
             else:
-                metadata['safety'] = config.globals['default_safety']
+                metadata['safety'] = config.upload_media['default_safety']
 
             if 'tags' in metadata or 'tag_string' in metadata or 'hashtags' in metadata:
                 metadata['tags'] = set_tags(metadata)
