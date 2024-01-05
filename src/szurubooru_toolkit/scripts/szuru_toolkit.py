@@ -40,9 +40,6 @@ def setup_module(module_name: str, click_context: click.core.Context) -> types.M
     if module_name in ['import_from_url', 'upload_media']:
         config.validate_path()
 
-    if module_name in ['import_from_booru', 'import_from_url']:
-        config.update_upload_media_config(module_name)
-
     return module
 
 
@@ -257,6 +254,7 @@ def click_create_relations(ctx, query, threshold):
 )
 @click.option(
     '--limit',
+    type=int,
     help=(
         f'The amount of tags that should be downloaded. Start from the most recent ones (default: {config.CREATE_TAGS_DEFAULTS["limit"]}).'
     ),
@@ -352,7 +350,7 @@ def click_delete_posts(ctx, query, except_ids):
     '--shrink-dimensions',
     help=f'Maximum width and height of the shrunken image (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_dimensions"]}).',
 )
-@click.option('--limit', help=f'Limit the search results to be returned (default: {config.IMPORT_FROM_BOORU_DEFAULTS["limit"]}).')
+@click.option('--limit', type=int, help=f'Limit the search results to be returned (default: {config.IMPORT_FROM_BOORU_DEFAULTS["limit"]}).')
 @click.pass_context
 def click_import_from_booru(
     ctx,
