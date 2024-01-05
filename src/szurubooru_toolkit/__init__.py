@@ -82,7 +82,7 @@ def setup_clients():
 
     global danbooru_client, gelbooru_client, szuru
 
-    danbooru_client = Danbooru(config.credentials['danbooru']['user'], config.credentials['danbooru']['api_key'])
-    gelbooru_client = Gelbooru(config.credentials['gelbooru']['user'], config.credentials['gelbooru']['api_key'])
+    danbooru_client = Danbooru()
+    gelbooru_client = Gelbooru()
 
     szuru = Szurubooru(config.globals['url'], config.globals['username'], config.globals['api_token'])
