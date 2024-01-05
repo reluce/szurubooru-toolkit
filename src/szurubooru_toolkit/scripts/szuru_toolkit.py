@@ -220,6 +220,7 @@ def click_auto_tagger(
 @click.argument('query')
 @click.option(
     '--threshold',
+    type=int,
     help=(
         'How many posts should exist at minimum with character + parody to create their relation (default:'
         f' {config.CREATE_RELATIONS_DEFAULTS["threshold"]}).'
@@ -250,6 +251,7 @@ def click_create_relations(ctx, query, threshold):
 @click.option('--query', help=f'Search for specific tags (default: {config.CREATE_TAGS_DEFAULTS["query"]}).')
 @click.option(
     '--min-post-count',
+    type=int,
     help=f'The minimum amount of posts the tag should have been used in (default: {config.CREATE_TAGS_DEFAULTS["min_post_count"]}).',
 )
 @click.option(
@@ -336,6 +338,7 @@ def click_delete_posts(ctx, query, except_ids):
 )
 @click.option(
     '--max-similarity',
+    type=int,
     help=f'Images that exceeds this value won\'t get uploaded (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
 )
 @click.option(
@@ -344,6 +347,7 @@ def click_delete_posts(ctx, query, except_ids):
 )
 @click.option(
     '--shrink-threshold',
+    type=int,
     help=f'Images which total pixel count exceeds this value will be shrunk (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_threshold"]}).',
 )
 @click.option(
@@ -424,6 +428,7 @@ def click_import_from_booru(
 )
 @click.option(
     '--max-similarity',
+    type=int,
     help=f'Images that exceeds this value won\'t get uploaded (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
 )
 @click.option(
@@ -432,6 +437,7 @@ def click_import_from_booru(
 )
 @click.option(
     '--shrink-threshold',
+    type=int,
     help=f'Images which total pixel count exceeds this value will be shrunk (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_threshold"]}).',
 )
 @click.option(
@@ -588,6 +594,7 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, mode, update_implications
 )
 @click.option(
     '--max-similarity',
+    type=int,
     help=f'Images that exceeds this value won\'t get uploaded (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
 )
 @click.option(
@@ -596,6 +603,7 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, mode, update_implications
 )
 @click.option(
     '--shrink-threshold',
+    type=int,
     help=f'Images which total pixel count exceeds this value will be shrunk (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_threshold"]}).',
 )
 @click.option(
