@@ -14,6 +14,7 @@ from szurubooru_toolkit.utils import convert_rating
 from szurubooru_toolkit.utils import convert_tags
 from szurubooru_toolkit.utils import extract_twitter_artist
 from szurubooru_toolkit.utils import generate_src
+from szurubooru_toolkit.utils import get_site
 from szurubooru_toolkit.utils import invoke_gallery_dl
 
 
@@ -136,43 +137,7 @@ def main(urls: list = [], input_file: str = '', verbose: bool = False) -> None:
         logger.info(f'Downloading posts from input file "{input_file}" and URLs {urls}...')
     else:
         logger.info(f'Downloading posts from URLs {urls}...')
-
-    url_mappings = {
-        'sankaku': {'url_keyword': 'sankaku', 'user_key': 'user', 'password_key': 'password'},
-        'danbooru': {'url_keyword': 'danbooru', 'user_key': 'user', 'password_key': 'api_key'},
-        'gelbooru': {'url_keyword': 'gelbooru', 'user_key': 'user', 'password_key': 'api_key'},
-        'konachan': {'url_keyword': 'konachan', 'user_key': 'user', 'password_key': 'password'},
-        'yandere': {'url_keyword': 'yande.re', 'user_key': 'user', 'password_key': 'password'},
-        'e-hentai': {'url_keyword': 'e-hentai', 'user_key': None, 'password_key': None},
-        'twitter': {'url_keyword': 'twitter', 'user_key': None, 'password_key': None},
-        'kemono': {'url_keyword': 'kemono', 'user_key': None, 'password_key': None},
-        'fanbox': {'url_keyword': 'fanbox', 'user_key': None, 'password_key': None},
-        'pixiv': {'url_keyword': 'pixiv', 'user_key': None, 'password_key': None},
-    }
-
-    site = None
-    user = None
-    password = None
-
-    for url in urls:
-        for site_key, site_data in url_mappings.items():
-            if site_data['url_keyword'] in url:
-                site = site_key
-                try:
-                    user = getattr(config, site_key)[site_data['user_key']]
-                    password = getattr(config, site_key)[site_data['password_key']]
-                except (KeyError, AttributeError):
-                    user = None
-                    password = None
-                break
-
-        if site is not None:
-            break
-
     params = [f'--range={config.import_from_url["range"]}', '--write-metadata']
-
-    if user and password and user != 'none' and password != 'none':
-        params += [f'--username={user}', f'--password={password}']
 
     if config.import_from_url['cookies']:
         params += [f'--cookies={config.import_from_url["cookies"]}']
@@ -200,6 +165,7 @@ def main(urls: list = [], input_file: str = '', verbose: bool = False) -> None:
     ):
         with open(file + '.json') as f:
             metadata = json.load(f)
+            site = get_site(metadata['file_url'])
             metadata['site'] = site
             metadata['source'] = generate_src(metadata)
 
