@@ -165,7 +165,10 @@ def main(urls: list = [], input_file: str = '', verbose: bool = False) -> None:
     ):
         with open(file + '.json') as f:
             metadata = json.load(f)
-            site = get_site(metadata['file_url'])
+            try:
+                site = get_site(metadata['file_url'])
+            except KeyError:
+                site = get_site(metadata['category'])
             metadata['site'] = site
             metadata['source'] = generate_src(metadata)
 
