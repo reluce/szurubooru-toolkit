@@ -655,6 +655,7 @@ def get_site(url: str) -> str:
     sites = {
         'sankaku',
         'danbooru',
+        'donmai',
         'gelbooru',
         'konachan',
         'yandere',
