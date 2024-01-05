@@ -2,11 +2,8 @@ from pathlib import Path
 from typing import Literal  # noqa TYP001
 
 from loguru import logger
-from pybooru.danbooru import Danbooru
-from pybooru.moebooru import Moebooru
 from tqdm import tqdm
 
-from szurubooru_toolkit import Gelbooru
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.scripts import upload_media
@@ -95,13 +92,17 @@ def main(booru: str, query: str) -> None:
 
             match booru:
                 case 'danbooru':
-                    booru_client = Danbooru('danbooru', config.danbooru['user'], config.danbooru['api_key'])
+                    from szurubooru_toolkit import danbooru_client as booru_client
                 case 'gelbooru':
-                    booru_client = Gelbooru(config.gelbooru['user'], config.gelbooru['api_key'])
+                    from szurubooru_toolkit import danbooru_client as booru_client
                 case 'konachan':
-                    booru_client = Moebooru('konachan', config.konachan['user'], config.konachan['password'])
+                    from pybooru.moebooru import Moebooru
+
+                    booru_client = Moebooru('konachan', config.credentials['konachan']['user'], config.credentials['konachan']['password'])
                 case 'yandere':
-                    booru_client = Moebooru('yandere', config.yandere['user'], config.yandere['password'])
+                    from pybooru.moebooru import Moebooru
+
+                    booru_client = Moebooru('yandere', config.credentials['yandere']['user'], config.credentials['yandere']['password'])
 
             posts = get_posts_from_booru(booru_client, query, limit)
 

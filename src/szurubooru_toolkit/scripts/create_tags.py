@@ -5,7 +5,6 @@ from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
-from szurubooru_toolkit.danbooru import Danbooru
 from szurubooru_toolkit.szurubooru import TagExistsError
 
 
@@ -86,8 +85,9 @@ def main(tag_file: str = '') -> None:
                         # logger.warning(e)  # Could result in lots of output with larger tag files
                         pass
         else:
-            danbooru = Danbooru(config.danbooru['user'], config.danbooru['api_key'])
-            results = danbooru.download_tags(config.create_tags['query'], min_post_count, limit)
+            from szurubooru_toolkit import danbooru_client
+
+            results = danbooru_client.download_tags(config.create_tags['query'], min_post_count, limit)
 
             for result in results:
                 for tag in result:
