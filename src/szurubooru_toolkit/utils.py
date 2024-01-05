@@ -397,7 +397,7 @@ def generate_src(metadata: dict) -> str:
 
     try:
         match metadata['site']:
-            case 'danbooru':
+            case 'danbooru' | 'donmai':
                 src = 'https://danbooru.donmai.us/posts/' + id
             case 'e-hentai':
                 id = str(metadata['gid'])
@@ -639,3 +639,32 @@ def extract_twitter_artist(metadata: dict) -> str:
                 logger.debug(f'Could not create Twitter artist {artist_alias}: {e}')
 
     return [artist] if not artist_aliases else artist_aliases
+
+
+def get_site(url: str) -> str:
+    """
+    Extracts the site name from a given URL.
+
+    Args:
+        url (str): The URL to extract the site name from.
+
+    Returns:
+        str: The name of the site that the URL belongs to, or None if no known site name is found in the URL.
+    """
+
+    sites = {
+        'sankaku',
+        'danbooru',
+        'gelbooru',
+        'konachan',
+        'yandere',
+        'e-hentai',
+        'twitter',
+        'kemono',
+        'fanbox',
+        'pixiv',
+    }
+
+    for site in sites:
+        if site in url:
+            return site
