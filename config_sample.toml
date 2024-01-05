@@ -5,43 +5,80 @@ api_token = "my_api_token"
 public = false
 hide_progress = false
 
+[credentials]
+[credentials.pixiv]
+token = "None"
+
+[logging]
+log_enabled = false
+log_file = "szurubooru_toolkit.log"
+log_level = "INFO"
+log_colorized = true
+
 [auto_tagger]
 saucenao_api_token = "my_saucenao_api_token"
 saucenao = true
 md5_search = true
 deepbooru = false
 deepbooru_model = "./misc/deepbooru/model-resnet_custom_v3.h5"
-deepbooru_threshold = "0.7"
+deepbooru_threshold = 0.7
 deepbooru_forced = false
 deepbooru_set_tag = true
-hide_progress = false
 use_pixiv_artist = false
 use_pixiv_tags = false
 update_relations = true
+hide_progress = false
 
-# Leave those options as "None" if you have no accounts on these sites
-[credentials]
-[credentials.danbooru]
-user = "None"
-api_key = "None"
-[credentials.gelbooru]
-user = "None"
-api_key = "None"
-[credentials.konachan]
-user = "None"
-password = "None"
-[credentials.yandere]
-user = "None"
-password = "None"
-[credentials.sankaku]
-user = "None"
-password = "None"
-[credentials.pixiv]
-token = "None"
+[create_relations]
+threshold = 3
+hide_progress = false
+
+[create_tags]
+limit = 100
+min_post_count = 10
+query = '*'
+overwrite = false
+hide_progress = false
+
+[delete_posts]
+hide_progress = false
+
+[import_from_booru]
+deepbooru = false
+max_similarity = "0.95"
+convert_to_jpg = false
+convert_threshold = "3MB"
+convert_quality = 90
+shrink = false
+shrink_threshold = 6000000
+shrink_dimensions = "2500x2500"
+default_safety = "safe"
+hide_progress = false
+
+[import_from_url]
+deepbooru = false
+tmp_path = './tmp/gallery_dl'
+use_twitter_artist = false
+max_similarity = "0.95"
+convert_to_jpg = false
+convert_threshold = "3MB"
+convert_quality = 90
+shrink = false
+shrink_threshold = 6000000
+shrink_dimensions = "2500x2500"
+default_safety = "safe"
+hide_progress = false
+
+[reset_posts]
+hide_progress = false
+
+[tag_posts]
+update_implications = false
+mode = 'append'
+hide_progress = false
 
 [upload_media]
 src_path = "/local/path/to/upload/dir"
-hide_progress = false
 cleanup = false
 tags = ["tagme"]
 auto_tag = true
@@ -53,50 +90,4 @@ shrink = false
 shrink_threshold = 6000000
 shrink_dimensions = "2500x2500"
 default_safety = "safe"
-
-[import_from_booru]
-deepbooru = false
 hide_progress = false
-max_similarity = "0.95"
-convert_to_jpg = false
-convert_threshold = "3MB"
-convert_quality = 90
-shrink = false
-shrink_threshold = 6000000
-shrink_dimensions = "2500x2500"
-default_safety = "safe"
-
-[import_from_url]
-deepbooru = false
-tmp_path = './tmp/gallery_dl'
-hide_progress = false
-use_twitter_artist = false
-max_similarity = "0.95"
-convert_to_jpg = false
-convert_threshold = "3MB"
-convert_quality = 90
-shrink = false
-shrink_threshold = 6000000
-shrink_dimensions = "2500x2500"
-default_safety = "safe"
-
-[tag_posts]
-hide_progress = false
-
-[delete_posts]
-hide_progress = false
-
-[reset_posts]
-hide_progress = false
-
-[create_tags]
-hide_progress = false
-
-[create_relations]
-threshold = "3"
-
-[logging]
-log_enabled = false
-log_file = "szurubooru_toolkit.log"
-log_level = "DEBUG"
-log_colorized = true

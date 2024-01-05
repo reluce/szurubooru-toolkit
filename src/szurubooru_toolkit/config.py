@@ -17,6 +17,10 @@ GLOBALS_DEFAULTS = {
     'hide_progress': False,
 }
 
+CREDENTIALS_DEFAULTS = {
+    'pixiv': {'token': None},
+}
+
 LOGGING_DEFAULTS = {
     'log_enabled': False,
     'log_file': 'szurubooru_toolkit.log',
@@ -30,7 +34,7 @@ AUTO_TAGGER_DEFAULTS = {
     'md5_search': True,
     'deepbooru': False,
     'deepbooru_model': None,
-    'deepbooru_threshold': '0.7',
+    'deepbooru_threshold': 0.7,
     'deepbooru_forced': False,
     'deepbooru_set_tag': False,
     'hide_progress': False,
@@ -39,12 +43,15 @@ AUTO_TAGGER_DEFAULTS = {
     'update_relations': False,
 }
 
-CREATE_RELATIONS_DEFAULTS = {'threshold': '3'}
+CREATE_RELATIONS_DEFAULTS = {
+    'threshold': 3,
+    'hide_progress': False,
+}
 
 CREATE_TAGS_DEFAULTS = {
     'hide_progress': False,
-    'limit': '100',
-    'min_post_count': '10',
+    'limit': 100,
+    'min_post_count': 10,
     'query': '*',
     'overwrite': False,
 }
@@ -53,8 +60,9 @@ DELETE_POSTS_DEFAULTS = {'hide_progress': False}
 
 IMPORT_FROM_BOORU_DEFAULTS = {
     'deepbooru': False,
-    'limit': '100',
+    'limit': 100,
     'hide_progress': False,
+    'tmp_path': './tmp/gallery-dl',
 }
 
 IMPORT_FROM_URL_DEFAULTS = {
@@ -82,7 +90,7 @@ UPLOAD_MEDIA_DEFAULTS = {
     'cleanup': False,
     'tags': ['tagme'],
     'auto_tag': False,
-    'max_similarity': '0.95',
+    'max_similarity': 0.95,
     'convert_to_jpg': False,
     'convert_threshold': '3MB',
     'convert_quality': 90,
@@ -90,10 +98,6 @@ UPLOAD_MEDIA_DEFAULTS = {
     'shrink_threshold': 6000000,
     'shrink_dimensions': '2500x2500',
     'default_safety': 'safe',
-}
-
-CREDENTIALS_DEFAULTS = {
-    'pixiv': {'token': None},
 }
 
 
