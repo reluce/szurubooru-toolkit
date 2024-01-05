@@ -40,6 +40,9 @@ def setup_module(module_name: str, click_context: click.core.Context) -> types.M
     if module_name in ['import_from_url', 'upload_media']:
         config.validate_path()
 
+    if module_name in ['import_from_booru', 'import_from_url']:
+        config.update_upload_media_config(module_name)
+
     return module
 
 
@@ -47,15 +50,20 @@ CONTEXT_SETTINGS = {'help_option_names': ['-h', '--help'], 'max_content_width': 
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
-# szurubooru Options
+# Global Options
 @click.option('--url', help='Base URL to your szurubooru instance.')
 @click.option('--username', help='Username which will be used to authenticate with the szurubooru API.')
 @click.option('--api-token', help='API token for the user which will be used to authenticate with the szurubooru API.')
 @click.option(
     '--public',
     is_flag=True,
-    help=f'If your szurubooru instance is reachable from the internet (default: {config.SZURUBOORU_DEFAULTS["public"]}).',
+    help=f'If your szurubooru instance is reachable from the internet (default: {config.GLOBALS_DEFAULTS["public"]}).',
 )
+@click.option(
+    '--hide-progress',
+    is_flag=True,
+    help='Hides the progress bar (default: False).',
+)  # Don't use config.GLOBALS_DEFAULTS here, because we use that option with a try/except block
 # Logging options
 @click.option('--log-enabled', is_flag=True, help=f'Create a log file (default: {config.LOGGING_DEFAULTS["log_enabled"]}).')
 @click.option('--log-colorized', is_flag=True, help=f'Colorize the log output (default: {config.LOGGING_DEFAULTS["log_colorized"]}).')
@@ -64,41 +72,6 @@ CONTEXT_SETTINGS = {'help_option_names': ['-h', '--help'], 'max_content_width': 
     '--log-level',
     type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], case_sensitive=True),
     help=f'Set the log level (default: {config.LOGGING_DEFAULTS["log_level"]}).',
-)
-# Global options
-@click.option(
-    '--hide-progress',
-    is_flag=True,
-    help='Hides the progress bar (default: False).',
-)  # Don't use config.GLOBALS_DEFAULTS here, because we use that option with a try/except block
-@click.option(
-    '--convert-to-jpg/--no-convert-to-jpg',
-    help=f'Convert images to JPG if convert-threshold is exceeded (default: {config.GLOBALS_DEFAULTS["convert_to_jpg"]}).',
-)
-@click.option(
-    '--convert-threshold',
-    help=f'Convert images to JPG if the file size is bigger than this threshold (default: {config.GLOBALS_DEFAULTS["convert_threshold"]}).',
-)
-@click.option(
-    '--default-safety',
-    type=click.Choice(['safe', 'sketchy', 'unsafe'], case_sensitive=True),
-    help=f'Default safety level for posts if it couldn\'t be detectecd (default: {config.GLOBALS_DEFAULTS["default_safety"]}).',
-)
-@click.option(
-    '--max-similarity',
-    help=f'Images that exceeds this value won\'t get uploaded (default: {config.GLOBALS_DEFAULTS["max_similarity"]}).',
-)
-@click.option(
-    '--shrink/--no-shrink',
-    help=f'Shrink images if shrink-threshold is exceeded (default: {config.GLOBALS_DEFAULTS["shrink"]}).',
-)
-@click.option(
-    '--shrink-threshold',
-    help=f'Images which total pixel count exceeds this value will be shrunk (default: {config.GLOBALS_DEFAULTS["shrink_threshold"]}).',
-)
-@click.option(
-    '--shrink-dimensions',
-    help=f'Maximum width and height of the shrunken image (default: {config.GLOBALS_DEFAULTS["shrink_dimensions"]}).',
 )
 @click.pass_context
 def cli(
@@ -112,13 +85,6 @@ def cli(
     log_file,
     log_level,
     hide_progress,
-    convert_to_jpg,
-    convert_threshold,
-    default_safety,
-    max_similarity,
-    shrink,
-    shrink_threshold,
-    shrink_dimensions,
 ):
     """Toolkit to manage your szurubooru image board.
 
@@ -354,9 +320,54 @@ def click_delete_posts(ctx, query, except_ids):
     '--deepbooru/--no-deepbooru',
     help=f'Tag posts additionally with Deepbooru (default: {config.IMPORT_FROM_BOORU_DEFAULTS["deepbooru"]}).',
 )
+@click.option(
+    '--convert-to-jpg/--no-convert-to-jpg',
+    help=f'Convert images to JPG if convert-threshold is exceeded (default: {config.UPLOAD_MEDIA_DEFAULTS["convert_to_jpg"]}).',
+)
+@click.option(
+    '--convert-threshold',
+    help=(
+        'Convert images to JPG if the file size is bigger than this threshold (default:'
+        f' {config.UPLOAD_MEDIA_DEFAULTS["convert_threshold"]}).'
+    ),
+)
+@click.option(
+    '--default-safety',
+    type=click.Choice(['safe', 'sketchy', 'unsafe'], case_sensitive=True),
+    help=f'Default safety level for posts if it couldn\'t be detectecd (default: {config.UPLOAD_MEDIA_DEFAULTS["default_safety"]}).',
+)
+@click.option(
+    '--max-similarity',
+    help=f'Images that exceeds this value won\'t get uploaded (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
+)
+@click.option(
+    '--shrink/--no-shrink',
+    help=f'Shrink images if shrink-threshold is exceeded (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink"]}).',
+)
+@click.option(
+    '--shrink-threshold',
+    help=f'Images which total pixel count exceeds this value will be shrunk (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_threshold"]}).',
+)
+@click.option(
+    '--shrink-dimensions',
+    help=f'Maximum width and height of the shrunken image (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_dimensions"]}).',
+)
 @click.option('--limit', help=f'Limit the search results to be returned (default: {config.IMPORT_FROM_BOORU_DEFAULTS["limit"]}).')
 @click.pass_context
-def click_import_from_booru(ctx, booru, query, deepbooru, limit):
+def click_import_from_booru(
+    ctx,
+    booru,
+    query,
+    deepbooru,
+    limit,
+    convert_to_jpg,
+    convert_threshold,
+    default_safety,
+    max_similarity,
+    shrink,
+    shrink_threshold,
+    shrink_dimensions,
+):
     """
     Download and tag posts from various Boorus
 
@@ -397,8 +408,58 @@ def click_import_from_booru(ctx, booru, query, deepbooru, limit):
     help=f'Create Twitter username and nickname tags for the artist (default: {config.IMPORT_FROM_URL_DEFAULTS["use_twitter_artist"]}).',
 )
 @click.option('--verbose', help='Show download progress of gallery-dl script.')
+@click.option(
+    '--convert-to-jpg/--no-convert-to-jpg',
+    help=f'Convert images to JPG if convert-threshold is exceeded (default: {config.UPLOAD_MEDIA_DEFAULTS["convert_to_jpg"]}).',
+)
+@click.option(
+    '--convert-threshold',
+    help=(
+        'Convert images to JPG if the file size is bigger than this threshold (default:'
+        f' {config.UPLOAD_MEDIA_DEFAULTS["convert_threshold"]}).'
+    ),
+)
+@click.option(
+    '--default-safety',
+    type=click.Choice(['safe', 'sketchy', 'unsafe'], case_sensitive=True),
+    help=f'Default safety level for posts if it couldn\'t be detectecd (default: {config.UPLOAD_MEDIA_DEFAULTS["default_safety"]}).',
+)
+@click.option(
+    '--max-similarity',
+    help=f'Images that exceeds this value won\'t get uploaded (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
+)
+@click.option(
+    '--shrink/--no-shrink',
+    help=f'Shrink images if shrink-threshold is exceeded (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink"]}).',
+)
+@click.option(
+    '--shrink-threshold',
+    help=f'Images which total pixel count exceeds this value will be shrunk (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_threshold"]}).',
+)
+@click.option(
+    '--shrink-dimensions',
+    help=f'Maximum width and height of the shrunken image (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_dimensions"]}).',
+)
 @click.pass_context
-def click_import_from_url(ctx, urls, cookies, deepbooru, input_file, md5_search, range, saucenao, use_twitter_artist, verbose):
+def click_import_from_url(
+    ctx,
+    urls,
+    cookies,
+    deepbooru,
+    input_file,
+    md5_search,
+    range,
+    saucenao,
+    use_twitter_artist,
+    verbose,
+    convert_to_jpg,
+    convert_threshold,
+    default_safety,
+    max_similarity,
+    shrink,
+    shrink_threshold,
+    shrink_dimensions,
+):
     """
     Download images from URLS or file containing URLs
 
@@ -511,8 +572,53 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, mode, update_implications
     '--tags',
     help=f'Specify tags, separated by a comma, which will be added to all posts (default: {config.UPLOAD_MEDIA_DEFAULTS["tags"]}).',
 )
+@click.option(
+    '--convert-to-jpg/--no-convert-to-jpg',
+    help=f'Convert images to JPG if convert-threshold is exceeded (default: {config.UPLOAD_MEDIA_DEFAULTS["convert_to_jpg"]}).',
+)
+@click.option(
+    '--convert-threshold',
+    help=(
+        'Convert images to JPG if the file size is bigger than this threshold (default:'
+        f' {config.UPLOAD_MEDIA_DEFAULTS["convert_threshold"]}).'
+    ),
+)
+@click.option(
+    '--default-safety',
+    type=click.Choice(['safe', 'sketchy', 'unsafe'], case_sensitive=True),
+    help=f'Default safety level for posts if it couldn\'t be detectecd (default: {config.UPLOAD_MEDIA_DEFAULTS["default_safety"]}).',
+)
+@click.option(
+    '--max-similarity',
+    help=f'Images that exceeds this value won\'t get uploaded (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
+)
+@click.option(
+    '--shrink/--no-shrink',
+    help=f'Shrink images if shrink-threshold is exceeded (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink"]}).',
+)
+@click.option(
+    '--shrink-threshold',
+    help=f'Images which total pixel count exceeds this value will be shrunk (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_threshold"]}).',
+)
+@click.option(
+    '--shrink-dimensions',
+    help=f'Maximum width and height of the shrunken image (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_dimensions"]}).',
+)
 @click.pass_context
-def click_upload_media(ctx, src_path, cleanup, tags, auto_tag):
+def click_upload_media(
+    ctx,
+    src_path,
+    cleanup,
+    tags,
+    auto_tag,
+    convert_to_jpg,
+    convert_threshold,
+    default_safety,
+    max_similarity,
+    shrink,
+    shrink_threshold,
+    shrink_dimensions,
+):
     """
     Upload media files
 
