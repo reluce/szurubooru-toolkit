@@ -67,6 +67,8 @@ IMPORT_FROM_BOORU_DEFAULTS = {
 
 IMPORT_FROM_URL_DEFAULTS = {
     'cookies': None,
+    'saucenao': False,
+    'md5_search': False,
     'deepbooru': False,
     'hide_progress': False,
     'md5_search': False,
