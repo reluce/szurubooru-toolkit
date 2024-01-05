@@ -18,7 +18,7 @@ from szurubooru_toolkit.utils import get_md5sum
 from szurubooru_toolkit.utils import shrink_img
 
 
-szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
+szuru = Szurubooru(config.globals['url'], config.globals['username'], config.globals['api_token'])
 
 
 def get_files(upload_dir: str) -> list:

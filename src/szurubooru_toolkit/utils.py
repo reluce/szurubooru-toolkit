@@ -532,9 +532,9 @@ def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], s
             rating = convert_rating(result[0].rating)
             booru_found = True
         else:
-            if config.pixiv['token']:
+            if config.credentials['pixiv']['token']:
                 try:
-                    pixiv = Pixiv(config.pixiv['token'])
+                    pixiv = Pixiv(config.credentials['pixiv']['token'])
                     pixiv_result = pixiv.get_result(results['pixiv'].url)
                     if pixiv_result:
                         pixiv_tags = pixiv.get_tags(pixiv_result)

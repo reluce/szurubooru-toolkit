@@ -151,7 +151,7 @@ def main(  # noqa C901
         if from_upload_media:
             hide_progress = True
         else:
-            logger.info(f'Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
+            logger.info(f'Retrieving posts from {config.globals["url"]} with query "{query}"...')
 
         if not config.auto_tagger['saucenao'] and not config.auto_tagger['deepbooru'] and not config.auto_tagger['md5_search']:
             logger.info('Nothing to do. Enable either SauceNAO or Deepbooru in your config.')
@@ -214,7 +214,7 @@ def main(  # noqa C901
             # This might be the case if this function was called from upload_media.
             if not file_to_upload:
                 if (
-                    (not config.szurubooru['public'] or config.auto_tagger['deepbooru']) or config.auto_tagger['deepbooru_forced']
+                    (not config.globals['public'] or config.auto_tagger['deepbooru']) or config.auto_tagger['deepbooru_forced']
                 ) and post.type != 'video':
                     image = download_media(post.content_url, post.md5)
                     # Shrink files >2MB
