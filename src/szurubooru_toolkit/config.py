@@ -9,22 +9,12 @@ from loguru import logger
 from validators import ValidationFailure
 
 
-SZURUBOORU_DEFAULTS = {
+GLOBALS_DEFAULTS = {
     'url': None,
     'username': None,
     'api_token': None,
     'public': False,
-}
-
-GLOBALS_DEFAULTS = {
-    'max_similarity': 0.95,
-    'convert_to_jpg': False,
-    'convert_threshold': '3MB',
-    'convert_quality': 90,
-    'shrink': False,
-    'shrink_threshold': 6000000,
-    'shrink_dimensions': '2500x2500',
-    'default_safety': 'safe',
+    'hide_progress': False,
 }
 
 LOGGING_DEFAULTS = {
@@ -92,33 +82,38 @@ UPLOAD_MEDIA_DEFAULTS = {
     'cleanup': False,
     'tags': ['tagme'],
     'auto_tag': False,
+    'max_similarity': '0.95',
+    'convert_to_jpg': False,
+    'convert_threshold': '3MB',
+    'convert_quality': 90,
+    'shrink': False,
+    'shrink_threshold': 6000000,
+    'shrink_dimensions': '2500x2500',
+    'default_safety': 'safe',
 }
 
-DANBOORU_DEFAULTS = {
-    'user': None,
-    'api_key': None,
-}
-
-GELBOORU_DEFAULTS = {
-    'user': None,
-    'api_key': None,
-}
-
-KONACHAN_DEFAULTS = {
-    'user': None,
-    'password': None,
-}
-
-PIXIV_DEFAULTS = {'token': None}
-
-SANKAKU_DEFAULTS = {
-    'user': None,
-    'password': None,
-}
-
-YANDERE_DEFAULTS = {
-    'user': None,
-    'password': None,
+CREDENTIALS_DEFAULTS = {
+    'danbooru': {
+        'user': None,
+        'api_key': None,
+    },
+    'gelbooru': {
+        'user': None,
+        'api_key': None,
+    },
+    'konachan': {
+        'user': None,
+        'password': None,
+    },
+    'pixiv': {'token': None},
+    'sankaku': {
+        'user': None,
+        'password': None,
+    },
+    'yandere': {
+        'user': None,
+        'password': None,
+    },
 }
 
 
@@ -142,7 +137,6 @@ class Config:
             None
         """
 
-        self.szurubooru = SZURUBOORU_DEFAULTS
         self.globals = GLOBALS_DEFAULTS
         self.logging = LOGGING_DEFAULTS
         self.auto_tagger = AUTO_TAGGER_DEFAULTS
@@ -154,12 +148,7 @@ class Config:
         self.reset_posts = RESET_POSTS_DEFAULTS
         self.tag_posts = TAG_POSTS_DEFAULTS
         self.upload_media = UPLOAD_MEDIA_DEFAULTS
-        self.danbooru = DANBOORU_DEFAULTS
-        self.gelbooru = GELBOORU_DEFAULTS
-        self.konachan = KONACHAN_DEFAULTS
-        self.pixiv = PIXIV_DEFAULTS
-        self.sankaku = SANKAKU_DEFAULTS
-        self.yandere = YANDERE_DEFAULTS
+        self.credentials = CREDENTIALS_DEFAULTS
 
         # Define default locations for the config file
         if os.name == 'nt':  # Windows
@@ -234,14 +223,14 @@ class Config:
         Make sure that the URL itself is valid, of scheme HTTP/s and remove trailing '/' char.
         """
 
-        self.szurubooru['url'] = self.szurubooru['url'].strip()
-        result = validators.url(self.szurubooru['url'])
+        self.globals['url'] = self.globals['url'].strip()
+        result = validators.url(self.globals['url'])
 
         if isinstance(result, ValidationFailure):
-            logger.critical(f'Your szurubooru URL "{self.szurubooru["url"]}" is not valid!')
+            logger.critical(f'Your szurubooru URL "{self.globals["url"]}" is not valid!')
             exit(1)
 
-        parsed_url = urllib.parse.urlsplit(self.szurubooru['url'])
+        parsed_url = urllib.parse.urlsplit(self.globals['url'])
 
         api_scheme = parsed_url.scheme
         if api_scheme not in ('http', 'https'):
@@ -249,7 +238,7 @@ class Config:
             exit(1)
 
         if parsed_url.path.startswith('/'):
-            self.szurubooru['url'] = self.szurubooru['url'].rstrip('/')
+            self.globals['url'] = self.globals['url'].rstrip('/')
 
     def validate_deepbooru(self) -> None:
         """Check if deepbooru_model is an existing file."""
@@ -263,28 +252,28 @@ class Config:
     def validate_convert_attrs(self) -> None:
         """Convert the threshold from a human readable to a machine readable size."""
 
-        convert_threshold = self.globals['convert_threshold']
+        convert_threshold = self.upload_media['convert_threshold']
 
         # Since this function gets called twice (CLI param + config.toml check) we have to check if the value is already converted
         try:
             if not any(x in convert_threshold for x in ['KB', 'MB']):
                 logger.critical(
-                    f'Your convert_threshold "{self.globals["convert_threshold"]}" is not valid!',
+                    f'Your convert_threshold "{self.upload_media["convert_threshold"]}" is not valid!',
                 )
                 exit(1)
 
             if 'KB' in convert_threshold:
-                self.globals['convert_threshold'] = float(convert_threshold.replace('KB', '')) * 1000
+                self.upload_media['convert_threshold'] = float(convert_threshold.replace('KB', '')) * 1000
             elif 'MB' in convert_threshold:
-                self.globals['convert_threshold'] = float(convert_threshold.replace('MB', '')) * 1000000
+                self.upload_media['convert_threshold'] = float(convert_threshold.replace('MB', '')) * 1000000
         except TypeError:
             pass
 
-        self.globals['convert_quality'] = int(self.globals['convert_quality'])
+        self.upload_media['convert_quality'] = int(self.upload_media['convert_quality'])
 
-        if self.globals['convert_quality'] > 95:
+        if self.upload_media['convert_quality'] > 95:
             logger.critical(
-                f'Your convert_quality value "{self.globals["convert_quality"]}" is higher than the max value of 95!',
+                f'Your convert_quality value "{self.upload_media["convert_quality"]}" is higher than the max value of 95!',
             )
             exit(1)
 
@@ -293,27 +282,27 @@ class Config:
 
         # Since this function gets called twice (CLI param + config.toml check) we have to check if the value is already converted
         try:
-            if not re.match(r'\d+x\d+', self.globals['shrink_dimensions']):
+            if not re.match(r'\d+x\d+', self.upload_media['shrink_dimensions']):
                 logger.critical(
-                    f'Your shrink_dimensions "{self.globals["shrink_dimensions"]}" are not valid!',
+                    f'Your shrink_dimensions "{self.upload_media["shrink_dimensions"]}" are not valid!',
                 )
                 exit(1)
             else:
-                dimensions = re.search(r'(\d+)x(\d+)', self.globals['shrink_dimensions'])
+                dimensions = re.search(r'(\d+)x(\d+)', self.upload_media['shrink_dimensions'])
                 max_width = int(dimensions.group(1))
                 max_height = int(dimensions.group(2))
-                self.globals['shrink_dimensions'] = (int(max_width), (max_height))
+                self.upload_media['shrink_dimensions'] = (int(max_width), (max_height))
         except TypeError:
             pass
 
-        self.globals['shrink_threshold'] = int(self.globals['shrink_threshold'])
+        self.upload_media['shrink_threshold'] = int(self.upload_media['shrink_threshold'])
 
     def validate_safety(self) -> None:
         """Check if default_safety is set correctly."""
 
-        if not self.globals['default_safety'] in ['safe', 'sketchy', 'unsafe']:
+        if not self.upload_media['default_safety'] in ['safe', 'sketchy', 'unsafe']:
             logger.critical(
-                f'The default_safety "{self.globals["default_safety"]}" is not valid!',
+                f'The default_safety "{self.upload_media["default_safety"]}" is not valid!',
             )
             logger.critical('Choose between safe, sketchy and unsafe.')
             exit(1)
@@ -321,7 +310,7 @@ class Config:
     def validate_szurubooru(self) -> None:
         """Check if szurubooru options are set correctly."""
 
-        if not self.szurubooru['url'] or not self.szurubooru['username'] or not self.szurubooru['api_token']:
+        if not self.globals['url'] or not self.globals['username'] or not self.globals['api_token']:
             logger.critical('You have to specify a szurubooru URL, username and API token!')
             exit(1)
 
@@ -338,5 +327,41 @@ class Config:
         else:
             self.auto_tagger['deepbooru_forced'] = False
 
-        if self.globals['shrink']:
+        if self.upload_media['shrink']:
             self.validate_shrink_attrs()
+
+    def update_upload_media_config(self, config_src: str) -> None:
+        """
+        Updates the upload media configuration with the options from the specified source.
+
+        This method updates the upload media configuration (`self.upload_media`) with the options from the specified
+        source (`config_src`). The source should be an attribute of `self` that is a dictionary. The options that are
+        updated are 'max_similarity', 'convert_to_jpg', 'convert_threshold', 'convert_quality', 'shrink',
+        'shrink_threshold', 'shrink_dimensions', and 'default_safety'. If an option does not exist in the source, it is
+        ignored.
+
+        Args:
+            config_src (str): The name of the attribute of `self` that contains the source configuration.
+
+        Raises:
+            AttributeError: If `config_src` is not an attribute of `self`.
+        """
+
+        upload_media_options = [
+            'max_similarity',
+            'convert_to_jpg',
+            'convert_threshold',
+            'convert_quality',
+            'shrink',
+            'shrink_threshold',
+            'shrink_dimensions',
+            'default_safety',
+        ]
+
+        config_src_obj = getattr(self, config_src)
+
+        for option in upload_media_options:
+            try:
+                self.upload_media[option] = config_src_obj[option]
+            except AttributeError:
+                pass
