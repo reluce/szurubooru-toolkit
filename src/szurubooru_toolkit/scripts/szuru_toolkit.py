@@ -100,7 +100,7 @@ def cli(
 
     for item, value in user_params.items():
         if item in ['url', 'username', 'api_token', 'public']:
-            ctx.obj.setdefault('szurubooru', {}).update({item: value})
+            ctx.obj.setdefault('globals', {}).update({item: value})
         elif item in ['log', 'log_colorized', 'log_file', 'log_level']:
             ctx.obj.setdefault('logging', {}).update({item: value})
         elif item in [
@@ -270,11 +270,6 @@ def click_create_tags(ctx, tag_file, query, limit, min_post_count, overwrite):
     """
     Create tags based on a tag file or query
     """
-
-    if not tag_file and not query:
-        click.echo(ctx.get_help())
-        click.echo('\nError: No option --query or --tag-file set!')
-        exit(1)
 
     for param in ctx.command.params:
         parameter_source = click.get_current_context().get_parameter_source(param.name)
