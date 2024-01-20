@@ -238,6 +238,14 @@ class Config:
             )
             exit(1)
 
+        deepbooru_path = Path(self.auto_tagger['deepbooru_model']).parent
+        tags_file = deepbooru_path / 'tags.txt'
+        if not tags_file.exists():
+            logger.critical(
+                f'File tags.txt not found. Place it in {deepbooru_path}.',
+            )
+            exit(1)
+
     def validate_convert_attrs(self) -> None:
         """Convert the threshold from a human readable to a machine readable size."""
 

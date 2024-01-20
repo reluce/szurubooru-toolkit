@@ -53,8 +53,12 @@ class Deepbooru:
             logger.critical('Model could not be read. Download it from https://github.com/KichangKim/DeepDanbooru')
             exit()
 
-        with open('./misc/deepbooru/tags.txt') as tags_stream:
-            self.tags = np.array([tag for tag in (tag.strip() for tag in tags_stream) if tag])
+        try:
+            deepbooru_path = os.path.dirname(model_path)
+            with open(deepbooru_path + '/tags.txt') as tags_stream:
+                self.tags = np.array([tag for tag in (tag.strip() for tag in tags_stream) if tag])
+        except FileNotFoundError:
+            logger.critical('tags.txt not found. Place it in the same directory as the Deepbooru model.')
 
     def tag_image(self, image: bytes, threshold: float = 0.6, set_tag: bool = True) -> tuple[list, str]:
         """
