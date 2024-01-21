@@ -20,6 +20,10 @@ from szurubooru_toolkit.scripts.auto_tagger import main as auto_tagger
 
 szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
 
+def get_image_resolution(image_bytes: bytes) -> tuple:
+    """Get the resolution of an image."""
+    with Image.open(io.BytesIO(image_bytes)) as img:
+        return img.size
 
 def get_files(upload_dir):
     """
@@ -295,7 +299,21 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_path: st
         # Tag post if enabled
         if config.upload_media['auto_tag']:
             saucenao_limit_reached = auto_tagger(str(post_id), post.media, saucenao_limit_reached, original_md5)
+    
+    #If the exact post was found in szurubooru
+    else:
+        if True:# change to optional flag for append tags
+            post.exact_post.tags = list(set().union(post.exact_post.tags, post.tags))
+            
+        if True:# change to optional flag for swap to higher res
+            post_resolution = get_image_resolution(post.media)
+            exact_post_resolution = get_image_resolution(post.exact_post.media)
 
+            if post_resolution > exact_post_resolution:
+                post.exact_post.media = post.media
+
+                
+    
     return True, saucenao_limit_reached
 
 
