@@ -305,7 +305,7 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_path: st
 
     #If the exact post was found in szurubooru
     else:
-        if True and metadata['tags']:# change True to optional flag for append tags
+        if True and metadata and metadata['tags']:# change True to optional flag for append tags
             tags = str(', '.join(metadata['tags']))
             id = str(post.exact_post['id']) if 'id' in post.exact_post else str(post.exact_post['post']['id'])
             subprocess.run(
