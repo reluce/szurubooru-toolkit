@@ -297,7 +297,9 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_path: st
         post_id = upload_file(szuru, post)
 
         if not post_id:
-            return
+            print('')
+            logger.warning(f'Error uploading post {post}.')
+            return False, False
 
         # Tag post if enabled
         if config.upload_media['auto_tag']:
