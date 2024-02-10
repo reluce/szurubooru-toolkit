@@ -216,7 +216,7 @@ def click_auto_tagger(
     module.main(query, add_tags, remove_tags)
 
 
-@cli.command('create-relations')
+@cli.command('create-relations', epilog='Example: szuru-toolkit create-relations hitori_bocchi')
 @click.argument('query')
 @click.option(
     '--threshold',
@@ -243,7 +243,7 @@ def click_create_relations(ctx, query, threshold):
     module.main(query)
 
 
-@cli.command('create-tags')
+@cli.command('create-tags', epilog='Example: szuru-toolkit create-tags --query "genshin*" --overwrite')
 @click.option(
     '--tag-file',
     help='Specify a file containing tags and categories. If specified, ignores other arguments.',
@@ -280,7 +280,7 @@ def click_create_tags(ctx, tag_file, query, limit, min_post_count, overwrite):
     module.main(tag_file)
 
 
-@cli.command('delete-posts')
+@cli.command('delete-posts', epilog='Example: szuru-toolkit delete-posts --except-ids "12,23,44" "id:10..50"')
 @click.argument('query')
 @click.option('--except-ids', help='Specify the post ids, separated by a comma, which should not be deleted.')
 @click.pass_context
@@ -304,7 +304,7 @@ def click_delete_posts(ctx, query, except_ids):
     module.main(query, except_ids)
 
 
-@cli.command('import-from-booru')
+@cli.command('import-from-booru', epilog='Example: szuru-toolkit import-from-booru --booru danbooru "tag1 tagN"')
 @click.argument('query')
 @click.option(
     '--booru',
@@ -386,7 +386,10 @@ def click_import_from_booru(
     module.main(booru, query)
 
 
-@cli.command('import-from-url')
+@cli.command(
+    'import-from-url',
+    epilog='Example: szuru-toolkit import-from-url --cookies "~/cookies.txt" --range ":100" "https://twitter.com/<USERNAME>/likes"',
+)
 @click.argument('urls', nargs=-1)
 @click.option('--input-file', help='Download URLs found in FILE')
 @click.option(
@@ -485,7 +488,7 @@ def click_import_from_url(
     module.main(list(urls), input_file, verbose)
 
 
-@cli.command('reset-posts')
+@cli.command('reset-posts', epilog='Example: szuru-toolkit reset-posts reset-posts --except-ids "2,4" --add-tags "tagme,foo" "foobar"')
 @click.argument('query')
 @click.option('--except-ids', help='Specify the post ids, separated by a comma, which should not be reset.')
 @click.option(
@@ -519,7 +522,7 @@ def click_reset_posts(ctx, query, except_ids, add_tags):
     module.main(query, except_ids, add_tags)
 
 
-@cli.command('tag-posts')
+@cli.command('tag-posts', epilog='Example: szuru-toolkit tag-posts --add-tags "foo,bar" --remove-tags "baz" "foo"')
 @click.argument('query')
 @click.option('--add-tags', help='Specify tags, separated by a comma, which will be added to all posts matching your query.')
 @click.option('--remove-tags', help='Specify tags, separated by a comma, which will be removed from all posts matching your query.')
@@ -567,7 +570,7 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, mode, update_implications
     module.main(query, add_tags, remove_tags)
 
 
-@cli.command('upload-media')
+@cli.command('upload-media', epilog='Example: szuru-toolkit upload-media --auto-tag --cleanup --tags "foo,bar"')
 @click.argument('src-path', required=False)
 @click.option('--auto-tag/--no-auto-tag', help=f'Tag posts automatically (default: {config.UPLOAD_MEDIA_DEFAULTS["auto_tag"]}).')
 @click.option(
