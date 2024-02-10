@@ -35,7 +35,7 @@ def setup_logger() -> None:
                 level=config.logging['log_level'],
                 diagnose=False,
                 format=''.join(
-                    '<lm>[{level}]</lm> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> ' '<ly>[{module}.{function}]</ly> {message}',
+                    '<lm>[{level}]</lm> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> <ly>[{module}.{function}]</ly> {message}',
                 ),
             ),
             dict(
