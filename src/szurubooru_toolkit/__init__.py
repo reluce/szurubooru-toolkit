@@ -6,10 +6,8 @@ from pybooru.moebooru import Moebooru
 from .config import Config
 from .danbooru import Danbooru  # noqa F401
 from .gelbooru import Gelbooru  # noqa F401
-from .pixiv import Pixiv
 from .szurubooru import Post  # noqa F401
 from .szurubooru import Szurubooru
-from .twitter import Twitter  # noqa F401
 from .utils import audit_rating  # noqa F401
 from .utils import collect_sources  # noqa F401
 from .utils import convert_rating  # noqa F401
@@ -37,11 +35,7 @@ logger.add(
 )
 
 config = Config()
-if (
-    config.auto_tagger['deepbooru_enabled']
-    or config.import_from_url['deepbooru_enabled']
-    or config.import_from_booru['deepbooru_enabled']
-):
+if config.auto_tagger['deepbooru_enabled'] or config.import_from_url['deepbooru_enabled'] or config.import_from_booru['deepbooru_enabled']:
     from .deepbooru import Deepbooru  # noqa F401
 
 setup_logger(config)
