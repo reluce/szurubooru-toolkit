@@ -76,6 +76,7 @@ IMPORT_FROM_URL_DEFAULTS = {
     'saucenao': False,
     'tmp_path': './tmp/gallery-dl',
     'use_twitter_artist': False,
+    'update_tags_if_exists': False,
 }
 
 RESET_POSTS_DEFAULTS = {'hide_progress': False}

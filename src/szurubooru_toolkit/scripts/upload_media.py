@@ -341,7 +341,7 @@ def upload_post(
 
     # If the exact post was found in szurubooru
     else:
-        if True and metadata and metadata['tags']:  # change True to optional flag for append tags
+        if config.import_from_url['update_tags_if_exists'] and metadata and metadata['tags']:
             id = str(post.exact_post['id']) if 'id' in post.exact_post else str(post.exact_post['post']['id'])
             config.tag_posts['mode'] = 'append'
             tag_posts.main(query=id, add_tags=metadata['tags'])

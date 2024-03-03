@@ -447,6 +447,11 @@ def click_import_from_booru(
     '--shrink-dimensions',
     help=f'Maximum width and height of the shrunken image (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_dimensions"]}).',
 )
+@click.option(
+    '--update-tags-if-exists/--dont-update-tags-if-exists',
+    is_flag=True,
+    help=f'Append new tags, if any, to already uploaded posts (default: {config.IMPORT_FROM_URL_DEFAULTS["update_tags_if_exists"]}).',
+)
 @click.option('--verbose', is_flag=True, help='Show download progress of gallery-dl script.')
 @click.pass_context
 def click_import_from_url(
