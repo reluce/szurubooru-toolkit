@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import subprocess
 from glob import glob
 from pathlib import Path
 
@@ -14,6 +13,7 @@ from tqdm import tqdm
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.scripts import auto_tagger
+from szurubooru_toolkit.scripts import tag_posts
 from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.szurubooru import Szurubooru
 from szurubooru_toolkit.utils import get_md5sum
@@ -194,7 +194,7 @@ def cleanup_dirs(dir: str) -> None:
                 pass
 
 
-def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -> tuple(bytes | str):
+def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -> tuple[bytes | str]:
     """
     Evaluate if the image should be converted or shrunk and if so, do so.
 
@@ -342,12 +342,9 @@ def upload_post(
     # If the exact post was found in szurubooru
     else:
         if True and metadata and metadata['tags']:  # change True to optional flag for append tags
-            tags = str(', '.join(metadata['tags']))
             id = str(post.exact_post['id']) if 'id' in post.exact_post else str(post.exact_post['post']['id'])
-            subprocess.run(
-                ['tag-posts', '--mode', 'append', '--add-tags', tags, id],
-                check=True,
-            )
+            config.tag_posts['mode'] = 'append'
+            tag_posts.main(query=id, add_tags=metadata['tags'])
 
     return True, saucenao_limit_reached
 
@@ -358,14 +355,14 @@ def main(
     file_ext: str = None,
     metadata: dict = None,
     saucenao_limit_reached: bool = False,
-) -> int:
+) -> bool:
     """
     Main logic of the script.
 
     This function is the entry point of the script. It takes a source path or a file to upload, and optionally a file
     extension and metadata. If no file to upload is provided, it will look for files in the source path. If no source
-    path is provided, it will use the source path from the configuration. It then uploads each file found and logs the
-    number of files uploaded.
+    path is provided, it will use the source path from the configuration. It then uploads each file found and returns
+    whether the SauceNAO limit has been reached.
 
     Args:
         src_path (str, optional): The source path where to look for files to upload. Defaults to ''.
@@ -375,7 +372,7 @@ def main(
         saucenao_limit_reached (bool, optional): If the SauceNAO limit has been reached. Defaults to False.
 
     Returns:
-        int: The number of files uploaded.
+        bool: If the SauceNAO limit has been reached.
 
     Raises:
         KeyError: If no files are found to upload and no source path is specified.
@@ -385,16 +382,16 @@ def main(
         if not file_to_upload:
             try:
                 files_to_upload = src_path if src_path else get_files(config.upload_media['src_path'])
-                from_import_from = False
+                called_externally = False
             except KeyError:
                 logger.critical('No files found to upload. Please specify a source path.')
         else:
             files_to_upload = file_to_upload
-            from_import_from = True
+            called_externally = True
             config.upload_media['hide_progress'] = True
 
         if files_to_upload:
-            if not from_import_from:
+            if not called_externally:
                 logger.info('Found ' + str(len(files_to_upload)) + ' file(s). Starting upload...')
 
                 try:
@@ -411,6 +408,7 @@ def main(
                 ):
                     with open(file_path, 'rb') as f:
                         file = f.read()
+
                     success, saucenao_limit_reached = upload_post(
                         file,
                         file_ext=Path(file_path).suffix[1:],
@@ -425,7 +423,7 @@ def main(
                 if config.upload_media['cleanup']:
                     cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
 
-                if not from_import_from:
+                if not called_externally:
                     logger.success('Script has finished uploading!')
 
             else:
