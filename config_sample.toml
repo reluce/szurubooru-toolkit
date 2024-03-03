@@ -67,6 +67,7 @@ shrink = false
 shrink_threshold = 6000000
 shrink_dimensions = "2500x2500"
 default_safety = "safe"
+update_tags_if_exists = false
 hide_progress = false
 
 [reset_posts]
