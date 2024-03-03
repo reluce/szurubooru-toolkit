@@ -5,6 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.black]
 line-length = 140
 skip-string-normalization = true
+preview = true
 
 [tool.isort]
 line_length = 120
@@ -17,7 +18,7 @@ force_single_line = true
 
 [tool.poetry]
 name = "szurubooru-toolkit"
-version = "0.9.5"
+version = "1.0.0"
 description = "Python package and script collection to manage szurubooru."
 authors = ["reluce <reluce@fkosquad.moe>"]
 license = "GPL-3.0-only"
@@ -27,23 +28,12 @@ documentation = "https://github.com/reluce/szurubooru-toolkit"
 keywords = ["szurubooru", "szuru", "booru", "saucenao", "deepbooru"]
 
 [tool.poetry.scripts]
-auto-tagger = 'szurubooru_toolkit.scripts.auto_tagger:main'
-upload-media = 'szurubooru_toolkit.scripts.upload_media:main'
-create-tags = 'szurubooru_toolkit.scripts.create_tags:main'
-create-relations = 'szurubooru_toolkit.scripts.create_relations:main'
-import-from-url = 'szurubooru_toolkit.scripts.import_from_url:main'
-import-from-booru = 'szurubooru_toolkit.scripts.import_from_booru:main'
-import-from-twitter = 'szurubooru_toolkit.scripts.import_from_twitter:main'
-tag-posts = 'szurubooru_toolkit.scripts.tag_posts:main'
-delete-posts = 'szurubooru_toolkit.scripts.delete_posts:main'
-reset-posts = 'szurubooru_toolkit.scripts.reset_posts:main'
-# szuru-toolkit = 'szurubooru_toolkit.scripts.szuru_toolkit:cli'
+szuru-toolkit = 'szurubooru_toolkit.scripts.szuru_toolkit:cli'
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
 Pillow = "^9.5.0"
 Pybooru="^4.2.2"
-pygelbooru="^0.5.0"
 pysaucenao="^1.6.1"
 requests="^2.25.1"
 tqdm="^4.65.0"
@@ -51,11 +41,8 @@ tensorflow="^2.12.0"
 keras="^2.12.0"
 numpy="^1.23.5"
 pyszuru="^0.3.1"
-syncer = "^2.0.3"
 loguru = "^0.7.0"
-pathvalidate = "^2.5.2"
 validators = "^0.20.0"
-lxml = "^4.9.2"
 gallery-dl = "^1.26.5"
 cunnypy = "^2.0.0"
 tldextract = "^3.4.4"
@@ -65,6 +52,5 @@ pixivpy3 = "^3.7.4"
 [tool.poetry.dev-dependencies]
 black = "^23.0.0"
 flake8 = "^6.0.0"
-interrogate = "^1.5.0"
 isort = "^5.10.1"
 pre-commit = "^3.0.0"

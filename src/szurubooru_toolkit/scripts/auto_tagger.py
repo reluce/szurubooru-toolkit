@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import argparse
 import asyncio
-from sys import argv
 from time import sleep
 
 from loguru import logger
@@ -10,10 +8,10 @@ from PIL import UnidentifiedImageError
 from pyszuru import SzurubooruHTTPError
 from tqdm import tqdm
 
-from szurubooru_toolkit import Post
-from szurubooru_toolkit import SauceNao
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
+from szurubooru_toolkit.saucenao import SauceNao
+from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import download_media
 from szurubooru_toolkit.utils import prepare_post
@@ -22,74 +20,21 @@ from szurubooru_toolkit.utils import shrink_img
 from szurubooru_toolkit.utils import statistics
 
 
-def parse_args() -> tuple:
-    """Parse the input args to the script auto_tagger.py and set the variables accordingly."""
-
-    parser = argparse.ArgumentParser(
-        description='This script will automagically tag your szurubooru posts based on your input query.',
-    )
-
-    parser.add_argument(
-        '--add-tags',
-        default=None,
-        help='Specify tags, separated by a comma, which will be added to all posts matching your query.',
-    )
-
-    parser.add_argument(
-        '--remove-tags',
-        default=None,
-        help='Specify tags, separated by a comma, which will be removed from all posts matching your query.',
-    )
-
-    parser.add_argument(
-        'query',
-        help='Specify a single post id to tag or a szuru query. E.g. "date:today tag-count:0"',
-    )
-
-    # Don't parse the query (should be latest arg), as it might contain a dash (-) to negative the search token
-    # Otherwise, parse_args() would interpret it as an argument
-    # args.query results in the script name, but we use argv[-1] to extract the query
-    # As -h won't get interpreted with this approach, we have to implement it manually
-    if any(help_str in ['-h', '-help', '--help'] for help_str in argv):
-        parser.print_help()
-        exit()
-    args = parser.parse_args(argv[:-1])
-    query = argv[-1]
-
-    logger.debug(f'query = {query}')
-
-    # if 'type:' in query:
-    #     logger.critical('Search token "type" is not allowed in queries!')
-    #     exit()
-
-    if '\'' in query:
-        logger.warning(
-            'Your query contains single quotes (\'). ' 'Consider using double quotes (") if the script doesn\'t behave as intended.',
-        )
-
-    add_tags = args.add_tags
-    remove_tags = args.remove_tags
-
-    if add_tags:
-        logger.debug(f'add_tags = {add_tags}')
-        add_tags = add_tags.replace(' ', '').split(',')
-    if remove_tags:
-        remove_tags = remove_tags.replace(' ', '').split(',')
-        logger.debug(f'remove_tags = {remove_tags}')
-
-    return query, add_tags, remove_tags
-
-
 def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes) -> tuple[list, str, str, bool]:
-    """Retrieve results from SauceNAO with the `image` to be uploaded.
+    """
+    Retrieves the SauceNAO results for a given image.
+
+    This function sends the image to the SauceNAO API using the provided SauceNao object. It then processes the results
+    and searches the boorus for additional data. If the SauceNAO limit has been reached, it sets a flag to indicate this.
 
     Args:
-        sauce (SauceNao): SauceNao object.
-        post (Post): szurubooru Post object.
-        image (bytes): The image to uploade to upload to SauceNAO.
+        sauce (SauceNao): A SauceNao object to use for the SauceNAO API.
+        post (Post): A szurubooru Post object representing the post to be uploaded.
+        image (bytes): The image to be uploaded to SauceNAO.
 
     Returns:
-        tuple[list, str, str, bool]: List of tags, the source, rating and if the SauceNAO limit has been reached.
+        tuple[list, str, str, bool]: A tuple containing a list of tags, the source, rating, and a boolean indicating
+                                      whether the SauceNAO limit has been reached.
     """
 
     results = {}
@@ -106,28 +51,32 @@ def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes) -> tuple[lis
     if not limit_long == 0:
         # Sleep 35 seconds after short limit has been reached
         if limit_short == 0:
-            print('')
             logger.debug('Short limit reached for SauceNAO, trying again in 35s...')
             sleep(35)
     else:
         limit_reached = True
-        print('')
         logger.info('Your daily SauceNAO limit has been reached. Consider upgrading your account.')
 
-    if limit_reached and config.auto_tagger['deepbooru_enabled']:
-        config.auto_tagger['saucenao_enabled'] = False
+    if limit_reached and config.auto_tagger['deepbooru']:
+        config.auto_tagger['saucenao'] = False
         logger.info('Continuing tagging with Deepbooru only...')
 
     return results, limit_reached
 
 
 def set_tags_from_relations(post: Post) -> None:
-    """Copy artist, character and series from relations.
+    """
+    Copies artist, character, and parody tags from related posts.
 
-    Useful for FANBOX/Fantia sets where only the main post is uploaded to a Booru.
+    This function is useful for FANBOX/Fantia sets where only the main post is uploaded to a Booru. It iterates over the
+    relations of the provided post and retrieves each related post from szurubooru. It then iterates over the tags of the
+    related post and adds any artist, character, or series tag to the tags of the provided post.
 
     Args:
-        post (Post): szurubooru Post object.
+        post (Post): A szurubooru Post object representing the post to which to add tags.
+
+    Returns:
+        None
     """
 
     for relation in post.relations:
@@ -139,30 +88,59 @@ def set_tags_from_relations(post: Post) -> None:
 
 
 def print_statistics(total_posts):
+    """
+    Prints the statistics of the tagging process.
+
+    This function retrieves the statistics of the tagging process by calling the `statistics` function. It then logs
+    these statistics, including the total number of posts, the number of tagged posts, the number of posts tagged by
+    Deepbooru, the number of untagged posts, and the number of skipped posts.
+
+    Args:
+        total_posts (int): The total number of posts processed.
+
+    Returns:
+        None
+    """
+
     total_tagged, total_deepbooru, total_untagged, total_skipped = statistics()
 
     logger.success('Script has finished tagging.')
-    logger.success(f'Total:     {total_posts}')
-    logger.success(f'Tagged:    {str(total_tagged)}')
-    logger.success(f'Deepbooru: {str(total_deepbooru)}')
-    logger.success(f'Untagged:  {str(total_untagged)}')
-    logger.success(f'Skipped:   {str(total_skipped)}')
+    logger.info(f'Total:     {total_posts}')
+    logger.info(f'Tagged:    {str(total_tagged)}')
+    logger.info(f'Deepbooru: {str(total_deepbooru)}')
+    logger.info(f'Untagged:  {str(total_untagged)}')
+    logger.info(f'Skipped:   {str(total_skipped)}')
 
 
 @logger.catch
-def main(post_id: str = None, file_to_upload: bytes = None, limit_reached: bool = False, md5: str = '') -> None:  # noqa C901
-    """Automatically tag posts with SauceNAO and/or Deepbooru.
+def main(  # noqa C901
+    query: str = '',
+    add_tags: list = [],
+    remove_tags: list = [],
+    post_id: str = None,
+    file_to_upload: bytes = None,
+    limit_reached: bool = False,
+    md5: str = '',
+) -> None:
+    """
+    Automatically tag posts with tags from SauceNAO, Booru posts matching the MD5 hash and/or Deepbooru.
 
-    To auto tag a specific post, supply the `post_id` of the szurubooru post.
-    You can also provide `file_to_upload` in case the file is already locally available so
-    it doesn't have to get downloaded.
+    This function can be used to auto tag a specific post by supplying the `post_id` of the szurubooru post. It can also
+    accept a `file_to_upload` in case the file is already locally available so it doesn't have to get downloaded.
 
-    If called with no arguments, read from command line arguments.
+    If called with no arguments, it reads from command line arguments.
 
     Args:
+        query (str, optional): The query to use for retrieving posts. Defaults to ''.
+        add_tags (list, optional): Tags to add to the post. Defaults to '[]
+        remove_tags (list, optional): Tags to remove from the post. Defaults to [].
         post_id (str, optional): The `post_id` of the szurubooru post. Defaults to None.
         file_to_upload (bytes, optional): If set, will be uploaded to SauceNAO directly. Defaults to None.
-        md5 (str): If set, will search boorus with given md5 hash instead of the one from the post. Defaults to ''.
+        limit_reached (bool, optional): If set, indicates that the SauceNAO limit has been reached. Defaults to False.
+        md5 (str, optional): If set, will search boorus with given md5 hash instead of the one from the post. Defaults to ''.
+
+    Returns:
+        None
     """
 
     try:
@@ -170,33 +148,31 @@ def main(post_id: str = None, file_to_upload: bytes = None, limit_reached: bool 
         # change output and behaviour of this script
         from_upload_media = True if post_id else False
 
-        if not from_upload_media:
-            logger.info('Initializing script...')
+        if from_upload_media:
+            hide_progress = True
         else:
-            config.auto_tagger['hide_progress'] = True
+            logger.info(f'Retrieving posts from {config.globals["url"]} with query "{query}"...')
 
-        if not config.auto_tagger['saucenao_enabled'] and not config.auto_tagger['deepbooru_enabled']:
+        if not config.auto_tagger['saucenao'] and not config.auto_tagger['deepbooru'] and not config.auto_tagger['md5_search']:
             logger.info('Nothing to do. Enable either SauceNAO or Deepbooru in your config.')
             exit()
 
         # If posts are being tagged directly from upload-media script
         if not from_upload_media:
-            query, add_tags, remove_tags = parse_args()
+            try:
+                hide_progress = config.globals['hide_progress']
+            except KeyError:
+                hide_progress = config.auto_tagger['hide_progress']
         else:
             query = post_id
-            add_tags = None
-            remove_tags = None
 
-        if config.auto_tagger['saucenao_enabled']:
+        if config.auto_tagger['saucenao']:
             sauce = SauceNao(config)
 
-        if config.auto_tagger['deepbooru_enabled']:
-            from szurubooru_toolkit import Deepbooru
+        if config.auto_tagger['deepbooru']:
+            from szurubooru_toolkit.deepbooru import Deepbooru
 
             deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
-
-        if not from_upload_media:
-            logger.info(f'Retrieving posts from {config.szurubooru["url"]} with query "{query}"...')
 
         posts = szuru.get_posts(query, videos=True)
 
@@ -215,12 +191,12 @@ def main(post_id: str = None, file_to_upload: bytes = None, limit_reached: bool 
                 ncols=80,
                 position=0,
                 leave=False,
-                disable=config.auto_tagger['hide_progress'],
+                disable=hide_progress,
                 total=int(total_posts),
             ),
         ):
             # Search boorus by md5 hash of the file
-            if config.auto_tagger['md5_search_enabled']:
+            if config.auto_tagger['md5_search']:
                 if md5:
                     md5_results = asyncio.run(search_boorus('all', 'md5:' + md5, 1, 0))
                 else:
@@ -238,7 +214,7 @@ def main(post_id: str = None, file_to_upload: bytes = None, limit_reached: bool 
             # This might be the case if this function was called from upload_media.
             if not file_to_upload:
                 if (
-                    (not config.szurubooru['public'] or config.auto_tagger['deepbooru_enabled']) or config.auto_tagger['deepbooru_forced']
+                    (not config.globals['public'] or config.auto_tagger['deepbooru']) or config.auto_tagger['deepbooru_forced']
                 ) and post.type != 'video':
                     image = download_media(post.content_url, post.md5)
                     # Shrink files >2MB
@@ -253,7 +229,7 @@ def main(post_id: str = None, file_to_upload: bytes = None, limit_reached: bool 
                 image = file_to_upload
 
             # Search SauceNAO with file
-            if config.auto_tagger['saucenao_enabled'] and post.type != 'video' and not limit_reached:
+            if config.auto_tagger['saucenao'] and post.type != 'video' and not limit_reached:
                 sauce_results, limit_reached = get_saucenao_results(sauce, post, image)
 
                 if sauce_results:
@@ -267,8 +243,7 @@ def main(post_id: str = None, file_to_upload: bytes = None, limit_reached: bool 
             # Tag with Deepbooru.
             pixiv_result_only = True if len(tags_by_sauce) < 2 else False
             if (
-                (not tags_by_md5 and pixiv_result_only and config.auto_tagger['deepbooru_enabled'])
-                or config.auto_tagger['deepbooru_forced']
+                (not tags_by_md5 and pixiv_result_only and config.auto_tagger['deepbooru']) or config.auto_tagger['deepbooru_forced']
             ) and post.type != 'video':
                 result = deepbooru.tag_image(
                     image,
@@ -329,7 +304,7 @@ def main(post_id: str = None, file_to_upload: bytes = None, limit_reached: bool 
             if not tags_by_md5 and not tags_by_sauce and not tags_by_deepbooru:
                 statistics(untagged=1)
 
-            if limit_reached and not config.auto_tagger['deepbooru_enabled']:
+            if limit_reached and not config.auto_tagger['deepbooru']:
                 statistics(untagged=int(total_posts) - index - 1)  # Index starts at 0
                 break
 
@@ -338,9 +313,11 @@ def main(post_id: str = None, file_to_upload: bytes = None, limit_reached: bool 
         else:
             return limit_reached
     except KeyboardInterrupt:
-        print('')
         logger.info('Received keyboard interrupt from user.')
-        print_statistics(from_upload_media, total_posts)
+        try:
+            print_statistics(total_posts)
+        except UnboundLocalError:
+            print_statistics(0)
         exit(1)
 
 

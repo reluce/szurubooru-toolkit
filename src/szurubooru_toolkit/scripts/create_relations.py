@@ -1,5 +1,3 @@
-import argparse
-
 from loguru import logger
 from pyszuru import Tag
 from pyszuru.api import SzurubooruHTTPError
@@ -9,37 +7,18 @@ from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 
 
-def parse_args() -> tuple:
-    """Parse the input args to the script create_relations.py and set the variables accordingly."""
-
-    parser = argparse.ArgumentParser(
-        description='Create relations between character and parody tag categories',
-    )
-
-    parser.add_argument(
-        '--hide-progress',
-        default=False,
-        help='Hide the progress bar.',
-    )
-
-    parser.add_argument(
-        'query',
-        default='*',
-        help='Search for specific tags (default: "*").',
-    )
-    args = parser.parse_args()
-
-    return args.query, args.hide_progress
-
-
 def collect_related_tags(tags: list[Tag]) -> list[Tag]:
-    """Collect all character and parody tags from a tag list.
+    """
+    Collect all character and parody tags from a tag list.
+
+    This function iterates over a list of szurubooru Tag objects and adds any tag whose category is 'character', 'parody',
+    or 'series' to a new list. It then returns this new list.
 
     Args:
-        tags (list): List with tag objects.
+        tags (list[Tag]): A list of szurubooru Tag objects to process.
 
     Returns:
-        related_tags (list[Tag]): List of tag objects where category is either character or parody.
+        list[Tag]: A list of szurubooru Tag objects whose category is 'character', 'parody', or 'series'.
     """
 
     related_tags = []
@@ -52,13 +31,19 @@ def collect_related_tags(tags: list[Tag]) -> list[Tag]:
 
 
 def update_tag(tag: Tag, relation: Tag) -> None:
-    """Update the tags implications or suggestions.
+    """
+    Updates the implications or suggestions of a tag based on a related tag.
 
-    The update will only be pushed if the relation is not already present in the tag itself.
+    This function checks the category of the provided tag and the related tag. If the tag is a character tag and the
+    related tag is a parody or series tag, it adds the related tag as an implication for the tag. If the tag is a parody
+    or series tag and the related tag is a character tag, it adds the related tag as a suggestion for the tag.
+
+    The function only adds the related tag as an implication or suggestion if it's not already present in the tag's
+    implications or suggestions. After adding the related tag, it pushes the changes to szurubooru.
 
     Args:
-        tag (Tag): Szurubooru tag object
-        relation (Tag): Szurubooru tag object with relation to tag
+        tag (Tag): A szurubooru Tag object to update.
+        relation (Tag): A szurubooru Tag object that is related to the tag.
 
     Returns:
         None
@@ -77,19 +62,20 @@ def update_tag(tag: Tag, relation: Tag) -> None:
 
 
 def evaluate_relations(tag: Tag, relation: Tag, found_relations: dict) -> None:
-    """Evaluate if the tag relation is valid.
+    """
+    Evaluates if the relation between two tags is valid.
 
-    This is done by searching the possible relation of two tags on szurubooru.
-    If the count of search results is above the configured threshold, the relation is valid.
+    This function checks the possible relation of two tags on szurubooru. If the count of search results is above the
+    configured threshold, the relation is considered valid.
 
-    Also check relation against found_relations. Update the tag with the new relation only
-    if the relation was not already set before.
+    It also checks the relation against `found_relations`. It updates the tag with the new relation only if the relation
+    was not already set before.
 
     Args:
-        tag (Tag): Szurubooru tag object
-        relation (Tag): Szurubooru tag object with possible relation to tag
-        found_relations (dict): Dictionary which keeps track of already matched relations.
-            The key is the tags name while its value is a list of matched relations.
+        tag (Tag): A szurubooru Tag object.
+        relation (Tag): A szurubooru Tag object with a possible relation to `tag`.
+        found_relations (dict): A dictionary which keeps track of already matched relations. The key is the tag's name
+                                while its value is a list of matched relations.
 
     Returns:
         None
@@ -117,14 +103,16 @@ def evaluate_relations(tag: Tag, relation: Tag, found_relations: dict) -> None:
 
 
 def check_found_relations(related_tags: list[Tag], found_relations: dict) -> None:
-    """Check each tag in related_tags if it's been matched already in found_relations.
+    """
+    Checks each tag in related_tags if it's been matched already in found_relations.
 
-    If not, continue to update it's relation.
+    This function iterates over a list of szurubooru Tag objects and checks each tag against a dictionary of found
+    relations. If the tag has not been matched already, it calls `evaluate_relations` to check if the relation is valid.
 
     Args:
-        related_tags (list[Tag]):  List of tag objects where category is either character or parody.
-        found_relations (dict): Dictionary which keeps track of already matched relations.
-            The key is the tags name while its value is a list of matched relations.
+        related_tags (list[Tag]): List of tag objects where category is either character or parody.
+        found_relations (dict): Dictionary which keeps track of already matched relations. The key is the tag's name
+                                while its value is a list of matched relations.
 
     Returns:
         None
@@ -146,14 +134,25 @@ def check_found_relations(related_tags: list[Tag], found_relations: dict) -> Non
 
 
 @logger.catch
-def main() -> None:
-    """Create relations between character and parody tag categories.
+def main(query: str) -> None:
+    """
+    Create relations between character and parody tag categories.
 
     Parody will be added as an implication to characters while characters will be added as suggestions to parodies.
+
+    Args:
+        query (str): The query to use for retrieving posts.
+
+    Returns:
+        None
     """
 
     try:
-        query, hide_progress = parse_args()
+        try:
+            hide_progress = config.globals['hide_progress']
+        except KeyError:
+            hide_progress = config.create_relations['hide_progress']
+
         # Use this method to only retrieve the total amount of posts.
         # Otherwise using szuru.api.search_post(query), we would have to use len(list(<generator>)),
         # which would take too much time (and also consume the generator).
@@ -183,7 +182,6 @@ def main() -> None:
                     break
                 except SzurubooruHTTPError as e:
                     if 'SearchError: Unknown named token' in str(e):
-                        print('')
                         logger.warning(f'Skipping tag: {str(e)}')
                         continue
 
@@ -198,10 +196,9 @@ def main() -> None:
             related_tags = collect_related_tags(post.tags)
             check_found_relations(related_tags, found_relations)
 
-        logger.success('Script finished creating relations!')
+        logger.success('Finished creating relations!')
         exit(0)
     except KeyboardInterrupt:
-        print('')
         logger.info('Received keyboard interrupt from user.')
         exit(1)
 

@@ -19,7 +19,11 @@ class Deepbooru:
     """Handles everything related to guessing tags based on machine learning."""
 
     def __init__(self, model_path: str) -> None:
-        """Initializes a Deepbooru object and loads the `model_path`.
+        """
+        Initializes a Deepbooru object and loads the DeepDanbooru model.
+
+        This method initializes a Deepbooru object and loads the DeepDanbooru model from the provided path. It also enables
+        numpy behavior for TensorFlow.
 
         Args:
             model_path (str): The local path to the DeepDanbooru model.
@@ -29,40 +33,58 @@ class Deepbooru:
         np_config.enable_numpy_behavior()
 
     def load_model(self, model_path: str) -> None:
-        """Loads the DeepDanbooru model.
+        """
+        Loads the Deepbooru model.
+
+        This method loads the Deepbooru model from the provided path. If the model cannot be loaded, it logs the error and
+        exits the program. It also loads the tags from a text file and stores them in a numpy array.
 
         Args:
-            model_path (str): _description_
+            model_path (str): The local path to the Deepbooru model.
+
+        Raises:
+            Exception: If the model cannot be loaded.
         """
 
         try:
             self.model = tf.keras.models.load_model(model_path, compile=False)
         except Exception as e:
             logger.debug(e)
-            print('')
             logger.critical('Model could not be read. Download it from https://github.com/KichangKim/DeepDanbooru')
             exit()
 
-        with open('./misc/deepbooru/tags.txt') as tags_stream:
-            self.tags = np.array([tag for tag in (tag.strip() for tag in tags_stream) if tag])
+        try:
+            deepbooru_path = os.path.dirname(model_path)
+            with open(deepbooru_path + '/tags.txt') as tags_stream:
+                self.tags = np.array([tag for tag in (tag.strip() for tag in tags_stream) if tag])
+        except FileNotFoundError:
+            logger.critical('tags.txt not found. Place it in the same directory as the Deepbooru model.')
 
     def tag_image(self, image: bytes, threshold: float = 0.6, set_tag: bool = True) -> tuple[list, str]:
-        """Guesses the tags and rating of the provided image from `image_path`.
+        """
+        Guesses the tags and rating of the provided image from `image_path`.
+
+        This method guesses the tags and rating of the provided image. It opens the image, converts it to RGB, resizes it to
+        512x512, and normalizes it. Then it uses the Deepbooru model to predict the tags and rating of the image. If the
+        prediction accuracy is above the provided threshold, it adds the tag to the list of guessed tags. It also guesses the
+        rating of the image based on the predicted tags.
 
         Args:
             image (bytes): The image in bytes which tags and rating should be guessed.
-            threshhold (float): The accuracy threshold of the guessed tags, 1 being 100%. Defaults to `0.6`.
-            set_tag (bool): Add tag "deepbooru"
+            threshold (float): The accuracy threshold of the guessed tags, 1 being 100%. Defaults to `0.6`.
+            set_tag (bool): Add tag "deepbooru".
 
         Returns:
             tuple[list, str]: A tuple with the guessed tags as a `list` and the rating as a `str`.
+
+        Raises:
+            Exception: If the image cannot be opened.
         """
 
         try:
             with Image.open(BytesIO(image)) as opened_image:
                 image = np.array(opened_image.convert('RGB').resize((512, 512))) / 255.0
         except Exception:
-            print('')
             logger.warning('Failed to convert image to Deepbooru format')
             return
 
@@ -79,7 +101,6 @@ class Deepbooru:
         rating = 'unsafe'
 
         if not tags:
-            print('')
             logger.warning('Deepbooru could not guess tags for image!')
         else:
             try:
@@ -87,7 +108,6 @@ class Deepbooru:
                 logger.debug(f'Guessed rating {rating}')
                 del tags[-1]
             except IndexError:
-                print('')
                 logger.warning('Could not guess rating for image! Defaulting to unsafe.')
 
             if set_tag:

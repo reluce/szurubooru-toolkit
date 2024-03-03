@@ -19,12 +19,20 @@ class Szurubooru:
     """
 
     def __init__(self, szuru_url: str, szuru_user: str, szuru_token: str) -> None:
-        """Initializes the `szurubooru` and `pyszuru` object with our credentials.
+        """
+        Initializes the `szurubooru` and `pyszuru` object with our credentials.
+
+        This method initializes a szurubooru object and sets up the client. It uses the provided szuru_url, szuru_user,
+        and szuru_token to authenticate with the Szurubooru API. It also sets up the headers for the requests and
+        initializes the pyszuru API object.
 
         Args:
             szuru_url (str): The base URL of the szurubooru instance.
             szuru_user (str): The szurubooru user which interacts with the API.
             szuru_token (str): The API token from `szuru_user`.
+
+        Returns:
+            None
         """
 
         logger.debug(f'szuru_user = {szuru_user}')
@@ -104,19 +112,24 @@ class Szurubooru:
         pagination: bool = True,
         videos: bool = False,
     ) -> Generator[str | Post, None, None]:
-        """Return the found post ids of the supplied query.
+        """
+        Retrieves posts from szurubooru based on a query.
 
-        Video files like mp4 or webm will be ignored.
+        This method retrieves posts from szurubooru based on a query. If the query is numeric, it modifies the query to
+        search by ID. If the query contains a token that is not allowed, it sanitizes the token. It then retrieves the
+        posts and yields them one by one. If pagination is enabled, it retrieves all pages of results. If videos are
+        enabled, it includes video posts in the results.
 
         Args:
-            query (str): The szurubooru search query.
-            pagination (bool): If the offset should be adjusted when searching through pages.
-                Disabling this only makes sense if posts are being deleted.
-                This won't behave like real a search limit!
-            videos (bool): If mp4 and webms should be included from the search query
+            query (str): The query to use to retrieve the posts.
+            pagination (bool, optional): Whether to retrieve all pages of results. Defaults to True.
+            videos (bool, optional): Whether to include video posts in the results. Defaults to False.
 
         Yields:
-            Generator[str | Post, None, None]: Will yield the total amount of search results first, then Post objects.
+            Union[str, Post]: The retrieved posts.
+
+        Raises:
+            Exception: If an error occurs while retrieving the posts.
         """
 
         if query.isnumeric():
@@ -144,8 +157,7 @@ class Szurubooru:
             response = response_json.json()
             # logger.debug(f'Got following response: {response}')
 
-            if 'name' in response and response['name'] == 'SearchError':
-                print('')
+            if 'name' in response and response['name'] in ['SearchError', 'UserNotFoundError']:
                 logger.critical(f'{response["name"]}: {response["description"]}')
                 raise UnknownTokenError(response['description'])
 
@@ -180,16 +192,20 @@ class Szurubooru:
             exit()
 
     def parse_post(self, response: dict) -> Post:
-        """Parses the dict response from szurubooru and returns a Post object with only the relevant metadata.
+        """
+        Parses a post from a Szurubooru API response.
+
+        This method parses a post from a szurubooru API response. It creates a new Post object and sets its attributes
+        based on the response. It sets the ID, source, content URL, version, relations, MD5 checksum, type, and safety of
+        the post. It also parses the tags of the post and adds them to the Post object.
 
         Args:
-            response (dict): Response from a szurubooru query.
+            response (dict): The Szurubooru API response to parse.
 
         Returns:
-            Post: Post object with relevant metadata.
+            Post: The parsed Post object.
         """
 
-        # logger.debug(f'Parsing post with input: {response}')
         post = Post()
 
         post.id = str(response['id'])
@@ -212,10 +228,19 @@ class Szurubooru:
         return post
 
     def update_post(self, post: Post) -> None:
-        """Update the input Post object in szurubooru with its updated metadata values.
+        """
+        Update the input Post object in szurubooru with its updated metadata values.
+
+        This method updates a post in Szurubooru with its updated metadata values. It constructs a URL to the post in the
+        Szurubooru API and a payload with the updated metadata. It then sends a PUT request to the URL with the payload. If
+        the request is successful, it logs that the post was updated. If an error occurs, it logs the error and raises an
+        exception.
 
         Args:
-            Post: Post object with relevant metadata.
+            post (Post): The Post object with relevant metadata to update.
+
+        Raises:
+            Exception: If an error occurs while updating the post.
         """
 
         logger.debug(f'Updating following post: {post}')
@@ -231,35 +256,45 @@ class Szurubooru:
             if 'description' in response.json():
                 raise Exception(response.json()['description'])
         except Exception as e:
-            print('')
             logger.warning(f'Could not edit your post: {e}')
 
     @staticmethod
     def encode_auth_headers(user: str, token: str) -> str:
-        """Creates an authentication header from the user and token.
+        """
+        Encodes the authentication headers for szurubooru.
 
-        This header is needed to interact with the szurubooru API.
+        This method encodes the authentication headers for szurubooru. It takes a user and a token, concatenates them with
+        a colon in between, encodes the result in UTF-8, base64 encodes the result, and then decodes the result in ASCII.
+        It returns the final result as a string.
 
         Args:
-            szuru_user (str): The szurubooru user which interacts with the API.
-            szuru_token (str): The API token from `szuru_user`.
+            user (str): The szurubooru user.
+            token (str): The szurubooru token.
 
         Returns:
-            str: The encoded base64 authentication header.
+            str: The encoded authentication headers.
         """
 
         return b64encode(f'{user}:{token}'.encode()).decode('ascii')
 
     def create_tag(self, tag_name: str, category: str, overwrite: bool = False) -> None:
-        """Create tag in szurubooru.
+        """
+        Creates a new tag in szurubooru.
+
+        This method creates a new tag in szurubooru. It constructs a URL to the tags endpoint in the szurubooru API and a
+        payload with the tag name and category. It then sends a POST request to the URL with the payload. If the request is
+        successful, it logs that the tag was created. If an error occurs, it logs the error and raises an exception. If the
+        tag already exists and overwrite is True, it updates the category of the existing tag. If the tag already exists
+        and overwrite is False, it raises a TagExistsError.
 
         Args:
-            tag_name (str): The name of the tag to be created.
-            category (str): The tag's category (needs to already exist).
-            overwrite (bool): If the tag's category should be overwritten.
+            tag_name (str): The name of the tag to create.
+            category (str): The category of the tag to create.
+            overwrite (bool, optional): Whether to overwrite the category of the tag if it already exists. Defaults to False.
 
         Raises:
-            Exception: With the error description from the szurubooru API.
+            TagExistsError: If the tag already exists and overwrite is False.
+            Exception: If an error occurs while creating the tag.
         """
 
         query_url = self.szuru_api_url + '/tags'
@@ -285,10 +320,18 @@ class Szurubooru:
             pass
 
     def delete_post(self, post: Post) -> None:
-        """Delete the input Post object in szurubooru. Related posts and tags are kept.
+        """
+        Deletes a post in szurubooru.
+
+        This method deletes a post in szurubooru. It constructs a URL to the post in the szurubooru API and a payload with
+        the post's version. It then sends a DELETE request to the URL with the payload. If the request is successful, it
+        logs that the post was deleted. If an error occurs, it logs the error and raises an exception.
 
         Args:
-            Post: Post object with relevant metadata.
+            post (Post): The Post object to delete.
+
+        Raises:
+            Exception: If an error occurs while deleting the post.
         """
 
         logger.debug(f'Deleting following post: {post}')
@@ -303,7 +346,6 @@ class Szurubooru:
             if 'description' in response.json():
                 raise Exception(response.json()['description'])
         except Exception as e:
-            print('')
             logger.warning(f'Could not delete your post: {e}')
 
 
@@ -311,7 +353,15 @@ class Post:
     """Boilerlate Post object which contains relevant metadata for a szurubooru post."""
 
     def __init__(self) -> None:
-        """Initializes a Post object with default attributes."""
+        """
+        Initializes a Post object with default attributes.
+
+        This method initializes a Post object with default attributes. It sets the ID, source, content URL, version,
+        relations, tags, safety, MD5 checksum, and type of the post to their default values.
+
+        Returns:
+            None
+        """
 
         self.id: str = None
         self.source: str = None
@@ -324,10 +374,15 @@ class Post:
         self.type = None
 
     def __repr__(self) -> str:
-        """Returns the current attributes of this object.
+        """
+        Returns a string representation of the Post object.
+
+        This method returns a string representation of the Post object. It includes the ID, source, content URL, version,
+        relations, tags, and safety of the post in the string. The source is sanitized to replace newline characters with
+        '\\n'. The string is formatted and returned.
 
         Returns:
-            str: A formatted string with currently set attributes.
+            str: A string representation of the Post object.
         """
 
         source = str(self.source).replace('\n', '\\n')

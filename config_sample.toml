@@ -1,118 +1,93 @@
-[szurubooru]
+[globals]
 url = "https://szuru.example.com"
-username = "my_szuru_user"  # Username which connects to the Szuruboori API
-api_token = "my_api_token"  # See the README.md on how to generate one
-public = false  # Is your szurubooru reachable over the internet?
+username = "my_szuru_user"
+api_token = "my_api_token"
+public = false
+hide_progress = false
 
-[auto_tagger]
-saucenao_api_token = "my_saucenao_api_token"  # In case you want to increase your daily query limit
-saucenao_enabled = true  # Set this to false and deepbooru_enabled to true if you only want to tag with DeepBooru
-md5_search_enabled = true  # Search file with their MD5 hash on Boorus
-deepbooru_enabled = false
-deepbooru_model = "./misc/deepbooru/model-resnet_custom_v3.h5"
-deepbooru_threshold = "0.7"  # Define how accurate the matched tag from DeepBooru has to be
-deepbooru_forced = false  # Always tag with SauceNAO and Deepbooru
-deepbooru_set_tag = true  # Tag Deepbooru post with tag "deepbooru"
-hide_progress = false  # Set this to true to hide the progress bar
-use_pixiv_artist = false  # If the artist could only be found on pixiv, create and use the pixiv artist. Category has to be 'artist'.
-use_pixiv_tags = false  # Tag posts with the original pixiv tags
-update_relations = true  # Set character <> parody relation if SauceNAO is disabled (or limit reached) and Deepbooru enabled
-
-# Leave those options as "None" if you have no accounts on these sites
-[danbooru]
-user = "None"
-api_key = "None"
-[gelbooru]
-user = "None"
-api_key = "None"
-[konachan]
-user = "None"
-password = "None"
-[yandere]
-user = "None"
-password = "None"
-[sankaku]
-user = "None"
-password = "None"
-[pixiv]
+[credentials]
+[credentials.pixiv]
 token = "None"
-[twitter]
-user_id = "None"  # The user id which should be queried.
-consumer_key = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
-consumer_secret = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
-access_token = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
-access_token_secret = "None"  # See https://developer.twitter.com/en/docs/authentication/oauth-1-0a
-
-[upload_media]
-src_path = "/local/path/to/upload/dir"  # Every valid media file under this dir (recursively) will get uploaded
-hide_progress = false  # Set this to true to hide the progress bar
-cleanup = false  # Set this to true if images in the source directory should be deleted after upload
-tags = ["tagme"]  # These tags will get set for all uploaded posts
-auto_tag = true  # Set this to true if you want your post to be automatically tagged after upload
-max_similarity = "0.99"  # 1.00 being basically the same image, but not necessarily. Set to 1.00 if you know there are not duplicates.
-convert_to_jpg = false  # Convert images to JPG to save disk space. This won't overwrite the source files and only affects the uploaded image. Images might slip through identical post check.
-convert_threshold = "3MB"  # Convert images only if specified threshold has been broken.
-convert_quality = "90"  # Set up to 95. Higher means better quality, but takes up more disk space.
-shrink = false  # Set to true to shrink images to shrink_dimensions based on shrink_threshold below. Images might slip through identical post check.
-shrink_threshold = "6000000"  # Images which total pixel size exceeds this treshold will be resized to shrink_size. E.g. 2000x3000 results in 6000000.
-shrink_dimensions = "2500x2500"  # Set the max value for width/height. Keeps aspect ratio. E.g. 2000x4000 results in 700x1400, 4000x2000 in 1400x700.
-default_safety = "safe"  # Set the default safety in case neither SauceNAO, nor Deepbooru could determine it
-
-[import_from_booru]
-deepbooru_enabled = true  # Apply Deepbooru tagging additionally besides fetched tags from Booru
-hide_progress = false  # Set this to true to hide the progress bar
-# Following settings apply from upload_media as well:
-# max_similarity
-# convert_to_jpg
-# convert_threshold
-# shrink
-# shrink_threshold
-# shrink_dimensions
-# default_safety
-
-[import_from_url]
-deepbooru_enabled = true  # Apply Deepbooru tagging additionally besides fetched tags from URL
-tmp_path = './tmp/gallery_dl'
-hide_progress = false  # Set this to true to hide the progress bar
-use_twitter_artist = false  # Set this to true to create the Twitter username + nickname as tags. Tries to query Danbooru first for these names (if they're aliases).
-# Following settings apply from upload_media as well:
-# max_similarity
-# convert_to_jpg
-# convert_threshold
-# shrink
-# shrink_threshold
-# shrink_dimensions
-
-[import_from_twitter]
-saucenao_enabled = true  # Tag posts with SauceNAO
-deepbooru_enabled = false  # Tag posts with Deepbooru
-hide_progress = false  # Set this to true to hide the progress barions
-# Following settings apply from upload_media as well:
-# max_similarity
-# convert_to_jpg
-# convert_threshold
-# shrink
-# shrink_threshold
-# shrink_dimensions
-# default_safety
-
-[tag_posts]
-hide_progress = false  # Set this to true to hide the progress bar
-
-[delete_posts]
-hide_progress = false  # Set this to true to hide the progress bar
-
-[reset_posts]
-hide_progress = false  # Set this to true to hide the progress bar
-
-[create_tags]
-hide_progress = false  # Set this to true to hide the progress bar
-
-[create_relations]
-threshold = "3"  # Set how many posts should exist at minimum with character + parody to create their relation
 
 [logging]
 log_enabled = false
-log_file = "szurubooru_toolkit.log"  # If no full path is specified, the log file gets created in the current working directory
-log_level = "DEBUG"
-log_colorized = true  # Set this to false if your log viewer has trouble parsing the file. less -r or tail -f works just fine.
+log_file = "szurubooru_toolkit.log"
+log_level = "INFO"
+log_colorized = true
+
+[auto_tagger]
+saucenao_api_token = "my_saucenao_api_token"
+saucenao = true
+md5_search = true
+deepbooru = false
+deepbooru_model = "./misc/deepbooru/model-resnet_custom_v3.h5"
+deepbooru_threshold = 0.7
+deepbooru_forced = false
+deepbooru_set_tag = true
+use_pixiv_artist = false
+use_pixiv_tags = false
+update_relations = true
+hide_progress = false
+
+[create_relations]
+threshold = 3
+hide_progress = false
+
+[create_tags]
+limit = 100
+min_post_count = 10
+query = '*'
+overwrite = false
+hide_progress = false
+
+[delete_posts]
+hide_progress = false
+
+[import_from_booru]
+deepbooru = false
+max_similarity = "0.95"
+convert_to_jpg = false
+convert_threshold = "3MB"
+convert_quality = 90
+shrink = false
+shrink_threshold = 6000000
+shrink_dimensions = "2500x2500"
+default_safety = "safe"
+hide_progress = false
+
+[import_from_url]
+deepbooru = false
+tmp_path = './tmp/gallery_dl'
+use_twitter_artist = false
+max_similarity = "0.95"
+convert_to_jpg = false
+convert_threshold = "3MB"
+convert_quality = 90
+shrink = false
+shrink_threshold = 6000000
+shrink_dimensions = "2500x2500"
+default_safety = "safe"
+hide_progress = false
+
+[reset_posts]
+hide_progress = false
+
+[tag_posts]
+update_implications = false
+mode = 'append'
+hide_progress = false
+
+[upload_media]
+src_path = "/local/path/to/upload/dir"
+cleanup = false
+tags = ["tagme"]
+auto_tag = true
+max_similarity = "0.95"
+convert_to_jpg = false
+convert_threshold = "3MB"
+convert_quality = 90
+shrink = false
+shrink_threshold = 6000000
+shrink_dimensions = "2500x2500"
+default_safety = "safe"
+hide_progress = false

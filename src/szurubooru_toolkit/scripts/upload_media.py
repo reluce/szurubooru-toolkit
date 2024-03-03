@@ -3,38 +3,35 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
 from glob import glob
 from pathlib import Path
-import subprocess
 
 import requests
 from loguru import logger
 from tqdm import tqdm
 
-from szurubooru_toolkit import Post
-from szurubooru_toolkit import Szurubooru
 from szurubooru_toolkit import config
-from szurubooru_toolkit import get_md5sum
-from szurubooru_toolkit import shrink_img
-from szurubooru_toolkit.scripts.auto_tagger import main as auto_tagger
+from szurubooru_toolkit import szuru
+from szurubooru_toolkit.scripts import auto_tagger
+from szurubooru_toolkit.szurubooru import Post
+from szurubooru_toolkit.szurubooru import Szurubooru
+from szurubooru_toolkit.utils import get_md5sum
+from szurubooru_toolkit.utils import shrink_img
 
 
-szuru = Szurubooru(config.szurubooru['url'], config.szurubooru['username'], config.szurubooru['api_token'])
-
-def get_image_resolution(image_bytes: bytes) -> tuple:
-    """Get the resolution of an image."""
-    with Image.open(io.BytesIO(image_bytes)) as img:
-        return img.size
-
-def get_files(upload_dir):
+def get_files(upload_dir: str) -> list:
     """
     Reads recursively images/videos from upload_dir.
 
+    This function searches for files with the extensions 'jpg', 'jpeg', 'png', 'mp4', 'webm', 'gif', 'swf', and 'webp'
+    in the specified directory and its subdirectories.
+
     Args:
-        upload_dir: The directory on the local system which contains the images/videos you want to upload
+        upload_dir (str): The directory on the local system which contains the images/videos you want to upload.
 
     Returns:
-        files: A list which contains the full path of each found images/videos (includes subdirectories)
+        list: A list which contains the full path of each found images/videos (includes subdirectories).
     """
 
     allowed_extensions = ['jpg', 'jpeg', 'png', 'mp4', 'webm', 'gif', 'swf', 'webp']
@@ -47,9 +44,11 @@ def get_files(upload_dir):
 
 
 def get_media_token(szuru: Szurubooru, media: bytes) -> str:
-    """Upload the media file to the temporary upload endpoint.
+    """
+    Upload the media file to the temporary upload endpoint.
 
-    We can access our temporary file with the token which receive from the response.
+    This function uploads a media file to the temporary upload endpoint of szurubooru and returns the token received
+    from the response. This token can be used to access the temporary file.
 
     Args:
         szuru (Szurubooru): A szurubooru object.
@@ -59,7 +58,8 @@ def get_media_token(szuru: Szurubooru, media: bytes) -> str:
         str: A token from szurubooru.
 
     Raises:
-        Exception
+        Exception: If the response contains a 'description' field, an exception is raised with the description as the
+                   error message.
     """
 
     post_url = szuru.szuru_api_url + '/uploads'
@@ -77,17 +77,23 @@ def get_media_token(szuru: Szurubooru, media: bytes) -> str:
 
 
 def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
-    """Do a reverse image search with the temporary uploaded image.
+    """
+    Do a reverse image search with the temporary uploaded image.
+
+    This function uses the temporary image token to perform a reverse image search on szurubooru. It returns a tuple
+    containing the metadata of the exact match post and a list of similar posts, if any.
 
     Args:
-        image_token: An image token from szurubooru
+        szuru (Szurubooru): A szurubooru object.
+        image_token (str): An image token from szurubooru.
 
     Returns:
-        exact_post: Includes meta data of the post if an exact match was found
-        similar_posts: Includes a list with all similar posts
+        tuple: A tuple containing the metadata of the exact match post and a list of similar posts, if any.
+        None: If no exact match or similar posts are found.
 
     Raises:
-        Exception
+        Exception: If the response contains a 'description' field, an exception is raised with the description as the
+                   error message.
     """
 
     post_url = szuru.szuru_api_url + '/posts/reverse-search'
@@ -104,23 +110,26 @@ def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
             errors = False
             return exact_post, similar_posts, errors
     except Exception as e:
-        print('')
         logger.warning(f'An error occured during the similarity check: {e}. Skipping post...')
         errors = True
         return False, [], errors
 
 
 def upload_file(szuru: Szurubooru, post: Post) -> None:
-    """Uploads/Moves our temporary image to 'production' with similar posts if any were found.
+    """
+    Uploads the temporary image to szurubooru, making it visible to all users.
 
-    Deletes file after upload has been completed.
+    This function uploads a temporary image to szurubooru, making it accessible and visible to all users. It also sets
+    the tags, safety, source, relations, and contentToken of the post. If similar posts were found during the similarity
+    check, they are added as relations. The file is deleted after the upload has been completed.
 
     Args:
-        szuru (Szurubooru): Szurubooru object to interact with the API.
+        szuru (Szurubooru): A szurubooru object.
         post (Post): Post object with attr `similar_posts` and `image_token`.
 
     Raises:
-        Exception
+        Exception: If the response contains a 'description' field, an exception is raised with the description as the
+                   error message.
 
     Returns:
         None
@@ -148,19 +157,23 @@ def upload_file(szuru: Szurubooru, post: Post) -> None:
         else:
             return response.json()['id']
     except Exception as e:
-        print('')
         logger.warning(f'An error occured during the upload for file "{post.file_path}": {e}')
         return None
 
 
 def cleanup_dirs(dir: str) -> None:
-    """Remove empty directories recursively from bottom to top.
+    """
+    Remove empty directories recursively from bottom to top.
+
+    This function removes empty directories under the specified directory, starting from the deepest level and working
+    its way up. It also removes 'Thumbs.db' files created by Windows and '@eaDir' directories created on Synology systems.
+    The root directory itself is not deleted.
 
     Args:
         dir (str): The directory under which to cleanup - dir is the root level and won't get deleted.
 
     Raises:
-        OSError
+        OSError: If an error occurs while removing a directory.
 
     Returns:
         None
@@ -181,17 +194,22 @@ def cleanup_dirs(dir: str) -> None:
                 pass
 
 
-def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -> bytes:
-    """Evaluate if the image should be converted or shrunk and if so, do so.
+def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -> tuple(bytes | str):
+    """
+    Evaluate if the image should be converted or shrunk and if so, do so.
+
+    This function checks if the image file should be converted to a different format or shrunk based on the global
+    configuration settings. If the image is a PNG and its size is greater than the conversion threshold, it will be
+    converted to a JPG. If the 'shrink' setting is enabled, the image will also be shrunk.
 
     Args:
         file (bytes): The file as a byte string.
         file_ext (str): The file extension without a dot.
-        file_to_upload (str): The file path of the file to upload (only for logging).
+        file_to_upload (str, optional): The file path of the file to upload (only for logging). Defaults to None.
 
     Returns:
-        bytes: The (converted) file as a byte string.
-        original_md5 (str): The md5 sum of the original file.
+        Tuple[bytes, str]: The (possibly converted and/or shrunk) file as a byte string and the MD5 sum of the original
+                           file.
     """
 
     file_size = len(file)
@@ -232,23 +250,35 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
                 shrink_dimensions=config.upload_media['shrink_dimensions'],
             )
     except OSError:
-        print('')
         logger.warning(f'Could not shrink image {file_to_upload}. Keeping dimensions...')
 
     return image, original_md5
 
 
-def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_path: str = None, saucenao_limit_reached: bool = False) -> bool:
-    """Uploads given file to temporary file space in szurubooru.
+def upload_post(
+    file: bytes,
+    file_ext: str,
+    metadata: dict = None,
+    file_path: str = None,
+    saucenao_limit_reached: bool = False,
+) -> tuple[bool, bool]:
+    """
+    Uploads given file to szurubooru and checks for similar posts.
+
+    This function uploads a file to szurubooru and checks for similar posts. If the file is not a video or GIF, it is
+    evaluated for conversion or shrinking. The file is then uploaded to szurubooru and a similarity check is performed.
+    If any errors occur during the similarity check, the function returns False.
 
     Args:
-        file (bytes): The file as bytes
-        file_ext (str): The file extension
+        file (bytes): The file as bytes.
+        file_ext (str): The file extension.
         metadata (dict, optional): Attach metadata to the post. Defaults to None.
         file_path (str, optional): The path to the file (used for debugging). Defaults to None.
+        saucenao_limit_reached (bool, optional): If the SauceNAO limit has been reached. Defaults to False.
 
     Returns:
-        bool: If the upload was successful or not
+        Tuple[bool, bool]: A tuple where the first element indicates if the upload was successful or not, and the second
+                           element indicates if the SauceNAO limit has been reached.
     """
 
     post = Post()
@@ -303,11 +333,16 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_path: st
 
         # Tag post if enabled
         if config.upload_media['auto_tag']:
-            saucenao_limit_reached = auto_tagger(str(post_id), post.media, saucenao_limit_reached, original_md5)
+            saucenao_limit_reached = auto_tagger.main(
+                post_id=str(post_id),
+                file_to_upload=post.media,
+                limit_reached=saucenao_limit_reached,
+                md5=original_md5,
+            )
 
-    #If the exact post was found in szurubooru
+    # If the exact post was found in szurubooru
     else:
-        if True and metadata and metadata['tags']:# change True to optional flag for append tags
+        if True and metadata and metadata['tags']:  # change True to optional flag for append tags
             tags = str(', '.join(metadata['tags']))
             id = str(post.exact_post['id']) if 'id' in post.exact_post else str(post.exact_post['post']['id'])
             subprocess.run(
@@ -318,13 +353,42 @@ def upload_post(file: bytes, file_ext: str, metadata: dict = None, file_path: st
     return True, saucenao_limit_reached
 
 
-def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = None, saucenao_limit_reached: bool = False) -> int:
-    """Main logic of the script."""
+def main(
+    src_path: str = '',
+    file_to_upload: bytes = None,
+    file_ext: str = None,
+    metadata: dict = None,
+    saucenao_limit_reached: bool = False,
+) -> int:
+    """
+    Main logic of the script.
+
+    This function is the entry point of the script. It takes a source path or a file to upload, and optionally a file
+    extension and metadata. If no file to upload is provided, it will look for files in the source path. If no source
+    path is provided, it will use the source path from the configuration. It then uploads each file found and logs the
+    number of files uploaded.
+
+    Args:
+        src_path (str, optional): The source path where to look for files to upload. Defaults to ''.
+        file_to_upload (bytes, optional): A specific file to upload. Defaults to None.
+        file_ext (str, optional): The file extension of the file to upload. Defaults to None.
+        metadata (dict, optional): Metadata to attach to the post. Defaults to None.
+        saucenao_limit_reached (bool, optional): If the SauceNAO limit has been reached. Defaults to False.
+
+    Returns:
+        int: The number of files uploaded.
+
+    Raises:
+        KeyError: If no files are found to upload and no source path is specified.
+    """
 
     try:
         if not file_to_upload:
-            files_to_upload = get_files(config.upload_media['src_path'])
-            from_import_from = False
+            try:
+                files_to_upload = src_path if src_path else get_files(config.upload_media['src_path'])
+                from_import_from = False
+            except KeyError:
+                logger.critical('No files found to upload. Please specify a source path.')
         else:
             files_to_upload = file_to_upload
             from_import_from = True
@@ -334,12 +398,17 @@ def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = No
             if not from_import_from:
                 logger.info('Found ' + str(len(files_to_upload)) + ' file(s). Starting upload...')
 
+                try:
+                    hide_progress = config.globals['hide_progress']
+                except KeyError:
+                    hide_progress = config.tag_posts['hide_progress']
+
                 for file_path in tqdm(
                     files_to_upload,
                     ncols=80,
                     position=0,
                     leave=False,
-                    disable=config.upload_media['hide_progress'],
+                    disable=hide_progress,
                 ):
                     with open(file_path, 'rb') as f:
                         file = f.read()
@@ -367,11 +436,9 @@ def main(file_to_upload: bytes = None, file_ext: str = None, metadata: dict = No
         else:
             logger.info('No files found to upload.')
     except KeyboardInterrupt:
-        print('')
         logger.info('Received keyboard interrupt from user.')
         exit(1)
 
 
 if __name__ == '__main__':
     main()
-    
