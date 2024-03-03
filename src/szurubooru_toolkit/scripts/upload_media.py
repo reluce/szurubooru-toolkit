@@ -300,7 +300,6 @@ def upload_post(
     unique_media = not post.exact_post
     for entry in similar_posts:
         if entry['distance'] < threshold and unique_media:
-            print()
             logger.debug(
                 f'File "{file_path} is too similar to post {entry["post"]["id"]} ({100 - entry["distance"]}%)',
             )
@@ -327,7 +326,7 @@ def upload_post(
         post_id = upload_file(szuru, post)
 
         if not post_id:
-            print('')
+            print()
             logger.warning(f'Error uploading post {post}.')
             return False, False
 
