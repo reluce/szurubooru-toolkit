@@ -6,10 +6,41 @@
 
 # szurubooru-toolkit
 Python package and script collection to manage your [szurubooru](https://github.com/rr-/szurubooru) image board.
+```
+Usage: szuru-toolkit [OPTIONS] COMMAND [ARGS]...
 
+  Toolkit to manage your szurubooru image board.
+
+  Defaults can also be set in a config file.
+
+  Visit https://github.com/reluce/szurubooru-toolkit for more information.
+
+Options:
+  --url TEXT                      Base URL to your szurubooru instance.
+  --username TEXT                 Username which will be used to authenticate with the szurubooru API.
+  --api-token TEXT                API token for the user which will be used to authenticate with the szurubooru API.
+  --public                        If your szurubooru instance is reachable from the internet (default: False).
+  --log-enabled                   Create a log file (default: False).
+  --log-colorized                 Colorize the log output (default: True).
+  --log-file TEXT                 Output file for the log (default: szurubooru_toolkit.log)
+  --log-level [DEBUG|INFO|WARNING|ERROR|CRITICAL]
+                                  Set the log level (default: INFO).
+  --hide-progress                 Hides the progress bar (default: False).
+  -h, --help                      Show this message and exit.
+
+Commands:
+  auto-tagger        Tag posts automatically
+  create-relations   Create relations between character and parody tag categories
+  create-tags        Create tags based on a tag file or query
+  delete-posts       Delete posts
+  import-from-booru  Download and tag posts from various Boorus
+  import-from-url    Download images from URLS or file containing URLs
+  reset-posts        Remove tags and sources
+  tag-posts          Tag posts manually
+  upload-media       Upload media files
+```
 ## :ballot_box_with_check: Requirements
 In order to run `szuru-toolkit`, Python `3.11` is required.
-
 
 ## :hammer_and_wrench: Installation
 This package is available on [PyPI](https://pypi.org/project/szurubooru-toolkit/) and can be installed with pip:
