@@ -349,7 +349,7 @@ def upload_post(
         if config.import_from_url['update_tags_if_exists'] and metadata and metadata['tags']:
             id = str(post.exact_post['id']) if 'id' in post.exact_post else str(post.exact_post['post']['id'])
             config.tag_posts['mode'] = 'append'
-            tag_posts.main(query=id, add_tags=metadata['tags'], additional_source=post.source)
+            tag_posts.main(query=id, add_tags=metadata['tags'], additional_source=metadata['source'])
 
     return True, saucenao_limit_reached
 

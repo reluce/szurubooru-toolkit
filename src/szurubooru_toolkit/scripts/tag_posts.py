@@ -50,8 +50,9 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], additional_sou
             if mode == 'append':
                 if add_tags:
                     post.tags = list(set().union(post.tags, add_tags))
-                if additional_source and additional_source not in post.source:
-                    post.source = post.source + "\n" + additional_source if post.source else additional_source
+                if additional_source:
+                    post.source = add_strings_if_not_present(post.source,additional_source)
+                         
             elif mode == 'overwrite':
                 if add_tags:
                     post.tags = add_tags
@@ -75,6 +76,20 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], additional_sou
         logger.info('Received keyboard interrupt from user.')
         exit(1)
 
+def add_strings_if_not_present(main_string, additional_string):
+    
+    #Check to seed if post.source is already empty
+    if not post.source:
+        additional_string
+
+    additional_strings = additional_string.split('\n')
+    
+    # Add each additional string to the main string if it's not already present
+    for string in additional_strings:
+        if string.strip() and string.strip() not in main_string:
+            main_string += '\n' + string.strip()
+    
+    return main_string
 
 if __name__ == '__main__':
     main()
