@@ -17,7 +17,7 @@ from szurubooru_toolkit.scripts import tag_posts
 from szurubooru_toolkit.scripts.import_from_url import set_tags
 from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.szurubooru import Szurubooru
-from szurubooru_toolkit.utils import convert_rating, extract_twitter_artist, get_md5sum
+from szurubooru_toolkit.utils import convert_rating, extract_twitter_artist, get_md5sum, get_site
 from szurubooru_toolkit.utils import shrink_img
 
 
@@ -417,8 +417,8 @@ def main(
                         if os.path.exists(str(file_path) + '.json'):
                             with open(file_path + '.json') as json_file:
                                 metadata = json.load(json_file)
-                                metadata['site'] = ''
-                                metadata['source'] = metadata.get('source')
+                                metadata['site'] = get_site(metadata['file_url'])
+                                metadata['source'] = metadata.get('source') + '\n' + metadata.get('file_url')
 
                                 if 'rating' in metadata:
                                     metadata['safety'] = convert_rating(metadata['rating'])
