@@ -79,7 +79,7 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], additional_sou
 def add_strings_if_not_present(main_string, additional_string):
     
     #Check to seed if post.source is already empty
-    if not post.source:
+    if not main_string:
         additional_string
 
     additional_strings = additional_string.split('\n')
