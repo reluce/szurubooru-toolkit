@@ -42,22 +42,6 @@ def set_tags(metadata: dict) -> list:
     artist = ''
     allow_tags_for_sites = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere', 'fanbox', 'pixiv', 'twitter']
 
-    if metadata['site'] in allow_tags_for_sites:
-        try:
-            if metadata['site'] in ['fanbox', 'pixiv']:
-                metadata['tags'] = convert_tags(metadata['tags'])
-            elif metadata['site'] == 'twitter':
-                metadata['tags'] = convert_tags(metadata['hashtags'])
-            else:
-                if isinstance(metadata['tags'], str):
-                    metadata['tags'] = metadata['tags'].split()
-        except KeyError:
-            if isinstance(metadata['tag_string'], str):
-                metadata['tags'] = metadata['tag_string'].split()
-            else:
-                metadata['tags'] = []
-    else:
-        metadata['tags'] = []
 
     if metadata['site'] in ['fanbox', 'pixiv', 'e-hentai']:
         if metadata['site'] == 'e-hentai':
@@ -77,8 +61,22 @@ def set_tags(metadata: dict) -> list:
             canon_artist = Pixiv.extract_pixiv_artist(artist)
             if canon_artist:
                 metadata['tags'].append(canon_artist)
+    else:
+        try:
+            if metadata['site'] in ['fanbox', 'pixiv']:
+                metadata['tags'] = convert_tags(metadata['tags'])
+            elif metadata['site'] == 'twitter':
+                metadata['tags'] = convert_tags(metadata['hashtags'])
+            else:
+                if isinstance(metadata['tags'], str):
+                    metadata['tags'] = metadata['tags'].split()
+        except KeyError:
+            if isinstance(metadata['tag_string'], str):
+                metadata['tags'] = metadata['tag_string'].split()
+            else:
+                metadata['tags'] = []
 
-    return metadata['tags']
+        return metadata['tags']
 
 
 @logger.catch
@@ -156,6 +154,7 @@ def main(urls: list = [], input_file: str = '', verbose: bool = False) -> None:
 
     saucenao_limit_reached = False
 
+    #Everything below should be moved to upload_media
     for file in tqdm(
         files,
         ncols=80,

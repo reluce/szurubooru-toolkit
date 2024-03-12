@@ -6,7 +6,7 @@ from szurubooru_toolkit import szuru
 
 
 @logger.catch
-def main(query: str, add_tags: list = [], remove_tags: list = []) -> None:
+def main(query: str, add_tags: list = [], remove_tags: list = [], additional_source: str = None) -> None:
     """
     Retrieve the posts from input query, set post.tags based on mode and update them in szurubooru.
 
@@ -50,9 +50,13 @@ def main(query: str, add_tags: list = [], remove_tags: list = []) -> None:
             if mode == 'append':
                 if add_tags:
                     post.tags = list(set().union(post.tags, add_tags))
+                if additional_source and additional_source not in post.source:
+                    post.source = post.source + "\n" + additional_source if post.source else additional_source
             elif mode == 'overwrite':
                 if add_tags:
                     post.tags = add_tags
+                if additional_source:
+                    post.source = additional_source                
 
             if remove_tags:
                 post.tags = [tag for tag in post.tags if tag not in remove_tags]
@@ -64,7 +68,6 @@ def main(query: str, add_tags: list = [], remove_tags: list = []) -> None:
                         szuru_implication = szuru.api.getTag(implication)
                         if szuru_implication not in post.tags:
                             post.tags.append(szuru_implication.primary_name)
-
             szuru.update_post(post)
 
         logger.success('Finished tagging!')

@@ -14,9 +14,10 @@ from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.scripts import auto_tagger
 from szurubooru_toolkit.scripts import tag_posts
+from szurubooru_toolkit.scripts.import_from_url import set_tags
 from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.szurubooru import Szurubooru
-from szurubooru_toolkit.utils import get_md5sum
+from szurubooru_toolkit.utils import convert_rating, extract_twitter_artist, get_md5sum
 from szurubooru_toolkit.utils import shrink_img
 
 
@@ -255,6 +256,8 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
     return image, original_md5
 
 
+
+
 def upload_post(
     file: bytes,
     file_ext: str,
@@ -281,7 +284,9 @@ def upload_post(
                            element indicates if the SauceNAO limit has been reached.
     """
 
+
     post = Post()
+    post.source = None
     original_md5 = ''
 
     if file_ext not in ['mp4', 'webm', 'gif']:
@@ -344,7 +349,7 @@ def upload_post(
         if config.import_from_url['update_tags_if_exists'] and metadata and metadata['tags']:
             id = str(post.exact_post['id']) if 'id' in post.exact_post else str(post.exact_post['post']['id'])
             config.tag_posts['mode'] = 'append'
-            tag_posts.main(query=id, add_tags=metadata['tags'])
+            tag_posts.main(query=id, add_tags=metadata['tags'], additional_source=post.source)
 
     return True, saucenao_limit_reached
 
@@ -390,6 +395,8 @@ def main(
             called_externally = True
             config.upload_media['hide_progress'] = True
 
+        
+
         if files_to_upload:
             if not called_externally:
                 logger.info('Found ' + str(len(files_to_upload)) + ' file(s). Starting upload...')
@@ -406,19 +413,65 @@ def main(
                     leave=False,
                     disable=hide_progress,
                 ):
-                    with open(file_path, 'rb') as f:
-                        file = f.read()
+                    if not os.path.isdir(file_path) and not file_path.endswith(('.txt', '.json')):
+                        if os.path.exists(str(file_path) + '.json'):
+                            with open(file_path + '.json') as json_file:
+                                metadata = json.load(json_file)
+                                metadata['site'] = ''
+                                metadata['source'] = metadata.get('source')
 
-                    success, saucenao_limit_reached = upload_post(
-                        file,
-                        file_ext=Path(file_path).suffix[1:],
-                        file_path=file_path,
-                        saucenao_limit_reached=saucenao_limit_reached,
-                    )
+                                if 'rating' in metadata:
+                                    metadata['safety'] = convert_rating(metadata['rating'])
+                                else:
+                                    metadata['safety'] = config.upload_media['default_safety']
 
-                    if config.upload_media['cleanup'] and success:
-                        if os.path.exists(file_path):
-                            os.remove(file_path)
+                                if 'tags' in metadata or 'tag_string' in metadata or 'hashtags' in metadata:
+                                    metadata['tags'] = set_tags(metadata)
+                                else:
+                                    metadata['tags'] = []
+
+                                # As Twitter doesn't provide any tags compared to other sources, we try to auto tag it.
+                                if metadata['site'] == 'twitter':
+                                    metadata['tags'] += extract_twitter_artist(metadata)
+                                    config.auto_tagger['md5_search_enabled'] = True
+                                    config.auto_tagger['saucenao_enabled'] = True
+                                else:
+                                    config.auto_tagger['md5_search_enabled'] = False
+                                    config.auto_tagger['saucenao_enabled'] = False
+                        elif os.path.exists(str(file_path) + '.txt'):
+                            with open(str(file_path) + '.txt') as txt_file:
+                                tags = txt_file.read().splitlines()
+                            metadata = {
+                                'safety': config.upload_media['default_safety'],
+                                'tags': tags,
+                                'site': '',
+                                'source': ''
+                            }
+                        else:
+                            metadata = {
+                                'safety': config.upload_media['default_safety'],
+                                'tags': 'tagme',
+                                'site': '',
+                                'source': ''
+                            }
+                        with open(file_path, 'rb') as f:
+                            file = f.read()
+
+                        success, saucenao_limit_reached = upload_post(
+                            file,
+                            file_ext=Path(file_path).suffix[1:],
+                            file_path=file_path,
+                            metadata=metadata,
+                            saucenao_limit_reached=saucenao_limit_reached,
+                        )
+
+                        if config.upload_media['cleanup'] and success:
+                            if os.path.exists(file_path):
+                                os.remove(file_path)
+                            if os.path.exists(str(file) + '.json'):
+                                os.remove(str(file) + '.json')
+                            if os.path.exists(str(file) + '.txt'):
+                                os.remove(str(file) + '.txt')
 
                 if config.upload_media['cleanup']:
                     cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted

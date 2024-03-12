@@ -472,6 +472,7 @@ def click_import_from_url(
     shrink_threshold,
     shrink_dimensions,
     verbose,
+    update_tags_if_exists,
 ):
     """
     Download images from URLS or file containing URLs
@@ -499,6 +500,11 @@ def click_import_from_url(
 @click.option(
     '--add-tags',
     help='Specify tags, separated by a comma, which will be added to all posts matching your query after resetting.',
+)
+@click.option(
+    '--update-tags-if-exists/--dont-update-tags-if-exists',
+    is_flag=True,
+    help=f'Append new tags, if any, to already uploaded posts (default: {config.IMPORT_FROM_URL_DEFAULTS["update_tags_if_exists"]}).',
 )
 @click.pass_context
 def click_reset_posts(ctx, query, except_ids, add_tags):

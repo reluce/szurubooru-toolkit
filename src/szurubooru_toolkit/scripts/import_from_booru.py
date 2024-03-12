@@ -38,7 +38,7 @@ def main(booru: str, query: str) -> None:
             'danbooru': 'https://danbooru.donmai.us/posts?tags=',
             'gelbooru': 'https://gelbooru.com/index.php?page=post&s=list&tags=',
             'konachan': 'https://konachan.com/post?tags=',
-            'sankaku': 'https://chan.sankakucomplex.com/?tags=',
+            'sankaku': 'https://sankaku.app/?tags=',
             'yandere': 'https://yande.re/post?tags=',
         }
 
