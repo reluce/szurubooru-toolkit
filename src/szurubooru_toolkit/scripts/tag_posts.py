@@ -6,7 +6,7 @@ from szurubooru_toolkit import szuru
 
 
 @logger.catch
-def main(query: str, add_tags: list = [], remove_tags: list = [], additional_source: str = None) -> None:
+def main(query: str, add_tags: list = [], remove_tags: list = []) -> None:
     """
     Retrieve the posts from input query, set post.tags based on mode and update them in szurubooru.
 
@@ -50,14 +50,9 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], additional_sou
             if mode == 'append':
                 if add_tags:
                     post.tags = list(set().union(post.tags, add_tags))
-                if additional_source:
-                    post.source = add_strings_if_not_present(post.source,additional_source)
-                         
             elif mode == 'overwrite':
                 if add_tags:
-                    post.tags = add_tags
-                if additional_source:
-                    post.source = additional_source                
+                    post.tags = add_tags              
 
             if remove_tags:
                 post.tags = [tag for tag in post.tags if tag not in remove_tags]

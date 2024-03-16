@@ -346,13 +346,37 @@ def upload_post(
 
     # If the exact post was found in szurubooru
     else:
-        if config.import_from_url['update_tags_if_exists'] and metadata and metadata['tags']:
+        if config.import_from_url['update_tags_if_exists'] and metadata and ( metadata['tags'] or metadata['source'] or metadata['safety']):
             id = str(post.exact_post['id']) if 'id' in post.exact_post else str(post.exact_post['post']['id'])
-            config.tag_posts['mode'] = 'append'
-            tag_posts.main(query=id, add_tags=metadata['tags'], additional_source=metadata['source'])
+           
+            updated_post = szuru.get_posts(id, videos=True)
+            discard = next(updated_post)
+            updated_post = next(updated_post)
+            if isinstance(updated_post, Post):
+                updated_post.tags = list(set().union(updated_post.tags, metadata['tags']))
+                updated_post.source = add_strings_if_not_present(post.source, metadata['source'])
+                updated_post.safety = metadata['safety']
+                szuru.update_post(updated_post)
+            else:
+                logger.warning(f"Expected a Post object but received a {type(updated_post)}: {updated_post}")
 
+            
     return True, saucenao_limit_reached
 
+def add_strings_if_not_present(main_string, additional_string):
+    
+    #Check to seed if post.source is already empty
+    if not main_string:
+        additional_string
+
+    additional_strings = additional_string.split('\n')
+    
+    # Add each additional string to the main string if it's not already present
+    for string in additional_strings:
+        if string.strip() and string.strip() not in main_string:
+            main_string += '\n' + string.strip()
+    
+    return main_string
 
 def main(
     src_path: str = '',
