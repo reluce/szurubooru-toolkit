@@ -327,6 +327,12 @@ def upload_post(
         post.similar_posts = []
         for entry in similar_posts:
             post.similar_posts.append(entry['post']['id'])
+        
+        if not post.safety:
+            post.safety = config.upload_media['default_safety']
+
+        if post.tags == [] and config.upload_media['tags']:
+            post.tags = config.upload_media['tags']
 
         post_id = upload_file(szuru, post)
 
@@ -355,7 +361,7 @@ def upload_post(
             if isinstance(updated_post, Post):
                 updated_post.tags = list(set().union(updated_post.tags, metadata['tags']))
                 updated_post.source = add_urls_if_not_present(post.source, metadata['source'])
-                updated_post.safety = metadata['safety']
+                updated_post.safety = metadata['safety'] if metadata['safety'] else updated_post.safety 
                 szuru.update_post(updated_post)
             else:
                 logger.warning(f"Expected a Post object but received a {type(updated_post)}: {updated_post}")
@@ -364,7 +370,8 @@ def upload_post(
     return True, saucenao_limit_reached
 
 def add_urls_if_not_present(main_string, additional_urls):
-    
+    if not additional_urls:
+        return main_string
     #Check to seed if post.source is already empty
     if not main_string:
         additional_urls
@@ -447,7 +454,7 @@ def main(
                                 if 'rating' in metadata:
                                     metadata['safety'] = convert_rating(metadata['rating'])
                                 else:
-                                    metadata['safety'] = config.upload_media['default_safety']
+                                    metadata['safety'] = None
 
                                 if 'tags' in metadata or 'tag_string' in metadata or 'hashtags' in metadata:
                                     metadata['tags'] = set_tags(metadata)
@@ -466,17 +473,17 @@ def main(
                             with open(str(file_path) + '.txt') as txt_file:
                                 tags = txt_file.read().splitlines()
                             metadata = {
-                                'safety': config.upload_media['default_safety'],
+                                'safety': None,
                                 'tags': tags,
-                                'site': '',
-                                'source': ''
+                                'site': None,
+                                'source': None
                             }
                         else:
                             metadata = {
-                                'safety': config.upload_media['default_safety'],
-                                'tags': 'tagme',
-                                'site': '',
-                                'source': ''
+                                'safety': None,
+                                'tags': [],
+                                'site': None,
+                                'source': None
                             }
                         with open(file_path, 'rb') as f:
                             file = f.read()
