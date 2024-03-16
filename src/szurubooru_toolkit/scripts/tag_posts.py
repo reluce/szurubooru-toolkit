@@ -71,20 +71,6 @@ def main(query: str, add_tags: list = [], remove_tags: list = []) -> None:
         logger.info('Received keyboard interrupt from user.')
         exit(1)
 
-def add_urls_if_not_present(main_string, additional_string):
-    
-    #Check to seed if post.source is already empty
-    if not main_string:
-        additional_string
-
-    additional_urls = additional_string.split('\n')
-    
-    # Add each additional url to the main string if it's not already present
-    for url in additional_urls:
-        if url.strip() and url.strip() not in main_string:
-            main_string += '\n' + url.strip()
-    
-    return main_string
 
 if __name__ == '__main__':
     main()

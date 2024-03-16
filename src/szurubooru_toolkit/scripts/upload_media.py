@@ -354,7 +354,7 @@ def upload_post(
             updated_post = next(updated_post)
             if isinstance(updated_post, Post):
                 updated_post.tags = list(set().union(updated_post.tags, metadata['tags']))
-                updated_post.source = add_strings_if_not_present(post.source, metadata['source'])
+                updated_post.source = add_urls_if_not_present(post.source, metadata['source'])
                 updated_post.safety = metadata['safety']
                 szuru.update_post(updated_post)
             else:
@@ -363,13 +363,13 @@ def upload_post(
             
     return True, saucenao_limit_reached
 
-def add_strings_if_not_present(main_string, additional_string):
+def add_urls_if_not_present(main_string, additional_urls):
     
     #Check to seed if post.source is already empty
     if not main_string:
-        additional_string
+        additional_urls
 
-    additional_strings = additional_string.split('\n')
+    additional_strings = additional_urls.split('\n')
     
     # Add each additional string to the main string if it's not already present
     for string in additional_strings:
