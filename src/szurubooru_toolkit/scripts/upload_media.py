@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import concurrent.futures
 from glob import glob
 from pathlib import Path
 
@@ -367,7 +368,7 @@ def upload_post(
                 prev_safety = updated_post.safety
 
                 updated_post.tags = list(set().union(updated_post.tags, metadata['tags'])) if metadata['tags'] else updated_post.tags
-                updated_post.source = add_urls_if_not_present(post.source, metadata['source']) if metadata['source'] else updated_post.source
+                updated_post.source = add_urls(updated_post.source, metadata['source']) if metadata['source'] else updated_post.source
                 updated_post.safety = metadata['safety'] if metadata['safety'] else updated_post.safety
 
                 if updated_post.tags != prev_tags or updated_post.source != prev_source or updated_post.safety != prev_safety:
@@ -378,7 +379,7 @@ def upload_post(
             
     return True, saucenao_limit_reached
 
-def add_urls_if_not_present(main_string, additional_urls):
+def add_urls(main_string, additional_urls):
     if not additional_urls:
         return main_string
     #Check to seed if post.source is already empty
@@ -389,8 +390,9 @@ def add_urls_if_not_present(main_string, additional_urls):
     
     # Add each additional string to the main string if it's not already present
     for string in additional_strings:
-        if string.strip() and string.strip() not in main_string:
-            main_string += '\n' + string.strip()
+        string = string.strip()
+        if string and string not in main_string:
+            main_string += '\n' + string
     
     return main_string
 
@@ -435,8 +437,6 @@ def main(
             called_externally = True
             config.upload_media['hide_progress'] = True
 
-        
-
         if files_to_upload:
             if not called_externally:
                 logger.info('Found ' + str(len(files_to_upload)) + ' file(s). Starting upload...')
@@ -446,73 +446,25 @@ def main(
                 except KeyError:
                     hide_progress = config.tag_posts['hide_progress']
 
-                for file_path in tqdm(
-                    files_to_upload,
-                    ncols=80,
-                    position=0,
-                    leave=False,
-                    disable=hide_progress,
-                ):
-                    if not os.path.isdir(file_path) and not file_path.endswith(('.txt', '.json')):
-                        if os.path.exists(str(file_path) + '.json'):
-                            with open(file_path + '.json') as json_file:
-                                metadata = json.load(json_file)
-                                metadata['site'] = get_site(metadata['file_url'])
-                                metadata['source'] = metadata.get('source') + '\n' + metadata.get('file_url')
-
-                                if 'rating' in metadata:
-                                    metadata['safety'] = convert_rating(metadata['rating'])
-                                else:
-                                    metadata['safety'] = None
-
-                                if 'tags' in metadata or 'tag_string' in metadata or 'hashtags' in metadata:
-                                    metadata['tags'] = set_tags(metadata)
-                                else:
-                                    metadata['tags'] = []
-
-                                # As Twitter doesn't provide any tags compared to other sources, we try to auto tag it.
-                                if metadata['site'] == 'twitter':
-                                    metadata['tags'] += extract_twitter_artist(metadata)
-                                    config.auto_tagger['md5_search_enabled'] = True
-                                    config.auto_tagger['saucenao_enabled'] = True
-                                else:
-                                    config.auto_tagger['md5_search_enabled'] = False
-                                    config.auto_tagger['saucenao_enabled'] = False
-                        elif os.path.exists(str(file_path) + '.txt'):
-                            with open(str(file_path) + '.txt') as txt_file:
-                                tags = txt_file.read().strip().replace(" ","_").splitlines()
-                                metadata = {
-                                    'safety': None,
-                                    'tags': tags,
-                                    'site': None,
-                                    'source': None
-                                }
-                        else:
-                            metadata = {
-                                'safety': None,
-                                'tags': [],
-                                'site': None,
-                                'source': None
-                            }
-                        with open(file_path, 'rb') as f:
-                            file = f.read()
-
-                        success, saucenao_limit_reached = upload_post(
-                            file,
-                            file_ext=Path(file_path).suffix[1:],
-                            file_path=file_path,
-                            metadata=metadata,
-                            saucenao_limit_reached=saucenao_limit_reached,
-                        )
-
-                        if config.upload_media['cleanup'] and success:
-                            if os.path.exists(file_path):
-                                os.remove(file_path)
-                            if os.path.exists(str(file) + '.json'):
-                                os.remove(str(file) + '.json')
-                            if os.path.exists(str(file) + '.txt'):
-                                os.remove(str(file) + '.txt')
-
+                futures = []
+                max_threads = 5
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
+                    for file_path in tqdm(
+                        files_to_upload,
+                        ncols=80,
+                        position=0,
+                        leave=False,
+                        disable=hide_progress,
+                    ):
+                        if not os.path.isdir(file_path) and not file_path.endswith(('.txt', '.json')):
+                            future = executor.submit(process_file,file_path,saucenao_limit_reached)
+                            futures.append(future)
+                    # Check for exceptions
+                    for future in futures:
+                        try:
+                            future.result()  # This will raise an exception if one occurred during execution
+                        except Exception as e:
+                            print(f"Exception occurred during processing: {e}")
                 if config.upload_media['cleanup']:
                     cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
 
@@ -528,6 +480,66 @@ def main(
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
         exit(1)
+
+def process_file(file_path,saucenao_limit_reached):
+    if os.path.exists(str(file_path) + '.json'):
+        with open(file_path + '.json') as json_file:
+            metadata = json.load(json_file)
+            metadata['site'] = get_site(metadata['file_url'])
+            metadata['source'] = metadata.get('source') + '\n' + metadata.get('file_url')
+
+            if 'rating' in metadata:
+                metadata['safety'] = convert_rating(metadata['rating'])
+            else:
+                metadata['safety'] = None
+
+            if 'tags' in metadata or 'tag_string' in metadata or 'hashtags' in metadata:
+                metadata['tags'] = set_tags(metadata)
+            else:
+                metadata['tags'] = []
+
+            # As Twitter doesn't provide any tags compared to other sources, we try to auto tag it.
+            if metadata['site'] == 'twitter':
+                metadata['tags'] += extract_twitter_artist(metadata)
+                config.auto_tagger['md5_search_enabled'] = True
+                config.auto_tagger['saucenao_enabled'] = True
+            else:
+                config.auto_tagger['md5_search_enabled'] = False
+                config.auto_tagger['saucenao_enabled'] = False
+    elif os.path.exists(str(file_path) + '.txt'):
+        with open(str(file_path) + '.txt') as txt_file:
+            tags = txt_file.read().strip().replace(" ","_").splitlines()
+            metadata = {
+                'safety': None,
+                'tags': tags,
+                'site': None,
+                'source': None
+            }
+    else:
+        metadata = {
+            'safety': None,
+            'tags': [],
+            'site': None,
+            'source': None
+        }
+    with open(file_path, 'rb') as f:
+        file = f.read()
+
+    success, saucenao_limit_reached = upload_post(
+        file,
+        file_ext=Path(file_path).suffix[1:],
+        file_path=file_path,
+        metadata=metadata,
+        saucenao_limit_reached=saucenao_limit_reached,
+    )
+
+    if config.upload_media['cleanup'] and success:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        if os.path.exists(str(file) + '.json'):
+            os.remove(str(file) + '.json')
+        if os.path.exists(str(file) + '.txt'):
+            os.remove(str(file) + '.txt')
 
 
 if __name__ == '__main__':
