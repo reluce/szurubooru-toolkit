@@ -474,7 +474,7 @@ def main(
                                     config.auto_tagger['saucenao_enabled'] = False
                         elif os.path.exists(str(file_path) + '.txt'):
                             with open(str(file_path) + '.txt') as txt_file:
-                                tags = txt_file.read().strip().splitlines()
+                                tags = txt_file.read().strip().replace(" ","_").splitlines()
                                 metadata = {
                                     'safety': None,
                                     'tags': tags,
