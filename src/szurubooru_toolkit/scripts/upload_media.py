@@ -362,10 +362,16 @@ def upload_post(
             discard = next(updated_post)
             updated_post = next(updated_post)
             if isinstance(updated_post, Post):
+                prev_tags = updated_post.tags
+                prev_source = updated_post.source
+                prev_safety = updated_post.safety
+
                 updated_post.tags = list(set().union(updated_post.tags, metadata['tags']))
                 updated_post.source = add_urls_if_not_present(post.source, metadata['source'])
-                updated_post.safety = metadata['safety'] if metadata['safety'] else updated_post.safety 
-                szuru.update_post(updated_post)
+                updated_post.safety = metadata['safety'] if metadata['safety'] else updated_post.safety
+
+                if updated_post.tags != prev_tags or updated_post.source != prev_source or updated_post.safety != prev_safety:
+                    szuru.update_post(updated_post)
             else:
                 logger.warning(f"Expected a Post object but received a {type(updated_post)}: {updated_post}")
 
