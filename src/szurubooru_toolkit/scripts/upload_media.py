@@ -366,8 +366,8 @@ def upload_post(
                 prev_source = updated_post.source
                 prev_safety = updated_post.safety
 
-                updated_post.tags = list(set().union(updated_post.tags, metadata['tags']))
-                updated_post.source = add_urls_if_not_present(post.source, metadata['source'])
+                updated_post.tags = list(set().union(updated_post.tags, metadata['tags'])) if metadata['tags'] else updated_post.tags
+                updated_post.source = add_urls_if_not_present(post.source, metadata['source']) if metadata['source'] else updated_post.source
                 updated_post.safety = metadata['safety'] if metadata['safety'] else updated_post.safety
 
                 if updated_post.tags != prev_tags or updated_post.source != prev_source or updated_post.safety != prev_safety:
