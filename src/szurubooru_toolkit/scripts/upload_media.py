@@ -383,7 +383,7 @@ def add_urls_if_not_present(main_string, additional_urls):
         return main_string
     #Check to seed if post.source is already empty
     if not main_string:
-        additional_urls
+        return additional_urls
 
     additional_strings = additional_urls.split('\n')
     
