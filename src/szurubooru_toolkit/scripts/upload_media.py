@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import requests
 import concurrent.futures
+import threading
+
 from glob import glob
 from pathlib import Path
-
-import requests
 from loguru import logger
 from tqdm import tqdm
 
@@ -20,6 +21,9 @@ from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.szurubooru import Szurubooru
 from szurubooru_toolkit.utils import convert_rating, extract_twitter_artist, get_md5sum, get_site
 from szurubooru_toolkit.utils import shrink_img
+
+max_concurrent_processes = 5
+semaphore = threading.Semaphore(max_concurrent_processes)
 
 
 def get_files(upload_dir: str) -> list:
@@ -446,25 +450,20 @@ def main(
                 except KeyError:
                     hide_progress = config.tag_posts['hide_progress']
 
-                futures = []
-                max_threads = 5
-                with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
-                    for file_path in tqdm(
-                        files_to_upload,
-                        ncols=80,
-                        position=0,
-                        leave=False,
-                        disable=hide_progress,
-                    ):
-                        if not os.path.isdir(file_path) and not file_path.endswith(('.txt', '.json')):
-                            future = executor.submit(process_file,file_path,saucenao_limit_reached)
-                            futures.append(future)
-                    # Check for exceptions
+                
+                with tqdm(total=len(files_to_upload)) as pbar:
+                    futures = []
+                    with concurrent.futures.ThreadPoolExecutor() as ex:
+                        for file_path in files_to_upload:
+                                if not file_path.endswith(('.json', '.txt')):
+                                    future = ex.submit(process_file, file_path, saucenao_limit_reached)
+                                    future.add_done_callback(lambda p: pbar.update(1))  # Update progress bar when task is done
+                                    futures.append(future)
+
+                     # Wait for all futures to complete
                     for future in futures:
-                        try:
-                            future.result()  # This will raise an exception if one occurred during execution
-                        except Exception as e:
-                            print(f"Exception occurred during processing: {e}")
+                        future.result()
+
                 if config.upload_media['cleanup']:
                     cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
 
@@ -477,70 +476,91 @@ def main(
             return saucenao_limit_reached
         else:
             logger.info('No files found to upload.')
-    except KeyboardInterrupt:
-        logger.info('Received keyboard interrupt from user.')
+    except (KeyboardInterrupt, OSError) as e:
+        if isinstance(e, KeyboardInterrupt):
+            logger.info('Received keyboard interrupt from user.')
+        elif isinstance(e, OSError):
+            if e.errno == 111:  # Check for specific error code (Connection refused)
+                logger.info("Error: Connection refused. Exiting...")
+            else:
+                raise e
+
+        if futures:
+            logger.info("Cancelling remaining tasks...")
+            ex.shutdown(wait=False)
+
+            for future in futures:
+                future.cancel()
+
+            # Wait for tasks to be cancelled
+            concurrent.futures.wait(futures)
+
+            logger.info("Exiting gracefully...")
         exit(1)
 
-def process_file(file_path,saucenao_limit_reached):
-    if os.path.exists(str(file_path) + '.json'):
-        with open(file_path + '.json') as json_file:
-            metadata = json.load(json_file)
-            metadata['site'] = get_site(metadata['file_url'])
-            metadata['source'] = metadata.get('source') + '\n' + metadata.get('file_url')
+# Proccess a media file and grab it's metadata
+def process_file(file_path,saucenao_limit_reached) -> bool:
+    with semaphore:
+        if os.path.exists(str(file_path) + '.json'):
+            with open(file_path + '.json') as json_file:
+                metadata = json.load(json_file)
+                metadata['site'] = get_site(metadata['file_url'])
+                metadata['source'] = metadata.get('source') + '\n' + metadata.get('file_url')
 
-            if 'rating' in metadata:
-                metadata['safety'] = convert_rating(metadata['rating'])
-            else:
-                metadata['safety'] = None
+                if 'rating' in metadata:
+                    metadata['safety'] = convert_rating(metadata['rating'])
+                else:
+                    metadata['safety'] = None
 
-            if 'tags' in metadata or 'tag_string' in metadata or 'hashtags' in metadata:
-                metadata['tags'] = set_tags(metadata)
-            else:
-                metadata['tags'] = []
+                if 'tags' in metadata or 'tag_string' in metadata or 'hashtags' in metadata:
+                    metadata['tags'] = set_tags(metadata)
+                else:
+                    metadata['tags'] = []
 
-            # As Twitter doesn't provide any tags compared to other sources, we try to auto tag it.
-            if metadata['site'] == 'twitter':
-                metadata['tags'] += extract_twitter_artist(metadata)
-                config.auto_tagger['md5_search_enabled'] = True
-                config.auto_tagger['saucenao_enabled'] = True
-            else:
-                config.auto_tagger['md5_search_enabled'] = False
-                config.auto_tagger['saucenao_enabled'] = False
-    elif os.path.exists(str(file_path) + '.txt'):
-        with open(str(file_path) + '.txt') as txt_file:
-            tags = txt_file.read().strip().replace(" ","_").splitlines()
+                # As Twitter doesn't provide any tags compared to other sources, we try to auto tag it.
+                if metadata['site'] == 'twitter':
+                    metadata['tags'] += extract_twitter_artist(metadata)
+                    config.auto_tagger['md5_search_enabled'] = True
+                    config.auto_tagger['saucenao_enabled'] = True
+                else:
+                    config.auto_tagger['md5_search_enabled'] = False
+                    config.auto_tagger['saucenao_enabled'] = False
+        elif os.path.exists(str(file_path) + '.txt'):
+            with open(str(file_path) + '.txt') as txt_file:
+                tags = txt_file.read().strip().replace(" ","_").splitlines()
+                metadata = {
+                    'safety': None,
+                    'tags': tags,
+                    'site': None,
+                    'source': None
+                }
+        else:
             metadata = {
                 'safety': None,
-                'tags': tags,
+                'tags': [],
                 'site': None,
                 'source': None
             }
-    else:
-        metadata = {
-            'safety': None,
-            'tags': [],
-            'site': None,
-            'source': None
-        }
-    with open(file_path, 'rb') as f:
-        file = f.read()
+        with open(file_path, 'rb') as f:
+            file = f.read()
 
-    success, saucenao_limit_reached = upload_post(
-        file,
-        file_ext=Path(file_path).suffix[1:],
-        file_path=file_path,
-        metadata=metadata,
-        saucenao_limit_reached=saucenao_limit_reached,
-    )
+        success, saucenao_limit_reached = upload_post(
+            file,
+            file_ext=Path(file_path).suffix[1:],
+            file_path=file_path,
+            metadata=metadata,
+            saucenao_limit_reached=saucenao_limit_reached,
+        )
 
-    if config.upload_media['cleanup'] and success:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        if os.path.exists(str(file) + '.json'):
-            os.remove(str(file) + '.json')
-        if os.path.exists(str(file) + '.txt'):
-            os.remove(str(file) + '.txt')
+        if config.upload_media['cleanup'] and success:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            if os.path.exists(file_path + '.json'):
+                os.remove(file_path + '.json')
+            if os.path.exists(file_path + '.txt'):
+                os.remove(file_path + '.txt')
 
+        return saucenao_limit_reached
 
 if __name__ == '__main__':
     main()
