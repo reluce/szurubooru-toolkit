@@ -450,7 +450,6 @@ def main(
                 except KeyError:
                     hide_progress = config.tag_posts['hide_progress']
 
-                
                 with tqdm(total=len(files_to_upload)) as pbar:
                     futures = []
                     with concurrent.futures.ThreadPoolExecutor() as ex:
