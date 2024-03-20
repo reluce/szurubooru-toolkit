@@ -531,14 +531,14 @@ def process_file(file_path,saucenao_limit_reached) -> bool:
                     'safety': None,
                     'tags': tags,
                     'site': None,
-                    'source': None
+                    'source': ''
                 }
         else:
             metadata = {
                 'safety': None,
                 'tags': [],
                 'site': None,
-                'source': None
+                'source': ''
             }
         with open(file_path, 'rb') as f:
             file = f.read()
