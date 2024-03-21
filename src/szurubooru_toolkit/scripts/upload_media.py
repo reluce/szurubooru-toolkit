@@ -454,7 +454,7 @@ def main(
                     futures = []
                     with concurrent.futures.ThreadPoolExecutor() as ex:
                         for file_path in files_to_upload:
-                                if not file_path.endswith(('.json', '.txt')):
+                                if os.path.isfile(file_path) and not file_path.endswith(('.json', '.txt')):
                                     future = ex.submit(process_file, file_path, saucenao_limit_reached)
                                     future.add_done_callback(lambda p: pbar.update(1))  # Update progress bar when task is done
                                     futures.append(future)
