@@ -8,6 +8,9 @@ temp/
 tmp/
 upload_src/
 urls.txt
+gallery-dl.conf
+gallery-dl
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

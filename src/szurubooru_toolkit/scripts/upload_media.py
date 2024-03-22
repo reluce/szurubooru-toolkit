@@ -3,20 +3,27 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import requests
+import concurrent.futures
+import threading
+
 from glob import glob
 from pathlib import Path
-
-import requests
 from loguru import logger
 from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.scripts import auto_tagger
+from szurubooru_toolkit.scripts import tag_posts
+from szurubooru_toolkit.scripts.import_from_url import set_tags
 from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.szurubooru import Szurubooru
-from szurubooru_toolkit.utils import get_md5sum
+from szurubooru_toolkit.utils import convert_rating, extract_twitter_artist, get_md5sum, get_site
 from szurubooru_toolkit.utils import shrink_img
+
+max_concurrent_processes = 5
+semaphore = threading.Semaphore(max_concurrent_processes)
 
 
 def get_files(upload_dir: str) -> list:
@@ -193,7 +200,7 @@ def cleanup_dirs(dir: str) -> None:
                 pass
 
 
-def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -> tuple(bytes | str):
+def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -> tuple[bytes | str]:
     """
     Evaluate if the image should be converted or shrunk and if so, do so.
 
@@ -254,6 +261,8 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
     return image, original_md5
 
 
+
+
 def upload_post(
     file: bytes,
     file_ext: str,
@@ -280,7 +289,9 @@ def upload_post(
                            element indicates if the SauceNAO limit has been reached.
     """
 
+
     post = Post()
+    post.source = None
     original_md5 = ''
 
     if file_ext not in ['mp4', 'webm', 'gif']:
@@ -289,6 +300,9 @@ def upload_post(
         post.media = file
 
     post.token = get_media_token(szuru, post.media)
+    logger.debug(
+        f'File post token: {post.token} ',
+    )
     post.exact_post, similar_posts, errors = check_similarity(szuru, post.token)
 
     if errors:
@@ -296,15 +310,17 @@ def upload_post(
 
     threshold = 1 - float(config.upload_media['max_similarity'])
 
+    unique_media = not post.exact_post
     for entry in similar_posts:
-        if entry['distance'] < threshold and not post.exact_post:
+        if entry['distance'] < threshold and unique_media:
             logger.debug(
                 f'File "{file_path} is too similar to post {entry["post"]["id"]} ({100 - entry["distance"]}%)',
             )
-            post.exact_post = True
+            post.exact_post = entry
+            unique_media = False
             break
 
-    if not post.exact_post:
+    if unique_media:
         if not metadata:
             post.tags = config.upload_media['tags']
             post.safety = None
@@ -319,11 +335,22 @@ def upload_post(
         post.similar_posts = []
         for entry in similar_posts:
             post.similar_posts.append(entry['post']['id'])
+        
+        if not post.safety:
+            post.safety = config.upload_media['default_safety']
+
+        if post.tags == [] and config.upload_media['tags']:
+            post.tags = config.upload_media['tags']
+        
+        if not post.tags:
+            post.tags = []
 
         post_id = upload_file(szuru, post)
 
         if not post_id:
-            return
+            print()
+            logger.warning(f'Error uploading post {post}.')
+            return False, False
 
         # Tag post if enabled
         if config.upload_media['auto_tag']:
@@ -334,8 +361,47 @@ def upload_post(
                 md5=original_md5,
             )
 
+    # If the exact post was found in szurubooru
+    else:
+        if config.import_from_url['update_tags_if_exists'] and metadata and ( metadata['tags'] or metadata['source'] or metadata['safety']):
+            id = str(post.exact_post['id']) if 'id' in post.exact_post else str(post.exact_post['post']['id'])
+           
+            updated_post = szuru.get_posts(id, videos=True)
+            discard = next(updated_post)
+            updated_post = next(updated_post)
+            if isinstance(updated_post, Post):
+                prev_tags = updated_post.tags
+                prev_source = updated_post.source
+                prev_safety = updated_post.safety
+
+                updated_post.tags = list(set().union(updated_post.tags, metadata['tags'])) if metadata['tags'] else updated_post.tags
+                updated_post.source = add_urls(updated_post.source, metadata['source']) if metadata['source'] else updated_post.source
+                updated_post.safety = metadata['safety'] if metadata['safety'] else updated_post.safety
+
+                if updated_post.tags != prev_tags or updated_post.source != prev_source or updated_post.safety != prev_safety:
+                    szuru.update_post(updated_post)
+            else:
+                logger.warning(f"Expected a Post object but received a {type(updated_post)}: {updated_post}")
+
+            
     return True, saucenao_limit_reached
 
+def add_urls(main_string, additional_urls):
+    if not additional_urls:
+        return main_string
+    #Check to seed if post.source is already empty
+    if not main_string:
+        return additional_urls
+
+    additional_strings = additional_urls.split('\n')
+    
+    # Add each additional string to the main string if it's not already present
+    for string in additional_strings:
+        string = string.strip()
+        if string and string not in main_string:
+            main_string += '\n' + string
+    
+    return main_string
 
 def main(
     src_path: str = '',
@@ -343,14 +409,14 @@ def main(
     file_ext: str = None,
     metadata: dict = None,
     saucenao_limit_reached: bool = False,
-) -> int:
+) -> bool:
     """
     Main logic of the script.
 
     This function is the entry point of the script. It takes a source path or a file to upload, and optionally a file
     extension and metadata. If no file to upload is provided, it will look for files in the source path. If no source
-    path is provided, it will use the source path from the configuration. It then uploads each file found and logs the
-    number of files uploaded.
+    path is provided, it will use the source path from the configuration. It then uploads each file found and returns
+    whether the SauceNAO limit has been reached.
 
     Args:
         src_path (str, optional): The source path where to look for files to upload. Defaults to ''.
@@ -360,7 +426,7 @@ def main(
         saucenao_limit_reached (bool, optional): If the SauceNAO limit has been reached. Defaults to False.
 
     Returns:
-        int: The number of files uploaded.
+        bool: If the SauceNAO limit has been reached.
 
     Raises:
         KeyError: If no files are found to upload and no source path is specified.
@@ -370,16 +436,16 @@ def main(
         if not file_to_upload:
             try:
                 files_to_upload = src_path if src_path else get_files(config.upload_media['src_path'])
-                from_import_from = False
+                called_externally = False
             except KeyError:
                 logger.critical('No files found to upload. Please specify a source path.')
         else:
             files_to_upload = file_to_upload
-            from_import_from = True
+            called_externally = True
             config.upload_media['hide_progress'] = True
 
         if files_to_upload:
-            if not from_import_from:
+            if not called_externally:
                 logger.info('Found ' + str(len(files_to_upload)) + ' file(s). Starting upload...')
 
                 try:
@@ -387,30 +453,23 @@ def main(
                 except KeyError:
                     hide_progress = config.tag_posts['hide_progress']
 
-                for file_path in tqdm(
-                    files_to_upload,
-                    ncols=80,
-                    position=0,
-                    leave=False,
-                    disable=hide_progress,
-                ):
-                    with open(file_path, 'rb') as f:
-                        file = f.read()
-                    success, saucenao_limit_reached = upload_post(
-                        file,
-                        file_ext=Path(file_path).suffix[1:],
-                        file_path=file_path,
-                        saucenao_limit_reached=saucenao_limit_reached,
-                    )
+                with tqdm(total=len(files_to_upload)) as pbar:
+                    futures = []
+                    with concurrent.futures.ThreadPoolExecutor() as ex:
+                        for file_path in files_to_upload:
+                                if os.path.isfile(file_path) and not file_path.endswith(('.json', '.txt')):
+                                    future = ex.submit(process_file, file_path, saucenao_limit_reached)
+                                    future.add_done_callback(lambda p: pbar.update(1))  # Update progress bar when task is done
+                                    futures.append(future)
 
-                    if config.upload_media['cleanup'] and success:
-                        if os.path.exists(file_path):
-                            os.remove(file_path)
+                     # Wait for all futures to complete
+                    for future in futures:
+                        future.result()
 
                 if config.upload_media['cleanup']:
                     cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
 
-                if not from_import_from:
+                if not called_externally:
                     logger.success('Script has finished uploading!')
 
             else:
@@ -419,10 +478,91 @@ def main(
             return saucenao_limit_reached
         else:
             logger.info('No files found to upload.')
-    except KeyboardInterrupt:
-        logger.info('Received keyboard interrupt from user.')
+    except (KeyboardInterrupt, OSError) as e:
+        if isinstance(e, KeyboardInterrupt):
+            logger.info('Received keyboard interrupt from user.')
+        elif isinstance(e, OSError):
+            if e.errno == 111:  # Check for specific error code (Connection refused)
+                logger.info("Error: Connection refused. Exiting...")
+            else:
+                raise e
+
+        if futures:
+            logger.info("Cancelling remaining tasks...")
+            ex.shutdown(wait=False)
+
+            for future in futures:
+                future.cancel()
+
+            # Wait for tasks to be cancelled
+            concurrent.futures.wait(futures)
+
+            logger.info("Exiting gracefully...")
         exit(1)
 
+# Proccess a media file and grab it's metadata
+def process_file(file_path,saucenao_limit_reached) -> bool:
+    with semaphore:
+        if os.path.exists(str(file_path) + '.json'):
+            with open(file_path + '.json') as json_file:
+                metadata = json.load(json_file)
+                metadata['site'] = get_site(metadata['file_url'])
+                metadata['source'] = metadata.get('source') + '\n' + metadata.get('file_url')
+
+                if 'rating' in metadata:
+                    metadata['safety'] = convert_rating(metadata['rating'])
+                else:
+                    metadata['safety'] = None
+
+                if 'tags' in metadata or 'tag_string' in metadata or 'hashtags' in metadata:
+                    metadata['tags'] = set_tags(metadata)
+                else:
+                    metadata['tags'] = []
+
+                # As Twitter doesn't provide any tags compared to other sources, we try to auto tag it.
+                if metadata['site'] == 'twitter':
+                    metadata['tags'] += extract_twitter_artist(metadata)
+                    config.auto_tagger['md5_search_enabled'] = True
+                    config.auto_tagger['saucenao_enabled'] = True
+                else:
+                    config.auto_tagger['md5_search_enabled'] = False
+                    config.auto_tagger['saucenao_enabled'] = False
+        elif os.path.exists(str(file_path) + '.txt'):
+            with open(str(file_path) + '.txt') as txt_file:
+                tags = txt_file.read().strip().replace(" ","_").splitlines()
+                metadata = {
+                    'safety': None,
+                    'tags': tags,
+                    'site': None,
+                    'source': ''
+                }
+        else:
+            metadata = {
+                'safety': None,
+                'tags': [],
+                'site': None,
+                'source': ''
+            }
+        with open(file_path, 'rb') as f:
+            file = f.read()
+
+        success, saucenao_limit_reached = upload_post(
+            file,
+            file_ext=Path(file_path).suffix[1:],
+            file_path=file_path,
+            metadata=metadata,
+            saucenao_limit_reached=saucenao_limit_reached,
+        )
+
+        if config.upload_media['cleanup'] and success:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            if os.path.exists(file_path + '.json'):
+                os.remove(file_path + '.json')
+            if os.path.exists(file_path + '.txt'):
+                os.remove(file_path + '.txt')
+
+        return saucenao_limit_reached
 
 if __name__ == '__main__':
     main()
