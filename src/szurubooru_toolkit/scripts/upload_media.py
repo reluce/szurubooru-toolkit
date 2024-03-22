@@ -341,6 +341,9 @@ def upload_post(
 
         if post.tags == [] and config.upload_media['tags']:
             post.tags = config.upload_media['tags']
+        
+        if not post.tags:
+            post.tags = []
 
         post_id = upload_file(szuru, post)
 
