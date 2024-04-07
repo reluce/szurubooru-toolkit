@@ -471,6 +471,7 @@ def click_import_from_url(
     shrink,
     shrink_threshold,
     shrink_dimensions,
+    update_tags_if_exists,
     verbose,
 ):
     """
