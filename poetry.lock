@@ -631,13 +631,13 @@ files = [
 
 [[package]]
 name = "gallery-dl"
-version = "1.26.7"
+version = "1.26.9"
 description = "Command-line program to download image galleries and collections from several image hosting sites"
 optional = false
 python-versions = ">=3.4"
 files = [
-    {file = "gallery_dl-1.26.7-py3-none-any.whl", hash = "sha256:a2b43d818d0fb79c5865e003304046c3cb0a8239abbb513ce25b95359f4ef50d"},
-    {file = "gallery_dl-1.26.7.tar.gz", hash = "sha256:f9aa17731255069f675ca4bedfe086ed790331e99282f131317b67476143858b"},
+    {file = "gallery_dl-1.26.9-py3-none-any.whl", hash = "sha256:cbfce457778a5339e888bca78d339b119318252f0feead6a4cd9b93884738008"},
+    {file = "gallery_dl-1.26.9.tar.gz", hash = "sha256:3e06dfa69c890a9805ba90509e0f0c50f8a16c39a2b780bec569d2cc2272bb99"},
 ]
 
 [package.dependencies]
