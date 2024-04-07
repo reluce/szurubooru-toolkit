@@ -36,10 +36,12 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
         try:
             total_posts = next(posts)
         except StopIteration:
-            logger.info(f'Found no posts for your query: {query}')
+            if not config.tag_posts['silence_info']:
+                logger.info(f'Found no posts for your query: {query}')
             exit()
 
-        logger.info(f'Found {total_posts} posts. Start tagging...')
+        if not config.tag_posts['silence_info']:
+            logger.info(f'Found {total_posts} posts. Start tagging...')
 
         for post in tqdm(
             posts,
