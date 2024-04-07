@@ -335,12 +335,22 @@ def upload_post(
                 md5=original_md5,
             )
 
-    # If the exact post was found in szurubooru
     else:
-        if config.import_from_url['update_tags_if_exists'] and metadata and metadata['tags']:
+        logger.debug(f'File is already uploaded as post {post.exact_post["id"]}.')
+        if config.import_from_url['update_tags_if_exists'] and metadata:
+            logger.debug(f'Trying to update tags for post {post.exact_post["id"]}...')
+
             id = str(post.exact_post['id']) if 'id' in post.exact_post else str(post.exact_post['post']['id'])
             config.tag_posts['mode'] = 'append'
-            tag_posts.main(query=id, add_tags=metadata['tags'])
+
+            try:
+                if not metadata['tags'] and metadata['tag_string']:
+                    metadata['tags'] = metadata['tag_string'].split(' ')
+            except KeyError:
+                pass
+
+            config.tag_posts['silence_info'] = True
+            tag_posts.main(query=id, add_tags=metadata['tags'], source=metadata['source'])
 
     return True, saucenao_limit_reached
 
