@@ -532,6 +532,7 @@ def click_reset_posts(ctx, query, except_ids, add_tags):
 @click.argument('query')
 @click.option('--add-tags', help='Specify tags, separated by a comma, which will be added to all posts matching your query.')
 @click.option('--remove-tags', help='Specify tags, separated by a comma, which will be removed from all posts matching your query.')
+@click.option('--source', help='Set the source of the post')
 @click.option(
     '--mode',
     type=click.Choice(['overwrite', 'append'], case_sensitive=False),
@@ -545,16 +546,16 @@ def click_reset_posts(ctx, query, except_ids, add_tags):
     ),
 )
 @click.pass_context
-def click_tag_posts(ctx, query, add_tags, remove_tags, mode, update_implications):
+def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_implications):
     """
     Tag posts manually
 
     QUERY is a szurubooru query for posts to tag.
     """
 
-    if not add_tags and not remove_tags and not update_implications:
+    if not add_tags and not remove_tags and not source and not update_implications:
         print(ctx.get_help())
-        click.echo('\nYou need to specify either --add-tags, --remove-tags or --update-implications as an argument!')
+        click.echo('\nYou need to specify either --add-tags, --remove-tags, --source or --update-implications as an argument!')
         exit(1)
 
     module = setup_module('tag_posts', ctx)
@@ -573,7 +574,7 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, mode, update_implications
         remove_tags = remove_tags.replace(' ', '').split(',')
         logger.debug(f'remove_tags = {remove_tags}')
 
-    module.main(query, add_tags, remove_tags)
+    module.main(query, add_tags, remove_tags, source)
 
 
 @cli.command('upload-media', epilog='Example: szuru-toolkit upload-media --auto-tag --cleanup --tags "foo,bar"')

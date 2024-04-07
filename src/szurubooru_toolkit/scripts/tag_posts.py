@@ -3,10 +3,11 @@ from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
+from szurubooru_toolkit.utils import collect_sources
 
 
 @logger.catch
-def main(query: str, add_tags: list = [], remove_tags: list = []) -> None:
+def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = '') -> None:
     """
     Retrieve the posts from input query, set post.tags based on mode and update them in szurubooru.
 
@@ -14,6 +15,7 @@ def main(query: str, add_tags: list = [], remove_tags: list = []) -> None:
         query (str): The query to use for retrieving posts.
         add_tags (list, optional): A list of tags to add to the posts. Defaults to [].
         remove_tags (list, optional): A list of tags to remove from the posts. Defaults to [].
+        source (str, optional): The source of the posts. Defaults to ''.
 
     Returns:
         None
@@ -50,9 +52,13 @@ def main(query: str, add_tags: list = [], remove_tags: list = []) -> None:
             if mode == 'append':
                 if add_tags:
                     post.tags = list(set().union(post.tags, add_tags))
+                if source:
+                    post.source = collect_sources(post.source, source)
             elif mode == 'overwrite':
                 if add_tags:
                     post.tags = add_tags
+                if source:
+                    post.source = source
 
             if remove_tags:
                 post.tags = [tag for tag in post.tags if tag not in remove_tags]
