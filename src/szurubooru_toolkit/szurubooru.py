@@ -157,7 +157,7 @@ class Szurubooru:
             response = response_json.json()
             # logger.debug(f'Got following response: {response}')
 
-            if 'name' in response and response['name'] in ['SearchError', 'UserNotFoundError']:
+            if 'name' in response and 'Error' in response['name']:
                 logger.critical(f'{response["name"]}: {response["description"]}')
                 raise UnknownTokenError(response['description'])
 
