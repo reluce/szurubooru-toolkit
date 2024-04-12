@@ -336,7 +336,7 @@ def upload_post(
             )
 
     else:
-        logger.debug(f'File is already uploaded as post {post.exact_post["id"]}.')
+        logger.debug('File is already uploaded')
         if config.import_from_url['update_tags_if_exists'] and metadata:
             logger.debug(f'Trying to update tags for post {post.exact_post["id"]}...')
 
