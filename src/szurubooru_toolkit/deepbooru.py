@@ -109,7 +109,7 @@ class Deepbooru:
                 else:
                     rating = convert_rating(tags[-1])
                     logger.debug(f'Guessed rating {rating}')
-                del tags[-1]
+                    del tags[-1]
             except IndexError:
                 logger.warning('Could not guess rating for image! Defaulting to unsafe.')
 
