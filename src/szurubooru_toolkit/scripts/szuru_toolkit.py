@@ -447,6 +447,7 @@ def click_import_from_booru(
     '--shrink-dimensions',
     help=f'Maximum width and height of the shrunken image (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_dimensions"]}).',
 )
+@click.option('--add-tags', help='Specify tags, separated by a comma, which will be added to all posts.')
 @click.option(
     '--update-tags-if-exists/--dont-update-tags-if-exists',
     is_flag=True,
@@ -471,6 +472,7 @@ def click_import_from_url(
     shrink,
     shrink_threshold,
     shrink_dimensions,
+    add_tags,
     update_tags_if_exists,
     verbose,
 ):
@@ -491,7 +493,16 @@ def click_import_from_url(
             ctx.obj.setdefault('import_from_url', {}).update({param.name: ctx.params[param.name]})
 
     module = setup_module('import_from_url', ctx)
-    module.main(list(urls), input_file, verbose)
+
+    if add_tags:
+        add_tags = add_tags.replace(' ', '').split(',')
+        from loguru import logger
+
+        logger.debug(f'add_tags = {add_tags}')
+    else:
+        add_tags = []
+
+    module.main(list(urls), input_file, add_tags, verbose)
 
 
 @cli.command('reset-posts', epilog='Example: szuru-toolkit reset-posts reset-posts --except-ids "2,4" --add-tags "tagme,foo" "foobar"')

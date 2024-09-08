@@ -82,7 +82,7 @@ def set_tags(metadata: dict) -> list:
 
 
 @logger.catch
-def main(urls: list = [], input_file: str = '', verbose: bool = False) -> None:
+def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bool = False) -> None:
     """
     Main function to handle the downloading of posts from URLs or an input file.
 
@@ -107,6 +107,7 @@ def main(urls: list = [], input_file: str = '', verbose: bool = False) -> None:
         urls (list, optional): A list of URLs from which to download posts. Defaults to an empty list.
         input_file (str, optional): A string representing the path to an input file containing URLs from which to
                                      download posts. Defaults to an empty string.
+        add_tags (list, optional): A list of tags to add to the posts. Defaults to an empty list.
         verbose (bool, optional): A boolean indicating whether to log verbose messages. Defaults to False.
 
     Returns:
@@ -184,6 +185,9 @@ def main(urls: list = [], input_file: str = '', verbose: bool = False) -> None:
 
             if site == 'twitter':
                 metadata['tags'] += extract_twitter_artist(metadata)
+
+            if add_tags:
+                metadata['tags'] += add_tags
 
             with open(file, 'rb') as file_b:
                 saucenao_limit_reached = upload_media.main(
