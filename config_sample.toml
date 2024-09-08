@@ -24,6 +24,7 @@ deepbooru_model = "./misc/deepbooru/model-resnet_custom_v3.h5"
 deepbooru_threshold = 0.7
 deepbooru_forced = false
 deepbooru_set_tag = true
+default_safety = "safe"
 use_pixiv_artist = false
 use_pixiv_tags = false
 update_relations = true

@@ -37,6 +37,7 @@ AUTO_TAGGER_DEFAULTS = {
     'deepbooru_threshold': 0.7,
     'deepbooru_forced': False,
     'deepbooru_set_tag': False,
+    'default_safety': 'safe',
     'hide_progress': False,
     'use_pixiv_artist': False,
     'use_pixiv_tags': False,
