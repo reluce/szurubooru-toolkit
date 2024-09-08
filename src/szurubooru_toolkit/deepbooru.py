@@ -60,7 +60,7 @@ class Deepbooru:
         except FileNotFoundError:
             logger.critical('tags.txt not found. Place it in the same directory as the Deepbooru model.')
 
-    def tag_image(self, image: bytes, threshold: float = 0.6, set_tag: bool = True) -> tuple[list, str]:
+    def tag_image(self, image: bytes, default_safety: str, threshold: float = 0.6, set_tag: bool = True) -> tuple[list, str]:
         """
         Guesses the tags and rating of the provided image from `image_path`.
 
@@ -71,6 +71,7 @@ class Deepbooru:
 
         Args:
             image (bytes): The image in bytes which tags and rating should be guessed.
+            default_safety (str): The default safety rating of the image.
             threshold (float): The accuracy threshold of the guessed tags, 1 being 100%. Defaults to `0.6`.
             set_tag (bool): Add tag "deepbooru".
 
@@ -98,14 +99,16 @@ class Deepbooru:
         tags = list(result_tags.keys())
         logger.debug(f'Guessed following tags: {tags}')
 
-        rating = 'unsafe'
-
         if not tags:
             logger.warning('Deepbooru could not guess tags for image!')
         else:
             try:
-                rating = convert_rating(tags[-1])
-                logger.debug(f'Guessed rating {rating}')
+                if 'rating' not in tags[-1]:
+                    logger.debug(f'Deepbooru could not guess rating for image! Falling back to {default_safety}')
+                    rating = default_safety
+                else:
+                    rating = convert_rating(tags[-1])
+                    logger.debug(f'Guessed rating {rating}')
                 del tags[-1]
             except IndexError:
                 logger.warning('Could not guess rating for image! Defaulting to unsafe.')

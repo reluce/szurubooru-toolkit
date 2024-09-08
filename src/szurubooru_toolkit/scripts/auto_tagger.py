@@ -247,6 +247,7 @@ def main(  # noqa C901
             ) and post.type != 'video':
                 result = deepbooru.tag_image(
                     image,
+                    config.auto_tagger['default_safety'],
                     config.auto_tagger['deepbooru_threshold'],
                     config.auto_tagger['deepbooru_set_tag'],
                 )
