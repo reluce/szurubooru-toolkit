@@ -343,6 +343,7 @@ class Config:
 
         Raises:
             AttributeError: If `config_src` is not an attribute of `self`.
+            KeyError: If an option does not exist in the section configuration.
         """
 
         upload_media_options = [
@@ -361,5 +362,5 @@ class Config:
         for option in upload_media_options:
             try:
                 self.upload_media[option] = config_src_obj[option]
-            except AttributeError:
+            except (AttributeError, KeyError):
                 pass
