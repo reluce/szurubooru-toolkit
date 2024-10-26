@@ -90,7 +90,7 @@ TAG_POSTS_DEFAULTS = {
 }
 
 UPLOAD_MEDIA_DEFAULTS = {
-    'src_path': None,
+    'src_path': '.',
     'hide_progress': False,
     'cleanup': False,
     'tags': ['tagme'],
