@@ -12,7 +12,7 @@ from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.saucenao import SauceNao
 from szurubooru_toolkit.szurubooru import Post
-from szurubooru_toolkit.utils import collect_sources
+from szurubooru_toolkit.utils import collect_sources, sanitize_tags
 from szurubooru_toolkit.utils import download_media
 from szurubooru_toolkit.utils import prepare_post
 from szurubooru_toolkit.utils import search_boorus
@@ -284,6 +284,7 @@ def main(  # noqa C901
                 tags = list(set().union(post.tags, tags_by_md5, tags_by_sauce, tags_by_deepbooru))
 
             post.tags = [tag for tag in tags if tag is not None]
+            sanitize_tags(post.tags)
 
             if remove_tags:
                 [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]

@@ -579,10 +579,10 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_impl
             ctx.obj.setdefault('tag_posts', {}).update({param.name: ctx.params[param.name]})
 
     if add_tags:
-        add_tags = add_tags.replace(' ', '').split(',')
+        add_tags = add_tags.replace(' ', '_').split(',')
         logger.debug(f'add_tags = {add_tags}')
     if remove_tags:
-        remove_tags = remove_tags.replace(' ', '').split(',')
+        remove_tags = remove_tags.replace(' ', '_').split(',')
         logger.debug(f'remove_tags = {remove_tags}')
 
     module.main(query, add_tags, remove_tags, source)
