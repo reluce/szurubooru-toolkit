@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 import json
 import os
 import shutil
@@ -335,6 +336,14 @@ def upload_post(
                 md5=original_md5,
             )
 
+        # Write timestamp file.
+        if 'imported_post_timestamps_dir' in config.update_db_timestamps and Path(config.update_db_timestamps['imported_post_timestamps_dir']).exists():
+            if not file_path:
+                logger.error("Failed to set timestamps because file_path is None!")
+            else:
+                with open(Path(config.update_db_timestamps['imported_post_timestamps_dir']) / f"{post_id}.timestamp", "w") as f:
+                    f.write(str(datetime.fromtimestamp(Path(file_path).stat().st_mtime)))
+
     else:
         logger.debug('File is already uploaded')
         if config.import_from_url['update_tags_if_exists'] and metadata:
@@ -432,7 +441,7 @@ def main(
                     logger.success('Script has finished uploading!')
 
             else:
-                _, saucenao_limit_reached = upload_post(file_to_upload, file_ext, metadata, saucenao_limit_reached=saucenao_limit_reached)
+                _, saucenao_limit_reached = upload_post(file_to_upload, file_ext, metadata, saucenao_limit_reached=saucenao_limit_reached, file_path=src_path)
 
             return saucenao_limit_reached
         else:
