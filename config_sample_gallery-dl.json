@@ -1,0 +1,61 @@
+{
+    "extractor": {
+        "kemonoparty": {
+            "comments": false,
+            "dms": false,
+            "announcements": false,
+            "metadata": false,
+            "archive": "~/.config/gallery-dl/kemono.db",
+            "postprocessors":[
+                {
+                    "#": "Copy metadata.",
+                    "name":"metadata"
+                },
+                {
+                    "#": "Upscale images when the size is too small.",
+                    "name": "exec",
+                    "filter": "extension in ('jpg', 'jpeg', 'png', 'bmp')",
+                    "command": ["./gallery-dl-upscale.py", "--dir", "{_directory}", "--file", "{_filename}", "--sizecheck", "3840", "--cpu"]
+                },
+                {
+                    "#": "Extract archive and copy JSON file",
+                    "name": "exec",
+                    "filter": "extension in ('zip', 'rar', '7z')",
+                    "command": ["./gallery-dl-extract-archives-with-json.py", "--dir", "{_directory}", "--file", "{_filename}", "--sizecheck", "3840", "--cpu"]
+                }
+            ]
+        },
+        "pixiv": {
+            "archive": "~/.config/gallery-dl/pixiv.db",
+            "postprocessors":[
+                {
+                    "#": "Copy metadata.",
+                    "name":"metadata"
+                },
+                {
+                    "#": "Upscale images when the size is too small.",
+                    "name": "exec",
+                    "filter": "extension in ('jpg', 'jpeg', 'png', 'bmp')",
+                    "command": ["./gallery-dl-upscale.py", "--dir", "{_directory}", "--file", "{_filename}", "--sizecheck", "3840", "--cpu"]
+                }
+            ]
+        }
+
+    },
+    "downloader": {
+        "#": "retry failed downloads up to X times",
+        "retries": 100,
+
+        "#": "consider a download 'failed' after X seconds of inactivity",
+        "timeout": 20.0,
+
+        "#": "update file modification times",
+        "mtime": true
+    },
+    "output": {
+
+    },
+    "postprocessor": {
+
+    }
+}
