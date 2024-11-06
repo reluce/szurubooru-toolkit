@@ -1,3 +1,4 @@
+from datetime import datetime
 import glob
 import json
 import os
@@ -80,6 +81,34 @@ def set_tags(metadata: dict) -> list:
 
     return metadata['tags']
 
+def sort_file_by_time(file) -> datetime:
+    """
+    Sort a filepath collection by uploaded date from the accompanying JSON file,
+    or alternatively by the file modification date.
+
+    Returns:
+        datetime: The uploaded date-time for the specified file.
+    """
+    filepath = Path(file)
+    filepath_json = filepath.with_suffix(filepath.suffix + '.json')
+    time_value = datetime.fromtimestamp(Path(filepath).stat().st_mtime)
+    if filepath_json.exists():
+        try:
+            with open(filepath_json, 'r') as f:
+                metadata = json.load(f)
+                time_str = None
+                if "date" in metadata:
+                    time_str = metadata["date"]
+                elif "create_date" in metadata:
+                    time_str = metadata["create_date"]
+                elif "published" in metadata:
+                    time_str = metadata["published"]
+                if time_str:
+                    time_value = datetime.fromisoformat(time_str)
+        except:
+            pass
+    return time_value
+
 
 @logger.catch
 def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bool = False) -> None:
@@ -152,7 +181,7 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
     download_dir = invoke_gallery_dl(urls, config.import_from_url['tmp_path'], params)
 
     files = [file for file in glob.glob(f'{download_dir}/*') if Path(file).suffix not in ['.psd', '.json', '.zip']]
-    files = sorted(files, key=os.path.getmtime)
+    files = sorted(files, key=sort_file_by_time)
 
     logger.info(f'Downloaded {len(files)} post(s). Start importing...')
 
