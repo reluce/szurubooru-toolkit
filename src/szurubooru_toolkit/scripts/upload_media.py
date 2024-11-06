@@ -342,7 +342,25 @@ def upload_post(
                 logger.error("Failed to set timestamps because file_path is None!")
             else:
                 with open(Path(config.update_db_timestamps['imported_post_timestamps_dir']) / f"{post_id}.timestamp", "w") as f:
-                    f.write(str(datetime.fromtimestamp(Path(file_path).stat().st_mtime)))
+                    time_value = None
+                    # Try to lookup the time from the JSON.
+                    # Handle any exception in case the format is completely off.
+                    try:
+                        if "date" in metadata:
+                            time_value = metadata["date"]
+                        if "create_date" in metadata:
+                            time_value = metadata["create_date"]
+                        elif "published" in metadata:
+                            time_value = metadata["published"]
+                    except:
+                        pass
+                    # Write the time to the timestamp file for this ID.
+                    if time_value:
+                        f.write(str(datetime.fromisoformat(time_value)))
+                    else:
+                        # Use modified time of the file as a fallback.
+                        # This requires gallery-dl to be configured for it. Could possibly result in incorrect values with some network shares.
+                        f.write(str(datetime.fromtimestamp(Path(file_path).stat().st_mtime)))
 
     else:
         logger.debug('File is already uploaded')
@@ -426,6 +444,7 @@ def main(
                     success, saucenao_limit_reached = upload_post(
                         file,
                         file_ext=Path(file_path).suffix[1:],
+                        metadata=metadata,
                         file_path=file_path,
                         saucenao_limit_reached=saucenao_limit_reached,
                     )
