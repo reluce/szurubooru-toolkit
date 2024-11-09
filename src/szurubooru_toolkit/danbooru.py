@@ -225,6 +225,11 @@ class Danbooru:
                 artist = None
 
                 break
+            except (requests.exceptions.JSONDecodeError):
+                logger.debug(f'Could not load JSON for artist {artist}')
+                artist = None
+
+                break
             except (TimeoutError, PybooruError, PybooruHTTPError, PybooruAPIError):
                 logger.debug('Could not establish connection to Danbooru, trying again in 5s...')
                 sleep(5)
