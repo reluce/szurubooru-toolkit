@@ -324,7 +324,7 @@ def upload_post(
         post_id = upload_file(szuru, post)
 
         if not post_id:
-            return
+            return False, saucenao_limit_reached
 
         # Tag post if enabled
         if config.upload_media['auto_tag']:

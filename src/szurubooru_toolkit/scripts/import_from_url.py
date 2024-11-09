@@ -180,7 +180,7 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
 
     download_dir = invoke_gallery_dl(urls, config.import_from_url['tmp_path'], params)
 
-    files = [file for file in glob.glob(f'{download_dir}/*') if Path(file).suffix not in ['.psd', '.json', '.zip']]
+    files = [file for file in glob.glob(f'{download_dir}/*') if Path(file).suffix not in ['.psd', '.json', '.zip', '.7z', '.rar', '.tar', '.gz', '.txt']]
     files = sorted(files, key=sort_file_by_time)
 
     logger.info(f'Downloaded {len(files)} post(s). Start importing...')
