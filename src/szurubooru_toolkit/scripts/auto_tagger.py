@@ -182,6 +182,10 @@ def main(  # noqa C901
             logger.info(f'Found no posts for your query: {query}')
             exit()
 
+        if (limit := config.auto_tagger['limit']) and int(limit) > 0 and int(limit) < int(total_posts):
+            posts = [next(posts) for _ in range(int(limit))]
+            total_posts = len(posts)
+
         if not from_upload_media:
             logger.info(f'Found {total_posts} posts. Start tagging...')
 

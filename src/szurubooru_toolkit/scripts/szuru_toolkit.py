@@ -127,6 +127,10 @@ def cli(
     help=f'Search for posts with the same MD5 hash on popular boorus (default: {config.AUTO_TAGGER_DEFAULTS["md5_search"]}).',
 )
 @click.option(
+    '--limit',
+    help=f'Set the limit for the number of tagged elements (default: {config.AUTO_TAGGER_DEFAULTS["limit"]}).',
+)
+@click.option(
     '--deepbooru/--no-deepbooru',
     is_flag=True,
     help=f'Tag posts with Deepbooru if file could not be found (default: {config.AUTO_TAGGER_DEFAULTS["deepbooru"]}).',
@@ -180,6 +184,7 @@ def click_auto_tagger(
     saucenao,
     saucenao_api_token,
     md5_search,
+    limit,
     deepbooru,
     deepbooru_model,
     deepbooru_threshold,
