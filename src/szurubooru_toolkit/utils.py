@@ -450,6 +450,8 @@ def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], s
     sources = []
     rating = []
     booru_found = False
+    pixiv_rating = None
+    pixiv_artist = None
     for booru, result in results.items():
         if booru != 'pixiv':
             tags.append(result[0].tags.split())
