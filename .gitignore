@@ -1,6 +1,7 @@
 # Project related files
 config.json
 config.toml
+config_gallery-dl.json
 .vscode
 crontab
 szurubooru_toolkit.log

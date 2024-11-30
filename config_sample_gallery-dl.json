@@ -1,46 +1,70 @@
 {
     "extractor": {
+        "path-restrict": {
+            "\\": "⧹",
+            "/" : "⧸",
+            "|" : "￨",
+            ":" : "꞉",
+            "*" : "∗",
+            "?" : "？",
+            "\"": "″",
+            "<" : "﹤",
+            ">" : "﹥"
+        },
+        "postprocessors": [
+            {
+                "name": "ugoira",
+                "whitelist": [
+                    "pixiv"
+                ]
+            },
+            {
+                "name":"metadata"
+            },
+            {
+                "#": "Upscale images when the size is too small.",
+                "name": "exec",
+                "filter": "extension in ('jpg', 'jpeg', 'png', 'bmp')",
+                "command": ["./gallery-dl-upscale.py", "--dir", "{_directory}", "--file", "{_filename}", "--sizecheck", "3840", "--no-cpu"],
+                "whitelist": [
+                    "kemonoparty",
+                    "pixiv",
+                    "fanbox",
+                    "bluesky",
+                    "twitter"
+                ]
+            },
+            {
+                "#": "Extract archive and copy JSON file",
+                "name": "exec",
+                "filter": "extension in ('zip', 'rar', '7z')",
+                "command": ["./gallery-dl-extract-archives-with-upscale.py", "--dir", "{_directory}", "--file", "{_filename}", "--sizecheck", "3840", "--no-cpu"],
+                "whitelist": [
+                    "kemonoparty"
+                ]
+            }
+        ],
         "kemonoparty": {
             "comments": false,
             "dms": false,
             "announcements": false,
             "metadata": false,
-            "archive": "~/.config/gallery-dl/kemono.db",
-            "postprocessors":[
-                {
-                    "#": "Copy metadata.",
-                    "name":"metadata"
-                },
-                {
-                    "#": "Upscale images when the size is too small.",
-                    "name": "exec",
-                    "filter": "extension in ('jpg', 'jpeg', 'png', 'bmp')",
-                    "command": ["./gallery-dl-upscale.py", "--dir", "{_directory}", "--file", "{_filename}", "--sizecheck", "3840", "--cpu"]
-                },
-                {
-                    "#": "Extract archive and copy JSON file",
-                    "name": "exec",
-                    "filter": "extension in ('zip', 'rar', '7z')",
-                    "command": ["./gallery-dl-extract-archives-with-json.py", "--dir", "{_directory}", "--file", "{_filename}", "--sizecheck", "3840", "--cpu"]
-                }
-            ]
+            "archive": "~/.config/gallery-dl/kemono.db"
         },
         "pixiv": {
+            "refresh-token": "ENTER_PIXIV_TOKEN",
             "archive": "~/.config/gallery-dl/pixiv.db",
-            "postprocessors":[
-                {
-                    "#": "Copy metadata.",
-                    "name":"metadata"
-                },
-                {
-                    "#": "Upscale images when the size is too small.",
-                    "name": "exec",
-                    "filter": "extension in ('jpg', 'jpeg', 'png', 'bmp')",
-                    "command": ["./gallery-dl-upscale.py", "--dir", "{_directory}", "--file", "{_filename}", "--sizecheck", "3840", "--cpu"]
-                }
-            ]
+            "ugoira": true
+        },
+        "fanbox": {
+            "archive": "~/.config/gallery-dl/fanbox.db"
+        },
+        "bluesky": {
+            "archive": "~/.config/gallery-dl/bluesky.db"
+        },
+        "twitter": {
+            "archive": "~/.config/gallery-dl/twitter.db"
         }
-
     },
     "downloader": {
         "#": "retry failed downloads up to X times",
