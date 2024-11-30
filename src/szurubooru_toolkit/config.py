@@ -106,6 +106,17 @@ UPLOAD_MEDIA_DEFAULTS = {
     'default_safety': 'safe',
 }
 
+UPDATE_DB_TIMESTAMPS = {
+    'imported_post_timestamps_dir': None,
+    'db_host': 'localhost',
+    'db_port': 5432,
+    'db_user': 'szurubooru',
+    'db_password': '',
+    'db_name': 'szurubooru',
+    'hide_progress': False,
+    'delete_files': True,
+}
+
 
 class Config:
     """Reference to the default config values and the user config (CLI/config.toml)."""
@@ -138,6 +149,7 @@ class Config:
         self.reset_posts = RESET_POSTS_DEFAULTS
         self.tag_posts = TAG_POSTS_DEFAULTS
         self.upload_media = UPLOAD_MEDIA_DEFAULTS
+        self.update_db_timestamps = UPDATE_DB_TIMESTAMPS
         self.credentials = CREDENTIALS_DEFAULTS
 
         # Define default locations for the config file

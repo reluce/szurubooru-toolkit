@@ -94,3 +94,12 @@ shrink_threshold = 6000000
 shrink_dimensions = "2500x2500"
 default_safety = "safe"
 hide_progress = false
+
+[update_db_timestamps]
+imported_post_timestamps_dir = "/local/path/to/completed/dir"
+db_host = "localhost"
+db_port = 5432
+db_name = "szurubooru"
+db_user = "szurubooru"
+db_password = "my_db_password"
+hide_progress = false

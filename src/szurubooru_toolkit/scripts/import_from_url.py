@@ -230,6 +230,7 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
                     file_ext=Path(file).suffix[1:],
                     metadata=metadata,
                     saucenao_limit_reached=saucenao_limit_reached,
+                    src_path=file,
                 )
 
     if os.path.exists(download_dir):

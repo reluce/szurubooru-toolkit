@@ -31,14 +31,14 @@ keywords = ["szurubooru", "szuru", "booru", "saucenao", "deepbooru"]
 szuru-toolkit = 'szurubooru_toolkit.scripts.szuru_toolkit:cli'
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.12"
+python = ">=3.11,<3.13"
 Pillow = "^9.5.0"
 Pybooru="^4.2.2"
 pysaucenao="^1.6.1"
 requests="^2.25.1"
 tqdm="^4.65.0"
-tensorflow="^2.12.0"
-keras="^2.12.0"
+tensorflow="^2.18.0"
+keras="^3.5.0"
 numpy="^1.23.5"
 pyszuru="^0.3.1"
 loguru = "^0.7.0"
@@ -48,6 +48,7 @@ cunnypy = "^2.0.0"
 tldextract = "^3.4.4"
 flask = "^3.0.0"
 pixivpy3 = "^3.7.4"
+psycopg2 = "^2.9.10"
 
 [tool.poetry.dev-dependencies]
 black = "^23.0.0"

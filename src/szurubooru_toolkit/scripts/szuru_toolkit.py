@@ -668,5 +668,21 @@ def click_upload_media(
     module.main()
 
 
+@cli.command('update-db-timestamps', epilog='Example: szuru-toolkit update-db-timestamps')
+@click.pass_context
+def click_update_db_timestamps(ctx):
+    """
+    Update timestamps in database.
+    """
+
+    for param in ctx.command.params:
+        parameter_source = click.get_current_context().get_parameter_source(param.name)
+        if parameter_source == ParameterSource.COMMANDLINE:
+            ctx.obj.setdefault('update_db_timestamps', {}).update({param.name: ctx.params[param.name]})
+
+    module = setup_module('update_db_timestamps', ctx)
+    module.main()
+
+
 if __name__ == '__main__':
     cli()
