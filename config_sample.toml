@@ -8,6 +8,9 @@ hide_progress = false
 [credentials]
 [credentials.pixiv]
 token = "None"
+[credentials.sankaku]
+username = "None"
+password = "None"
 
 [logging]
 log_enabled = false

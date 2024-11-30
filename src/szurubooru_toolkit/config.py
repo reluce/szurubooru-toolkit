@@ -19,6 +19,7 @@ GLOBALS_DEFAULTS = {
 
 CREDENTIALS_DEFAULTS = {
     'pixiv': {'token': None},
+    'sankaku': {'username': None, 'password': None},
 }
 
 LOGGING_DEFAULTS = {
