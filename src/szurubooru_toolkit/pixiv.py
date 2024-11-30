@@ -135,18 +135,18 @@ class Pixiv:
         """
 
         from szurubooru_toolkit import config
-        from szurubooru_toolkit import danbooru_client
+        from szurubooru_toolkit import danbooru
         from szurubooru_toolkit import szuru
 
         if pixiv_artist:
-            artist_danbooru = danbooru_client.search_artist(pixiv_artist)
+            artist_danbooru = danbooru.search_artist(pixiv_artist)
 
             artist_pixiv_sanitized = pixiv_artist.lower().replace(' ', '_')
             # Sometimes \3000 gets appended from the result for whatever reason
             artist_pixiv_sanitized = artist_pixiv_sanitized.replace('\u3000', '')
 
             if not artist_danbooru:
-                artist_danbooru = danbooru_client.search_artist(artist_pixiv_sanitized)
+                artist_danbooru = danbooru.search_artist(artist_pixiv_sanitized)
 
             if artist_danbooru:
                 artist = artist_danbooru

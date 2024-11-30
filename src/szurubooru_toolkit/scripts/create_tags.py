@@ -85,9 +85,9 @@ def main(tag_file: str = '') -> None:
                         # logger.warning(e)  # Could result in lots of output with larger tag files
                         pass
         else:
-            from szurubooru_toolkit import danbooru_client
+            from szurubooru_toolkit import danbooru
 
-            results = danbooru_client.download_tags(config.create_tags['query'], min_post_count, limit)
+            results = danbooru.download_tags(config.create_tags['query'], min_post_count, limit)
 
             for result in results:
                 for tag in result:

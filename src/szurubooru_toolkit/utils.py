@@ -380,10 +380,17 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> di
     results = {}
 
     boorus_to_search = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere'] if booru == 'all' else [booru]
+    if 'sankaku' in boorus_to_search:
+        from szurubooru_toolkit import sankaku
+
     for booru in boorus_to_search:
         for attempt in range(1, 12):
             try:
-                result = await cunnypy.search(booru, query, limit, page)
+                if booru == 'sankaku':
+                    result = sankaku.search(query, limit, page)
+                else:
+                    result = await cunnypy.search(booru, query, limit, page)
+
                 if result:
                     results[booru] = result
                 break
@@ -416,12 +423,12 @@ def convert_tags(tags: list) -> list:
         list: The converted tags.
     """
 
-    from szurubooru_toolkit import danbooru_client
+    from szurubooru_toolkit import danbooru
 
     unfiltered_tags = []
 
     for tag in tags:
-        unfiltered_tags.append(danbooru_client.get_other_names_tag(tag))
+        unfiltered_tags.append(danbooru.get_other_names_tag(tag))
 
     filtered_tags = [tag for tag in unfiltered_tags if tag is not None]
 
@@ -452,9 +459,14 @@ def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], s
     booru_found = False
     for booru, result in results.items():
         if booru != 'pixiv':
-            tags.append(result[0].tags.split())
-            sources.append(generate_src({'site': booru, 'id': result[0].id}))
-            rating = convert_rating(result[0].rating)
+            if booru == 'sankaku':
+                tags.append([tag['tagName'] for tag in result[0]['tags']])
+                sources.append(generate_src({'site': booru, 'id': result[0]['id']}))
+                rating = convert_rating(result[0]['rating'])
+            else:
+                tags.append(result[0].tags.split())
+                sources.append(generate_src({'site': booru, 'id': result[0].id}))
+                rating = convert_rating(result[0].rating)
             booru_found = True
         else:
             if config.credentials['pixiv']['token']:
@@ -543,16 +555,16 @@ def extract_twitter_artist(metadata: dict) -> str:
     """
 
     from szurubooru_toolkit import config
-    from szurubooru_toolkit import danbooru_client
+    from szurubooru_toolkit import danbooru
     from szurubooru_toolkit import szuru
 
     twitter_name = metadata['author']['name']
     twitter_nick = metadata['author']['nick']
     artist_aliases = None
 
-    artist = danbooru_client.search_artist(twitter_name)
+    artist = danbooru.search_artist(twitter_name)
     if not artist:
-        artist = danbooru_client.search_artist(twitter_nick)
+        artist = danbooru.search_artist(twitter_nick)
 
     if not artist and config.import_from_url['use_twitter_artist']:
         artist_aliases = [twitter_name.lower().replace(' ', '_')]
