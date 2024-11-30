@@ -15,6 +15,7 @@ from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import download_media
 from szurubooru_toolkit.utils import prepare_post
+from szurubooru_toolkit.utils import sanitize_tags
 from szurubooru_toolkit.utils import search_boorus
 from szurubooru_toolkit.utils import shrink_img
 from szurubooru_toolkit.utils import statistics
@@ -182,6 +183,10 @@ def main(  # noqa C901
             logger.info(f'Found no posts for your query: {query}')
             exit()
 
+        if (limit := config.auto_tagger['limit']) and int(limit) > 0 and int(limit) < int(total_posts):
+            posts = [next(posts) for _ in range(int(limit))]
+            total_posts = len(posts)
+
         if not from_upload_media:
             logger.info(f'Found {total_posts} posts. Start tagging...')
 
@@ -284,6 +289,7 @@ def main(  # noqa C901
                 tags = list(set().union(post.tags, tags_by_md5, tags_by_sauce, tags_by_deepbooru))
 
             post.tags = [tag for tag in tags if tag is not None]
+            sanitize_tags(post.tags)
 
             if remove_tags:
                 [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]

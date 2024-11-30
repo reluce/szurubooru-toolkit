@@ -125,7 +125,7 @@ class Danbooru:
 
         for _ in range(1, 12):
             try:
-                search_url = 'https://danbooru.donmai.us/wiki_pages.json?' f'search[other_names_match]={other_tag}&only=title'
+                search_url = f'https://danbooru.donmai.us/wiki_pages.json?search[other_names_match]={other_tag}&only=title'
 
                 tag = self.session.get(search_url).json()[0]['title']
                 self.session.close()
@@ -210,9 +210,7 @@ class Danbooru:
                     artist = result[0]['name']
                 else:
                     search_url = (
-                        'https://danbooru.donmai.us/artists.json?'
-                        f'search[any_other_name_like]={artist.lower()}'
-                        '&search[is_deleted]=false'
+                        f'https://danbooru.donmai.us/artists.json?search[any_other_name_like]={artist.lower()}&search[is_deleted]=false'
                     )
                     artist = self.session.get(search_url).json()[0]['name']
                     self.session.close()
@@ -222,6 +220,11 @@ class Danbooru:
                 break
             except (IndexError, KeyError):
                 logger.debug(f'Could not find artist "{artist.lower()}"')
+                artist = None
+
+                break
+            except requests.exceptions.JSONDecodeError:
+                logger.debug(f'Could not load JSON for artist {artist}')
                 artist = None
 
                 break
