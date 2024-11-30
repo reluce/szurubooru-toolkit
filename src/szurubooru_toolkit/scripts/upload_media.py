@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
 import json
 import os
 import shutil
+from datetime import datetime
 from glob import glob
 from pathlib import Path
 
@@ -337,29 +337,33 @@ def upload_post(
             )
 
         # Write timestamp file.
-        if 'imported_post_timestamps_dir' in config.update_db_timestamps and Path(config.update_db_timestamps['imported_post_timestamps_dir']).exists():
+        if (
+            'imported_post_timestamps_dir' in config.update_db_timestamps
+            and Path(config.update_db_timestamps['imported_post_timestamps_dir']).exists()
+        ):
             if not file_path:
-                logger.error("Failed to set timestamps because file_path is None!")
+                logger.error('Failed to set timestamps because file_path is None!')
             else:
-                with open(Path(config.update_db_timestamps['imported_post_timestamps_dir']) / f"{post_id}.timestamp", "w") as f:
+                with open(Path(config.update_db_timestamps['imported_post_timestamps_dir']) / f'{post_id}.timestamp', 'w') as f:
                     time_value = None
                     # Try to lookup the time from the JSON.
                     # Handle any exception in case the format is completely off.
                     try:
-                        if "date" in metadata:
-                            time_value = metadata["date"]
-                        if "create_date" in metadata:
-                            time_value = metadata["create_date"]
-                        elif "published" in metadata:
-                            time_value = metadata["published"]
-                    except:
+                        if 'date' in metadata:
+                            time_value = metadata['date']
+                        if 'create_date' in metadata:
+                            time_value = metadata['create_date']
+                        elif 'published' in metadata:
+                            time_value = metadata['published']
+                    except Exception:
                         pass
                     # Write the time to the timestamp file for this ID.
                     if time_value:
                         f.write(str(datetime.fromisoformat(time_value)))
                     else:
                         # Use modified time of the file as a fallback.
-                        # This requires gallery-dl to be configured for it. Could possibly result in incorrect values with some network shares.
+                        # This requires gallery-dl to be configured for it.
+                        # Could possibly result in incorrect values with some network shares.
                         f.write(str(datetime.fromtimestamp(Path(file_path).stat().st_mtime)))
 
     else:
@@ -460,7 +464,13 @@ def main(
                     logger.success('Script has finished uploading!')
 
             else:
-                _, saucenao_limit_reached = upload_post(file_to_upload, file_ext, metadata, saucenao_limit_reached=saucenao_limit_reached, file_path=src_path)
+                _, saucenao_limit_reached = upload_post(
+                    file_to_upload,
+                    file_ext,
+                    metadata,
+                    saucenao_limit_reached=saucenao_limit_reached,
+                    file_path=src_path,
+                )
 
             return saucenao_limit_reached
         else:

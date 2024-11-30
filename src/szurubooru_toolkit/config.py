@@ -109,9 +109,9 @@ UPDATE_DB_TIMESTAMPS = {
     'imported_post_timestamps_dir': None,
     'db_host': 'localhost',
     'db_port': 5432,
-    'db_user': "szurubooru",
-    'db_password': "",
-    "db_name": "szurubooru",
+    'db_user': 'szurubooru',
+    'db_password': '',
+    'db_name': 'szurubooru',
     'hide_progress': False,
     'delete_files': True,
 }

@@ -1,8 +1,8 @@
 import glob
 from pathlib import Path
 
-from loguru import logger
 import psycopg2
+from loguru import logger
 from tqdm import tqdm
 
 from szurubooru_toolkit import config
@@ -17,22 +17,26 @@ def main() -> None:
     """
     cfg = config.update_db_timestamps
 
-    if ('imported_post_timestamps_dir' not in cfg
+    if (
+        'imported_post_timestamps_dir' not in cfg
         or cfg['imported_post_timestamps_dir'] is None
-        or not Path(cfg['imported_post_timestamps_dir']).exists()):
+        or not Path(cfg['imported_post_timestamps_dir']).exists()
+    ):
         logger.error('Failed to import because the post timestamp directory is not set.')
         return
     files = [file for file in glob.glob(f"{cfg['imported_post_timestamps_dir']}/*") if Path(file).suffix in ['.timestamp']]
     logger.info(f'Found {len(files)} file(s). Start updating database...')
     if len(files) == 0:
-        logger.info("Nothing to process")
+        logger.info('Nothing to process')
         return
 
     try:
-        conn = psycopg2.connect(f"host={cfg['db_host']} port={cfg['db_port']} dbname={cfg['db_name']} user={cfg['db_user']} password={cfg['db_password']}")
+        conn = psycopg2.connect(
+            f"host={cfg['db_host']} port={cfg['db_port']} dbname={cfg['db_name']} user={cfg['db_user']} password={cfg['db_password']}",
+        )
         cur = conn.cursor()
     except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(f"Failed to open connection with database, please check your credentials.")
+        logger.error('Failed to open connection with database, please check your credentials.')
         logger.error(error)
         exit(1)
 
@@ -49,10 +53,10 @@ def main() -> None:
         leave=False,
         disable=hide_progress,
     ):
-        with open(file, 'r') as f:
+        with open(file) as f:
             timestamp = f.read().strip()
             if not timestamp or len(timestamp) == 0:
-                tqdm.write(f"Timestamp is empty for {file}")
+                tqdm.write(f'Timestamp is empty for {file}')
                 continue
 
             postid = Path(file).stem
@@ -61,9 +65,9 @@ def main() -> None:
                 if cur.rowcount == 1:
                     files_success.append(file)
                 else:
-                    tqdm.write(f"Could not update post id {postid}.")
-            except:
-                tqdm.write(f"Failed to update timestamp to {timestamp} for post id {postid}.")
+                    tqdm.write(f'Could not update post id {postid}.')
+            except Exception:
+                tqdm.write(f'Failed to update timestamp to {timestamp} for post id {postid}.')
 
     if len(files_success) > 0:
         # Write the changes to the database.
@@ -71,7 +75,7 @@ def main() -> None:
             conn.commit()
             conn.close()
         except (Exception, psycopg2.DatabaseError) as error:
-            logger.error(f"Failed to commit the changes.")
+            logger.error('Failed to commit the changes.')
             logger.error(error)
             exit(2)
 
