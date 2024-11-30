@@ -21,10 +21,10 @@ class Sankaku:
         username = config.credentials['sankaku']['username']
         password = config.credentials['sankaku']['password']
 
+        self.api_url = 'https://capi-v2.sankakucomplex.com'
         if username and password:
             self.headers['Authorization'] = self._authenticate(username, password)
 
-        self.api_url = 'https://capi-v2.sankakucomplex.com'
         self.client = requests.Session()
         self.client.headers.update(self.headers)
 
