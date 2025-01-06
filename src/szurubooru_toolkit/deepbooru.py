@@ -97,11 +97,13 @@ class Deepbooru:
                 result_tags[self.tags[i]] = results[i]
 
         tags = list(result_tags.keys())
-        logger.debug(f'Guessed following tags: {tags}')
-
         if not tags:
-            logger.warning('Deepbooru could not guess tags for image!')
+            logger.warning(
+                f'Deepbooru could not guess tags for image! Maximum inference was {np.amax(results)}, while threshold is {threshold}!',
+            )
+            rating = default_safety
         else:
+            logger.debug(f'Guessed following tags: {tags}')
             try:
                 if 'rating' not in tags[-1]:
                     logger.debug(f'Deepbooru could not guess rating for image! Falling back to {default_safety}')
@@ -111,13 +113,10 @@ class Deepbooru:
                     logger.debug(f'Guessed rating {rating}')
                     del tags[-1]
             except IndexError:
-                logger.warning('Could not guess rating for image! Defaulting to unsafe.')
+                logger.debug(f'Deepbooru could not guess rating for image! Falling back to {default_safety}')
 
             if set_tag:
                 tags.append('deepbooru')
-
-        if rating is None:
-            rating = 'unsafe'
 
         converted_tags = []
         unsanitized_tags = []
