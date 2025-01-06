@@ -257,25 +257,23 @@ def main(  # noqa C901
                     config.auto_tagger['deepbooru_set_tag'],
                 )
 
-                if result is None:
-                    continue
-
                 tags_by_deepbooru, post.safety = result
 
-                # Deepbooru detects characters, but not the parody.
-                # Set the parody based on the character if configured.
-                # Only do this if no previous tags where found as this operation takes quite some time
-                if not tags_by_md5 and not tags_by_sauce and config.auto_tagger['update_relations']:
-                    for tag in tags_by_deepbooru:
-                        try:
-                            szuru_tag = szuru.api.getTag(tag)
-                        except SzurubooruHTTPError as msg:
-                            if 'TagNotFoundError' in str(msg):
-                                szuru_tag = szuru.api.createTag(tag)
-                        for implication in szuru_tag.implications:
-                            szuru_implication = szuru.api.getTag(implication)
-                            if szuru_implication not in post.tags:
-                                post.tags.append(szuru_implication.primary_name)
+                if tags_by_deepbooru:
+                    # Deepbooru detects characters, but not the parody.
+                    # Set the parody based on the character if configured.
+                    # Only do this if no previous tags where found as this operation takes quite some time
+                    if not tags_by_md5 and not tags_by_sauce and config.auto_tagger['update_relations']:
+                        for tag in tags_by_deepbooru:
+                            try:
+                                szuru_tag = szuru.api.getTag(tag)
+                            except SzurubooruHTTPError as msg:
+                                if 'TagNotFoundError' in str(msg):
+                                    szuru_tag = szuru.api.createTag(tag)
+                            for implication in szuru_tag.implications:
+                                szuru_implication = szuru.api.getTag(implication)
+                                if szuru_implication not in post.tags:
+                                    post.tags.append(szuru_implication.primary_name)
 
                 if post.relations:
                     set_tags_from_relations(post)
