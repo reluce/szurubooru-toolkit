@@ -457,6 +457,8 @@ def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], s
     sources = []
     rating = []
     booru_found = False
+    pixiv_rating = None
+    pixiv_artist = None
     for booru, result in results.items():
         if booru != 'pixiv':
             if booru == 'sankaku':
@@ -469,6 +471,7 @@ def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], s
                 rating = convert_rating(result[0].rating)
             booru_found = True
         else:
+            pixiv_tags = None
             if config.credentials['pixiv']['token']:
                 try:
                     pixiv = Pixiv(config.credentials['pixiv']['token'])
@@ -483,7 +486,7 @@ def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], s
                     logger.warning(f'Could not get result from pixiv: {e}')
                     pixiv_rating = None
 
-            if not tags and config.auto_tagger['use_pixiv_tags']:
+            if not tags and pixiv_tags and config.auto_tagger['use_pixiv_tags']:
                 tags = pixiv_tags
 
             sources.append(results['pixiv'].url)

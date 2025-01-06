@@ -43,6 +43,7 @@ AUTO_TAGGER_DEFAULTS = {
     'use_pixiv_artist': False,
     'use_pixiv_tags': False,
     'update_relations': False,
+    'limit': None,
 }
 
 CREATE_RELATIONS_DEFAULTS = {
