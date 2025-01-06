@@ -137,11 +137,12 @@ def upload_file(szuru: Szurubooru, post: Post) -> None:
 
     safety = post.safety if post.safety else config.upload_media['default_safety']
     source = post.source if post.source else ''
+    tags = post.tags if post.tags else config.upload_media['tags']
 
     post_url = szuru.szuru_api_url + '/posts'
     metadata = json.dumps(
         {
-            'tags': post.tags,
+            'tags': tags,
             'safety': safety,
             'source': source,
             'relations': post.similar_posts,
