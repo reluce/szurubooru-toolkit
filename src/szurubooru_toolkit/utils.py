@@ -333,7 +333,7 @@ def generate_src(metadata: dict) -> str:
             case 'konachan':
                 src = 'https://konachan.com/post/show/' + id
             case 'sankaku':
-                src = 'https://chan.sankakucomplex.com/post/show/' + id
+                src = 'https://sankakucomplex.com/posts/' + id
             case 'yandere':
                 src = 'https://yande.re/post/show/' + id
             case 'twitter':
