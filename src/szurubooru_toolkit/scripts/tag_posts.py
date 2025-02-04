@@ -75,8 +75,8 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
 
             szuru.update_post(post)
 
-            if not config.tag_posts['silence_info']:
-                logger.success('Finished tagging!')
+        if not config.tag_posts['silence_info']:
+            logger.success('Finished tagging!')
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
         exit(1)
