@@ -21,7 +21,7 @@ class Sankaku:
         username = config.credentials['sankaku']['username']
         password = config.credentials['sankaku']['password']
 
-        self.api_url = 'https://capi-v2.sankakucomplex.com'
+        self.api_url = 'https://sankakuapi.com'
         if username and password:
             self.headers['Authorization'] = self._authenticate(username, password)
 
