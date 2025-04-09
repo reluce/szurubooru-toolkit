@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import subprocess
 import warnings
 from asyncio import sleep
 from asyncio.exceptions import CancelledError
 from datetime import datetime
+from functools import total_ordering
 from io import BytesIO
+from pathlib import Path
 from urllib.error import ContentTooShortError
 
 import cunnypy
@@ -609,3 +612,145 @@ def get_site(url: str) -> str:
     for site in sites:
         if site in url:
             return site
+
+
+@total_ordering
+class FileInfo:
+    """A class that handles file sorting with timestamp and natural ordering.
+
+    This class provides functionality to sort files first by their timestamp and then
+    by their names using natural sorting (e.g., "file2.jpg" comes before "file10.jpg").
+    It implements rich comparison methods through the @total_ordering decorator.
+
+    Attributes:
+        filepath: A string containing the path to the file.
+        timestamp: A datetime object representing the file's modification time.
+        natural_keys: A list of strings and integers representing the filename broken
+            into natural sorting components.
+    """
+
+    def __init__(self, filepath: str) -> None:
+        """Initialize a FileInfo instance.
+
+        Args:
+            filepath: A string containing the path to the file.
+        """
+
+        self.filepath = filepath
+        self.timestamp = self._get_file_time()
+        self.natural_keys = self._natural_keys(filepath)
+
+    def _get_file_time(self) -> datetime:
+        """Get the file's timestamp using various fallback methods.
+
+        Attempts to get the file's modification time (mtime) first, then creation
+        time (ctime) if mtime fails. Falls back to current time if both fail.
+
+        Returns:
+            datetime: The timestamp of the file.
+        """
+
+        time_value = datetime.now()  # Default fallback
+        path = Path(self.filepath)
+
+        try:
+            time_value = datetime.fromtimestamp(path.stat().st_mtime)
+        except (OSError, AttributeError):
+            try:
+                time_value = datetime.fromtimestamp(path.stat().st_ctime)
+            except (OSError, AttributeError):
+                pass
+        return time_value
+
+    @staticmethod
+    def _atoi(text: str) -> int | str:
+        """Convert string to integer if possible.
+
+        Args:
+            text: String that might represent an integer.
+
+        Returns:
+            Either an int if the text represents a number, or the original string.
+        """
+
+        return int(text) if text.isdigit() else text
+
+    def _natural_keys(self, text: str) -> list[int | str]:
+        """Split string into a list of string and number chunks.
+
+        This is the key to natural sorting. It splits a string into chunks
+        that can be naturally compared (e.g., ["file", 2] vs ["file", 10]).
+
+        Args:
+            text: String to be split into natural keys.
+
+        Returns:
+            A list where numeric chunks are converted to int and others remain str.
+
+        Example:
+            >>> self._natural_keys("file123test456")
+            ['file', 123, 'test', 456]
+        """
+
+        return [self._atoi(c) for c in re.split(r'(\d+)', text)]
+
+    def __eq__(self, other: FileInfo) -> bool:
+        """Check if two FileInfo objects are equal.
+
+        Two files are considered equal if they have the same timestamp and
+        natural keys.
+
+        Args:
+            other: Another FileInfo instance to compare with.
+
+        Returns:
+            bool: True if the files are equal, False otherwise.
+        """
+
+        if not isinstance(other, FileInfo):
+            return NotImplemented
+        return (self.timestamp, self.natural_keys) == (other.timestamp, other.natural_keys)
+
+    def __lt__(self, other: FileInfo) -> bool:
+        """Compare if this file should come before another file.
+
+        The comparison is done first by timestamp, then by natural sort of names
+        if timestamps are equal.
+
+        Args:
+            other: Another FileInfo instance to compare with.
+
+        Returns:
+            bool: True if this file should come before the other file, False otherwise.
+        """
+
+        if not isinstance(other, FileInfo):
+            return NotImplemented
+        return (self.timestamp, self.natural_keys) < (other.timestamp, other.natural_keys)
+
+
+def sort_files(files: list[str]) -> list[str]:
+    """Sort files by timestamp and natural ordering of names.
+
+    This function implements a two-level sorting:
+    1. First by file timestamp (modification time)
+    2. Then by natural sort of filenames (so file2.jpg comes before file10.jpg)
+
+    Args:
+        files: A list of file paths to sort.
+
+    Returns:
+        A new list containing the file paths sorted by timestamp and name.
+
+    Example:
+        >>> files = ['file10.jpg', 'file2.jpg']
+        >>> sort_files(files)
+        ['file2.jpg', 'file10.jpg']
+
+    Note:
+        This function uses the FileInfo class internally to handle the sorting
+        logic. The sorting is stable, meaning files with the same timestamp
+        will maintain their relative order based on filename.
+    """
+
+    return sorted(files, key=FileInfo)

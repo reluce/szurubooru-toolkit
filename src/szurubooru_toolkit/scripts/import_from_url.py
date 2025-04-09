@@ -17,6 +17,7 @@ from szurubooru_toolkit.utils import extract_twitter_artist
 from szurubooru_toolkit.utils import generate_src
 from szurubooru_toolkit.utils import get_site
 from szurubooru_toolkit.utils import invoke_gallery_dl
+from szurubooru_toolkit.utils import sort_files
 
 
 def set_tags(metadata: dict) -> list:
@@ -186,7 +187,7 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
         for file in glob.glob(f'{download_dir}/*')
         if Path(file).suffix not in ['.psd', '.json', '.zip', '.7z', '.rar', '.tar', '.gz', '.txt']
     ]
-    files = sorted(files, key=sort_file_by_time)
+    files = sort_files(files)
 
     logger.info(f'Downloaded {len(files)} post(s). Start importing...')
 
