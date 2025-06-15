@@ -12,7 +12,8 @@ chrome.storage.sync.get(['savedInputs'], function(result) {
   }
 });
 
-document.getElementById('executeButton').addEventListener('click', function () {
+// Import current tab functionality
+document.getElementById('importCurrentTabButton').addEventListener('click', function () {
   const userInputCookieLocation = inputCookieLocationBox.value;
   const userInputRange = inputRangeBox.value;
 
@@ -22,6 +23,20 @@ document.getElementById('executeButton').addEventListener('click', function () {
   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
     const currentURL = tabs[0].url;
     chrome.runtime.sendMessage({ action: 'run_import_from_url', url: currentURL, inputCookieLocation: userInputCookieLocation, inputRange: userInputRange });
+  });
+});
+
+// Import all tabs functionality
+document.getElementById('importAllTabsButton').addEventListener('click', function () {
+  const userInputCookieLocation = inputCookieLocationBox.value;
+  const userInputRange = inputRangeBox.value;
+
+  // Save the input to storage
+  chrome.storage.sync.set({ 'savedInputs': { inputCookieLocation: userInputCookieLocation, inputRange: userInputRange } });
+
+  chrome.tabs.query({ currentWindow: true }, function (tabs) {
+    const urls = tabs.map(tab => tab.url);
+    chrome.runtime.sendMessage({ action: 'run_import_from_all_tabs', urls: urls, inputCookieLocation: userInputCookieLocation, inputRange: userInputRange });
   });
 });
 

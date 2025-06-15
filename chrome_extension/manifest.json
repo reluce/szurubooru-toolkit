@@ -5,7 +5,9 @@
   "description": "Interact with your szurubooru-toolkit directly from your browser.",
   "permissions": [
     "activeTab",
-    "storage"
+    "tabs",
+    "storage",
+    "notifications"
   ],
   "host_permissions": [
     "http://localhost:5000/*"
