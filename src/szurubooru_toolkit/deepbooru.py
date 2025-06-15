@@ -11,8 +11,25 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import numpy as np  # noqa E402
 import tensorflow as tf  # noqa E402
+import warnings  # noqa E402
 from loguru import logger  # noqa E402
 from tensorflow.python.ops.numpy_ops import np_config  # noqa E402
+
+# Suppress specific Keras warnings about input structure
+warnings.filterwarnings('ignore', message='The structure of `inputs` doesn\'t match the expected structure.*')
+
+# Optimize TensorFlow for Apple Silicon
+if len(tf.config.list_physical_devices('GPU')) > 0:
+    # Enable memory growth to avoid allocating all GPU memory at once
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+        except RuntimeError as e:
+            logger.debug(f"GPU memory growth setting failed: {e}")
+    
+    logger.info("TensorFlow Metal GPU acceleration enabled for Apple Silicon")
 
 
 class Deepbooru:
@@ -47,9 +64,22 @@ class Deepbooru:
         """
 
         try:
-            self.model = tf.keras.models.load_model(model_path, compile=False)
+            # Load model with additional options for better compatibility
+            self.model = tf.keras.models.load_model(
+                model_path, 
+                compile=False,
+                safe_mode=False  # Disable safe mode for older models
+            )
+            logger.debug(f"Model loaded successfully from {model_path}")
+            
+            # Log model input information for debugging
+            if hasattr(self.model, 'input_names') and self.model.input_names:
+                logger.debug(f"Model input names: {self.model.input_names}")
+            if hasattr(self.model, 'input_shape'):
+                logger.debug(f"Model input shape: {self.model.input_shape}")
+                
         except Exception as e:
-            logger.debug(e)
+            logger.debug(f"Model loading error: {e}")
             logger.critical('Model could not be read. Download it from https://github.com/KichangKim/DeepDanbooru')
             exit()
 
@@ -89,7 +119,27 @@ class Deepbooru:
             logger.warning('Failed to convert image to Deepbooru format')
             return
 
-        results = self.model(np.array([image])).reshape(self.tags.shape[0])
+        try:
+            # Prepare input array
+            input_array = np.array([image])
+            
+            # Handle different Keras input formats to avoid warnings
+            if hasattr(self.model, 'input_names') and self.model.input_names:
+                # Use named inputs if available
+                input_dict = {self.model.input_names[0]: input_array}
+                results = self.model(input_dict)
+            else:
+                # Fallback to direct input
+                results = self.model(input_array)
+            
+            # Ensure results are properly shaped
+            if hasattr(results, 'numpy'):
+                results = results.numpy()
+            results = results.reshape(self.tags.shape[0])
+            
+        except Exception as e:
+            logger.warning(f'Failed to predict tags for image: {e}')
+            return [], default_safety
 
         result_tags = {}
         for i in range(len(self.tags)):
