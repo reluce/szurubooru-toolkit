@@ -31,13 +31,15 @@ total_untagged = 0
 total_skipped = 0
 
 
+# Save the original showwarning function
+_original_showwarning = warnings.showwarning
+
 # Define a filter function to ignore the DecompressionBombWarning
 def ignore_decompression_bomb_warning(message, category, filename, lineno, file=None, line=None):
     if isinstance(message, Image.DecompressionBombWarning):
         return
     else:
-        return warnings.defaultaction(message, category, filename, lineno, file, line)
-
+        return _original_showwarning(message, category, filename, lineno, file, line)
 
 # Set the filter to ignore the warning
 warnings.filterwarnings('ignore', category=Image.DecompressionBombWarning)
@@ -387,7 +389,8 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> di
         from szurubooru_toolkit import sankaku
 
     for booru in boorus_to_search:
-        for attempt in range(1, 12):
+        max_attempts = 1 if booru == 'gelbooru' else 11
+        for attempt in range(1, max_attempts + 1):
             try:
                 if booru == 'sankaku':
                     result = sankaku.search(query, limit, page)
@@ -402,11 +405,11 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> di
                 break
             except (HTTPStatusError, ReadTimeout):
                 logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
-                if attempt < 11:  # no need to sleep on the last attempt
+                if attempt < max_attempts:  # no need to sleep on the last attempt
                     await sleep(5)
             except Exception as e:
                 logger.debug(f'Could not get result from {booru} with "{query}": {e}. Trying again. in 5s...')
-                if attempt < 11:  # no need to sleep on the last attempt
+                if attempt < max_attempts:  # no need to sleep on the last attempt
                     await sleep(5)
         else:
             logger.debug(f'Could not establish connection to {booru}, trying with next post...')
