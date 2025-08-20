@@ -42,7 +42,7 @@ class Szurubooru:
         logger.debug(f'szuru_api_url = {self.szuru_api_url}')
 
         token = self.encode_auth_headers(szuru_user, szuru_token)
-        self.headers = {'Accept': 'application/json', 'Authorization': 'Token ' + token}
+        self.headers = {'Accept': 'application/json', 'Authorization': 'Token ' + token, 'Content-Type': 'application/json'}
 
         # Use the api object to interact with pyszuru module
         self.api = pyszuru.API(base_url=szuru_url, username=szuru_user, token=szuru_token)
@@ -147,9 +147,9 @@ class Szurubooru:
 
         try:
             if videos:
-                query_params = {'query': query}
+                query_params = {'query': query, 'limit': 100}
             else:
-                query_params = {'query': f'type:image,animation {query}'}
+                query_params = {'query': f'type:image,animation {query}', 'limit': 100}
             query_url = self.szuru_api_url + '/posts/?' + urllib.parse.urlencode(query_params)
             logger.debug(f'Getting post from query_url: {query_url}')
 
@@ -253,8 +253,8 @@ class Szurubooru:
 
         try:
             response = requests.put(query_url, headers=self.headers, data=payload)
-            if 'description' in response.json():
-                raise Exception(response.json()['description'])
+            if response.status_code != 200:
+                raise Exception(response.text)
         except Exception as e:
             logger.warning(f'Could not edit your post: {e}')
 
@@ -305,7 +305,7 @@ class Szurubooru:
 
         response = requests.post(query_url, headers=self.headers, data=payload)
         try:
-            if 'description' in response.json():
+            if 'description' in response.json() and len(response.json()['description']) > 0:
                 if 'used by another tag' in response.json()['description']:
                     if overwrite:
                         tag = self.api.getTag(tag_name)
@@ -314,6 +314,8 @@ class Szurubooru:
                             tag.push()
                     else:
                         raise TagExistsError(response.json()['description'])
+                elif 'duplicate key value' in response.json()['description']:
+                    raise TagExistsError(response.json()['description'])
                 else:
                     raise Exception(response.json()['description'])
         except TypeError:

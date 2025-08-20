@@ -43,7 +43,7 @@ def get_files(upload_dir: str) -> list:
     return files
 
 
-def get_media_token(szuru: Szurubooru, media: bytes) -> str:
+def get_media_token(szuru: Szurubooru, media: bytes, file_ext: str = None) -> str:
     """
     Upload the media file to the temporary upload endpoint.
 
@@ -53,6 +53,7 @@ def get_media_token(szuru: Szurubooru, media: bytes) -> str:
     Args:
         szuru (Szurubooru): A szurubooru object.
         media (bytes): The media file to upload as bytes.
+        file_ext (str, optional): The file extension to determine MIME type.
 
     Returns:
         str: A token from szurubooru.
@@ -62,12 +63,38 @@ def get_media_token(szuru: Szurubooru, media: bytes) -> str:
                    error message.
     """
 
+    # Map file extensions to MIME types
+    mime_types = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+        'mp4': 'video/mp4',
+        'webm': 'video/webm'
+    }
+    
+    # Determine MIME type
+    if file_ext and file_ext.lower() in mime_types:
+        mime_type = mime_types[file_ext.lower()]
+        filename = f'file.{file_ext.lower()}'
+    else:
+        mime_type = 'application/octet-stream'
+        filename = 'file'
+
     post_url = szuru.szuru_api_url + '/uploads'
-
+    headers = szuru.headers.copy()
+    
+    # Set proper Content-Type for multipart with boundary - let requests handle it
+    if 'Content-Type' in headers:
+        del headers['Content-Type']
+    
     try:
-        response = requests.post(post_url, files={'content': media}, headers=szuru.headers)
+        # Use tuple format to specify MIME type for the file content
+        files = {'content': (filename, media, mime_type)}
+        response = requests.post(post_url, files=files, headers=headers)
 
-        if 'description' in response.json():
+        if 'description' in response.json() and len(response.json()['description']) > 0:
             raise Exception(response.json()['description'])
         else:
             token = response.json()['token']
@@ -102,8 +129,9 @@ def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
     try:
         response = requests.post(post_url, headers=szuru.headers, data=metadata)
 
-        if 'description' in response.json():
-            raise Exception(response.json()['description'])
+        # if 'description' in response.json() and len(response.json()['description']) > 0:
+        if response.status_code != 200:
+            raise Exception(response.text)
         else:
             exact_post = response.json()['exactPost']
             similar_posts = response.json()['similarPosts']
@@ -153,8 +181,8 @@ def upload_file(szuru: Szurubooru, post: Post) -> None:
     try:
         response = requests.post(post_url, headers=szuru.headers, data=metadata)
 
-        if 'description' in response.json():
-            raise Exception(response.json()['description'])
+        if response.status_code != 200:
+            raise Exception(response.text)
         else:
             return response.json()['id']
     except Exception as e:
@@ -290,7 +318,7 @@ def upload_post(
     else:
         post.media = file
 
-    post.token = get_media_token(szuru, post.media)
+    post.token = get_media_token(szuru, post.media, file_ext)
     post.exact_post, similar_posts, errors = check_similarity(szuru, post.token)
 
     if errors:
