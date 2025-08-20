@@ -29,7 +29,7 @@ if len(tf.config.list_physical_devices('GPU')) > 0:
         except RuntimeError as e:
             logger.debug(f"GPU memory growth setting failed: {e}")
     
-    logger.info("TensorFlow Metal GPU acceleration enabled for Apple Silicon")
+    logger.debug("TensorFlow Metal GPU acceleration enabled for Apple Silicon")
 
 
 class Deepbooru:
@@ -119,27 +119,8 @@ class Deepbooru:
             logger.warning('Failed to convert image to Deepbooru format')
             return
 
-        try:
-            # Prepare input array
-            input_array = np.array([image])
-            
-            # Handle different Keras input formats to avoid warnings
-            if hasattr(self.model, 'input_names') and self.model.input_names:
-                # Use named inputs if available
-                input_dict = {self.model.input_names[0]: input_array}
-                results = self.model(input_dict)
-            else:
-                # Fallback to direct input
-                results = self.model(input_array)
-            
-            # Ensure results are properly shaped
-            if hasattr(results, 'numpy'):
-                results = results.numpy()
-            results = results.reshape(self.tags.shape[0])
-            
-        except Exception as e:
-            logger.warning(f'Failed to predict tags for image: {e}')
-            return [], default_safety
+        image = np.expand_dims(image, axis=0)
+        results = self.model.predict(image, verbose=0)[0]
 
         result_tags = {}
         for i in range(len(self.tags)):
