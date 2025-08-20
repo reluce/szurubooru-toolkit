@@ -384,12 +384,12 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> di
 
     results = {}
 
-    boorus_to_search = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere'] if booru == 'all' else [booru]
+    boorus_to_search = ['sankaku', 'danbooru', 'konachan', 'yandere'] if booru == 'all' else [booru]
     if 'sankaku' in boorus_to_search:
         from szurubooru_toolkit import sankaku
 
     for booru in boorus_to_search:
-        max_attempts = 1 if booru == 'gelbooru' else 11
+        max_attempts = 11
         for attempt in range(1, max_attempts + 1):
             try:
                 if booru == 'sankaku':
