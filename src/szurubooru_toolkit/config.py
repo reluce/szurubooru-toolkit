@@ -6,7 +6,7 @@ from pathlib import Path
 
 import validators
 from loguru import logger
-from validators import ValidationFailure
+from validators import ValidationError
 
 
 GLOBALS_DEFAULTS = {
@@ -220,7 +220,7 @@ class Config:
         self.globals['url'] = self.globals['url'].strip()
         result = validators.url(self.globals['url'])
 
-        if isinstance(result, ValidationFailure):
+        if isinstance(result, ValidationError):
             logger.critical(f'Your szurubooru URL "{self.globals["url"]}" is not valid!')
             exit(1)
 
