@@ -223,7 +223,7 @@ def cleanup_dirs(dir: str) -> None:
                 pass
 
 
-def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -> tuple[bytes | str]:
+def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -> tuple[bytes, str, str]:
     """
     Evaluate if the image should be converted or shrunk and if so, do so.
 
@@ -237,13 +237,14 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
         file_to_upload (str, optional): The file path of the file to upload (only for logging). Defaults to None.
 
     Returns:
-        Tuple[bytes, str]: The (possibly converted and/or shrunk) file as a byte string and the MD5 sum of the original
-                           file.
+        Tuple[bytes, str, str]: The (possibly converted and/or shrunk) file as a byte string, the MD5 sum of the original
+                               file, and the updated file extension.
     """
 
     file_size = len(file)
     original_md5 = get_md5sum(file)
     image = file
+    updated_file_ext = file_ext  # Track the potentially updated extension
 
     try:
         if (
@@ -262,6 +263,7 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
                 convert=True,
                 convert_quality=config.upload_media['convert_quality'],
             )
+            updated_file_ext = 'jpg'  # Update extension after conversion
         elif config.upload_media['convert_to_jpg'] and file_ext == 'png' and file_size > config.upload_media['convert_threshold']:
             logger.debug(
                 f'Converting file, size {file_size} > {config.upload_media["convert_threshold"]}',
@@ -271,6 +273,7 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
                 convert=True,
                 convert_quality=config.upload_media['convert_quality'],
             )
+            updated_file_ext = 'jpg'  # Update extension after conversion
         elif config.upload_media['shrink']:
             logger.debug('Shrinking file...')
             image = shrink_img(
@@ -281,7 +284,7 @@ def eval_convert_image(file: bytes, file_ext: str, file_to_upload: str = None) -
     except OSError:
         logger.warning(f'Could not shrink image {file_to_upload}. Keeping dimensions...')
 
-    return image, original_md5
+    return image, original_md5, updated_file_ext
 
 
 def upload_post(
@@ -314,11 +317,12 @@ def upload_post(
     original_md5 = ''
 
     if file_ext not in ['mp4', 'webm', 'gif']:
-        post.media, original_md5 = eval_convert_image(file, file_ext, file_path)
+        post.media, original_md5, updated_file_ext = eval_convert_image(file, file_ext, file_path)
     else:
         post.media = file
+        updated_file_ext = file_ext
 
-    post.token = get_media_token(szuru, post.media, file_ext)
+    post.token = get_media_token(szuru, post.media, updated_file_ext)
     post.exact_post, similar_posts, errors = check_similarity(szuru, post.token)
 
     if errors:
