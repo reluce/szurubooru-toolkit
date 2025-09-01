@@ -179,9 +179,9 @@ class Szurubooru:
                     for page in range(1, pages + 1):
                         if pagination:
                             if videos:
-                                query_params = {'offset': f'{str(page)}00', 'query': query}
+                                query_params = {'offset': f'{str(page)}00', 'query': query, 'limit': 100}
                             else:
-                                query_params = {'offset': f'{str(page)}00', 'query': f'type:image,animation {query}'}
+                                query_params = {'offset': f'{str(page)}00', 'query': f'type:image,animation {query}', 'limit': 100}
                             query_url = self.szuru_api_url + '/posts/?' + urllib.parse.urlencode(query_params)
                         results = requests.get(query_url, headers=self.headers).json()['results']
 
