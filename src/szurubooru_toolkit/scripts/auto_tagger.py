@@ -20,6 +20,8 @@ from szurubooru_toolkit.utils import search_boorus
 from szurubooru_toolkit.utils import shrink_img
 from szurubooru_toolkit.utils import statistics
 
+deepbooru = None
+
 
 def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes) -> tuple[list, str, str, bool]:
     """
@@ -172,8 +174,9 @@ def main(  # noqa C901
 
         if config.auto_tagger['deepbooru']:
             from szurubooru_toolkit.deepbooru import Deepbooru
-
-            deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
+            global deepbooru
+            if deepbooru is None:
+                deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
 
         posts = szuru.get_posts(query, videos=True)
 

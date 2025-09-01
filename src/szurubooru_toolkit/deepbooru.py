@@ -78,6 +78,12 @@ class Deepbooru:
             if hasattr(self.model, 'input_shape'):
                 logger.debug(f"Model input shape: {self.model.input_shape}")
                 
+            self.predict_fn = tf.function(
+                lambda inputs: self.model(inputs, training=False),
+                input_signature=[tf.TensorSpec(shape=(None, 512, 512, 3), dtype=tf.float32)],
+                reduce_retracing=True,
+            )
+
         except Exception as e:
             logger.debug(f"Model loading error: {e}")
             logger.critical('Model could not be read. Download it from https://github.com/KichangKim/DeepDanbooru')
@@ -120,7 +126,8 @@ class Deepbooru:
             return
 
         image = np.expand_dims(image, axis=0)
-        results = self.model.predict(image, verbose=0)[0]
+        image = tf.convert_to_tensor(image, dtype=tf.float32)
+        results = self.predict_fn(image).numpy()[0]
 
         result_tags = {}
         for i in range(len(self.tags)):
