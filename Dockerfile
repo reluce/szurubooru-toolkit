@@ -17,14 +17,13 @@ RUN apt-get update && apt-get install -y \
   cargo \
   cron
 RUN pip3 install --upgrade pip && \
-  pip3 install poetry
+  pip3 install uv
 
 WORKDIR ${WORKDIR}
 COPY . .
 
-COPY poetry.lock pyproject.toml README.md ./
-RUN poetry config virtualenvs.create false && \
-  poetry install --only main --ansi --no-interaction
+COPY uv.lock pyproject.toml README.md ./
+RUN uv sync --frozen --no-dev
 
 RUN chmod +x /szurubooru-toolkit/entrypoint.sh
 CMD ["/szurubooru-toolkit/entrypoint.sh"]

@@ -46,7 +46,7 @@ In order to run `szuru-toolkit`, Python `3.11` is required.
 This package is available on [PyPI](https://pypi.org/project/szurubooru-toolkit/) and can be installed with pip:
 `pip install szurubooru-toolkit`
 
-Alternatively, you can clone the package from GitHub and set everything up with [Poetry](https://python-poetry.org/docs/). In the root directory of this repository, execute `poetry install`.
+Alternatively, you can clone the package from GitHub and set everything up with [uv](https://docs.astral.sh/uv/). In the root directory of this repository, execute `uv sync`.
 
 ### Docker Instructions
 If you would like to run the toolkit in a Docker container instead, follow the
@@ -137,9 +137,9 @@ Following commands are currently available:
 
 Check `szuru-toolkit -h` or `szuru-toolkit COMMAND -h` for a detailed description of supported options.
 
-If you cloned the repo from GitHub, prefix the above scripts with `poetry run`, e.g. `poetry run szuru-toolkit auto-tagger "date:today"`. Note that your current working directory has to be the the root of the GitHub project.
+If you cloned the repo from GitHub, prefix the above scripts with `uv run`, e.g. `uv run szuru-toolkit auto-tagger "date:today"`. Note that your current working directory has to be the the root of the GitHub project.
 
-If your query starts with a dash (`-`), for example to negate a tag, you have to separate the query from the command with two dashes (This doesn't work with poetry run):
+If your query starts with a dash (`-`), for example to negate a tag, you have to separate the query from the command with two dashes (This doesn't work with uv run):
 
 `szuru-toolkit auto-tagger --no-deepbooru -- "-foo bar"`
 
