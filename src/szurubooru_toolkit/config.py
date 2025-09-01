@@ -258,16 +258,20 @@ class Config:
 
         # Since this function gets called twice (CLI param + config.toml check) we have to check if the value is already converted
         try:
-            if not any(x in convert_threshold for x in ['KB', 'MB']):
+            # Check if convert_threshold is already a number (converted previously)
+            if isinstance(convert_threshold, (int, float)):
+                # Already converted, skip validation
+                pass
+            elif not any(x in convert_threshold for x in ['KB', 'MB']):
                 logger.critical(
                     f'Your convert_threshold "{self.upload_media["convert_threshold"]}" is not valid!',
                 )
                 exit(1)
-
-            if 'KB' in convert_threshold:
-                self.upload_media['convert_threshold'] = float(convert_threshold.replace('KB', '')) * 1000
-            elif 'MB' in convert_threshold:
-                self.upload_media['convert_threshold'] = float(convert_threshold.replace('MB', '')) * 1000000
+            else:
+                if 'KB' in convert_threshold:
+                    self.upload_media['convert_threshold'] = float(convert_threshold.replace('KB', '')) * 1000
+                elif 'MB' in convert_threshold:
+                    self.upload_media['convert_threshold'] = float(convert_threshold.replace('MB', '')) * 1000000
         except TypeError:
             pass
 
@@ -284,7 +288,11 @@ class Config:
 
         # Since this function gets called twice (CLI param + config.toml check) we have to check if the value is already converted
         try:
-            if not re.match(r'\d+x\d+', self.upload_media['shrink_dimensions']):
+            # Check if shrink_dimensions is already a tuple (converted previously)
+            if isinstance(self.upload_media['shrink_dimensions'], tuple):
+                # Already converted, skip validation
+                pass
+            elif not re.match(r'\d+x\d+', self.upload_media['shrink_dimensions']):
                 logger.critical(
                     f'Your shrink_dimensions "{self.upload_media["shrink_dimensions"]}" are not valid!',
                 )
@@ -293,7 +301,7 @@ class Config:
                 dimensions = re.search(r'(\d+)x(\d+)', self.upload_media['shrink_dimensions'])
                 max_width = int(dimensions.group(1))
                 max_height = int(dimensions.group(2))
-                self.upload_media['shrink_dimensions'] = (int(max_width), (max_height))
+                self.upload_media['shrink_dimensions'] = (int(max_width), int(max_height))
         except TypeError:
             pass
 
