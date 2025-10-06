@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   szurubooru-toolkit:
     image: reluce/szurubooru-toolkit
