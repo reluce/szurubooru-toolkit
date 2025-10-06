@@ -1,6 +1,6 @@
 ARG WORKDIR="/szurubooru-toolkit"
 
-FROM python:3.11
+FROM python:3.11-slim
 
 ARG WORKDIR
 
@@ -10,11 +10,9 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 RUN apt-get update && apt-get install -y \
-  build-essential \
   libssl-dev \
   libffi-dev \
   python3-dev \
-  cargo \
   cron
 RUN pip3 install --upgrade pip && \
   pip3 install uv
