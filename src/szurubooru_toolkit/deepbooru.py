@@ -125,9 +125,13 @@ class Deepbooru:
             logger.warning('Failed to convert image to Deepbooru format')
             return
 
-        image = np.expand_dims(image, axis=0)
-        image = tf.convert_to_tensor(image, dtype=tf.float32)
-        results = self.predict_fn(image).numpy()[0]
+        try:
+            image = np.expand_dims(image, axis=0)
+            image = tf.convert_to_tensor(image, dtype=tf.float32)
+            results = self.predict_fn(image).numpy()[0]
+        except Exception:
+            logger.warning('Failed to predict image with Deepbooru')
+            return [], default_safety
 
         result_tags = {}
         for i in range(len(self.tags)):
