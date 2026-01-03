@@ -220,7 +220,9 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
                 metadata['tags'] = []
 
             if site == 'twitter':
-                metadata['tags'] += extract_twitter_artist(metadata)
+                    artistname = extract_twitter_artist(metadata)
+                    if not None in artistname:
+                        metadata['tags'] += artistname
 
             if add_tags:
                 metadata['tags'] += add_tags
