@@ -397,7 +397,7 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1, crede
                 if booru == 'sankaku':
                     result = sankaku.search(query, limit, page)
                 elif booru in credentials:
-                    result = await cunnypy.search(booru, query, limit, page, credentials[booru])
+                    result = await cunnypy.search(booru, query, limit, page, credentials=credentials[booru])
                 # Search Gelbooru only if credentials are provided
                 # Otherwise the rate limits are too harsh
                 elif booru == 'gelbooru':
@@ -411,10 +411,15 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1, crede
             except (KeyError, ExceptionGroup, CancelledError):
                 logger.debug(f'No result found in {booru} with "{query}"')
                 break
-            except (HTTPStatusError, ReadTimeout):
-                if HTTPStatusError.response.status_code == 401:
-                    logger.info(f'Invalid credentials for {booru}.')
-                    continue
+            except HTTPStatusError as e:
+                logger.debug(e)
+                if e.response.status_code in [401, 403]:
+                    logger.warning(f'Invalid credentials or unauthorized for {booru}.')
+                    return results
+                logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
+                if attempt < max_attempts:  # no need to sleep on the last attempt
+                    await sleep(5)
+            except ReadTimeout:
                 logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
                 if attempt < max_attempts:  # no need to sleep on the last attempt
                     await sleep(5)
