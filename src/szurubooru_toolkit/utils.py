@@ -362,7 +362,8 @@ def generate_src(metadata: dict) -> str:
     return src
 
 
-async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> dict:
+async def search_boorus(booru: str, query: str, limit: int, page: int = 1, credentials: dict[str, dict] = {}) -> dict:
+
     """
     Searches the specified Boorus for the given query.
 
@@ -377,6 +378,7 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> di
         query (str): The query to search for.
         limit (int): The maximum number of results to return.
         page (int, optional): The page of results to return. Defaults to 1.
+        credentials (dict[str, dict[str, str | None]], optional): HTTP Parameters for Authentication. Defaults to empty dict. 
 
     Returns:
         dict: The search results, with the Booru as the key and the results as the value.
@@ -384,7 +386,7 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> di
 
     results = {}
 
-    boorus_to_search = ['sankaku', 'danbooru', 'konachan', 'yandere'] if booru == 'all' else [booru]
+    boorus_to_search = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere'] if booru == 'all' else [booru]
     if 'sankaku' in boorus_to_search:
         from szurubooru_toolkit import sankaku
 
@@ -394,6 +396,12 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> di
             try:
                 if booru == 'sankaku':
                     result = sankaku.search(query, limit, page)
+                elif booru in credentials:
+                    result = await cunnypy.search(booru, query, limit, page, credentials[booru])
+                # Search Gelbooru only if credentials are provided
+                # Otherwise the rate limits are too harsh
+                elif booru == 'gelbooru':
+                    continue
                 else:
                     result = await cunnypy.search(booru, query, limit, page)
 
@@ -404,6 +412,9 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1) -> di
                 logger.debug(f'No result found in {booru} with "{query}"')
                 break
             except (HTTPStatusError, ReadTimeout):
+                if HTTPStatusError.response.status_code == 401:
+                    logger.info(f'Invalid credentials for {booru}.')
+                    continue
                 logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
                 if attempt < max_attempts:  # no need to sleep on the last attempt
                     await sleep(5)

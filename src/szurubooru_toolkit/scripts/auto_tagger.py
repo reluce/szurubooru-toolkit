@@ -46,7 +46,7 @@ def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes) -> tuple[lis
 
     for index, data in matches.items():
         if data and index != 'pixiv':
-            results.update(asyncio.run(search_boorus(data['site'], f'id:{str(data["post_id"])}', 1, 0)))
+            results.update(asyncio.run(search_boorus(data['site'], f'id:{str(data["post_id"])}', 1, 0, credentials=config.credentials)))
 
         if data and index == 'pixiv':
             results[index] = data
@@ -206,9 +206,9 @@ def main(  # noqa C901
             # Search boorus by md5 hash of the file
             if config.auto_tagger['md5_search']:
                 if md5:
-                    md5_results = asyncio.run(search_boorus('all', 'md5:' + md5, 1, 0))
+                    md5_results = asyncio.run(search_boorus('all', 'md5:' + md5, 1, 0, credentials=config.credentials))
                 else:
-                    md5_results = asyncio.run(search_boorus('all', 'md5:' + post.md5, 1, 0))
+                    md5_results = asyncio.run(search_boorus('all', 'md5:' + post.md5, 1, 0, credentials=config.credentials))
 
                 if md5_results:
                     tags_by_md5, sources, post.rating = prepare_post(md5_results, config)

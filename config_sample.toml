@@ -11,6 +11,10 @@ token = "None"
 [credentials.sankaku]
 username = "None"
 password = "None"
+# Specify Gelbooru credentials if you want to search Gelbooru, otherwise leave it commented out
+#[credentials.gelbooru]
+#user_id = "None"
+#api_key = "None"
 
 [logging]
 log_enabled = false
