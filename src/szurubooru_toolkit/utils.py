@@ -401,7 +401,8 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1, crede
                 # Search Gelbooru only if credentials are provided
                 # Otherwise the rate limits are too harsh
                 elif booru == 'gelbooru':
-                    continue
+                    logger.debug('Skipping Gelbooru as no credentials were provided.')
+                    break
                 else:
                     result = await cunnypy.search(booru, query, limit, page)
 
