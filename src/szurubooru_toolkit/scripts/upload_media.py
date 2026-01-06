@@ -5,6 +5,7 @@ import os
 import shutil
 from glob import glob
 from pathlib import Path
+from types import NoneType
 
 import requests
 from loguru import logger
@@ -379,7 +380,7 @@ def upload_post(
             # If --update-tags-if-exists is enabled, we need to update the tags of the post
             post.exact_post.append(entry)
 
-    if not post.exact_post:
+    if isinstance(post.exact_post[0], NoneType):
         if not metadata:
             post.tags = config.upload_media['tags']
             post.safety = None
