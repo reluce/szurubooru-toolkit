@@ -142,6 +142,31 @@ def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
         errors = True
         return False, [], errors
 
+def update_tags(post: Post, metadata: dict) -> None:
+    """
+    Updates the tags of a post.
+
+    This function updates the tags of a post. This is only used if --update-tags-if-exists is enabled.
+
+    Args:
+        post (Post): Post object.
+        metadata (dict): Metadata to update the post with.
+    """
+
+    logger.debug(f'Trying to update tags for post {post["id"]}...')
+
+    id = str(post['id']) if 'id' in post else str(post['post']['id'])
+    config.tag_posts['mode'] = 'append'
+
+    try:
+        if not metadata['tags'] and metadata['tag_string']:
+            metadata['tags'] = metadata['tag_string'].split(' ')
+    except KeyError:
+        pass
+
+    config.tag_posts['silence_info'] = True
+    tag_posts.main(query=id, add_tags=metadata['tags'], source=metadata['source'])
+
 
 def upload_file(szuru: Szurubooru, post: Post) -> None:
     """
@@ -335,8 +360,9 @@ def upload_post(
             logger.debug(
                 f'File "{file_path} is too similar to post {entry["post"]["id"]} ({100 - entry["distance"]}%)',
             )
-            post.exact_post = True
-            break
+            # Append posts based on similarity threshold
+            # If --update-tags-if-exists is enabled, we need to update the tags of the post
+            post.exact_post.append(entry)
 
     if not post.exact_post:
         if not metadata:
@@ -371,19 +397,8 @@ def upload_post(
     else:
         logger.debug('File is already uploaded')
         if config.import_from_url['update_tags_if_exists'] and metadata:
-            logger.debug(f'Trying to update tags for post {post.exact_post["id"]}...')
-
-            id = str(post.exact_post['id']) if 'id' in post.exact_post else str(post.exact_post['post']['id'])
-            config.tag_posts['mode'] = 'append'
-
-            try:
-                if not metadata['tags'] and metadata['tag_string']:
-                    metadata['tags'] = metadata['tag_string'].split(' ')
-            except KeyError:
-                pass
-
-            config.tag_posts['silence_info'] = True
-            tag_posts.main(query=id, add_tags=metadata['tags'], source=metadata['source'])
+            for entry in post.exact_post:
+                update_tags(post, metadata)
 
     return True, saucenao_limit_reached
 
