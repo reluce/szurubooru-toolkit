@@ -133,16 +133,16 @@ def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
         if response.status_code != 200:
             raise Exception(response.text)
         else:
-            exact_post = response.json()['exactPost']
+            exact_post = [response.json()['exactPost']]
             similar_posts = response.json()['similarPosts']
             errors = False
             return exact_post, similar_posts, errors
     except Exception as e:
         logger.warning(f'An error occured during the similarity check: {e}. Skipping post...')
         errors = True
-        return False, [], errors
+        return [], [], errors
 
-def update_tags(post: Post, metadata: dict) -> None:
+def update_tags(post: Post, metadata: dict, saucenao_limit_reached: bool, original_md5: str, file_to_upload: bytes) -> bool:
     """
     Updates the tags of a post.
 
@@ -151,6 +151,12 @@ def update_tags(post: Post, metadata: dict) -> None:
     Args:
         post (Post): Post object.
         metadata (dict): Metadata to update the post with.
+        saucenao_limit_reached (bool): If the SauceNAO limit has been reached.
+        original_md5 (str): The original MD5 hash of the file.
+        file_to_upload (bytes): The file to upload.
+
+    Returns:
+        bool: If the SauceNAO limit has been reached.
     """
 
     logger.debug(f'Trying to update tags for post {post["id"]}...')
@@ -166,6 +172,15 @@ def update_tags(post: Post, metadata: dict) -> None:
 
     config.tag_posts['silence_info'] = True
     tag_posts.main(query=id, add_tags=metadata['tags'], source=metadata['source'])
+
+    saucenao_limit_reached = auto_tagger.main(
+        post_id=str(post['id']),
+        file_to_upload=file_to_upload,
+        limit_reached=saucenao_limit_reached,
+        md5=original_md5,
+    )
+
+    return saucenao_limit_reached
 
 
 def upload_file(szuru: Szurubooru, post: Post) -> None:
@@ -398,7 +413,7 @@ def upload_post(
         logger.debug('File is already uploaded')
         if config.import_from_url['update_tags_if_exists'] and metadata:
             for entry in post.exact_post:
-                update_tags(post, metadata)
+                saucenao_limit_reached = update_tags(entry, metadata, saucenao_limit_reached, original_md5, post.media)
 
     return True, saucenao_limit_reached
 
