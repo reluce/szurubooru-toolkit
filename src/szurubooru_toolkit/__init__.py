@@ -27,8 +27,9 @@ def setup_logger() -> None:
         ),
     )
 
-    logger.configure(
-        handlers=[
+    handlers = []
+    if config.logging['log_enabled']:
+        handlers.append(
             dict(
                 sink=config.logging['log_file'],
                 colorize=config.logging['log_colorized'],
@@ -37,42 +38,41 @@ def setup_logger() -> None:
                 format=''.join(
                     '<lm>[{level}]</lm> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> <ly>[{module}.{function}]</ly> {message}',
                 ),
+            )
+        )
+    handlers.extend([
+        dict(
+            sink=sys.stderr,
+            backtrace=False,
+            diagnose=False,
+            colorize=True,
+            level='INFO',
+            filter=lambda record: record['level'].no < 30,
+            format='<le>[{level}]</le> {message}',
+        ),
+        dict(
+            sink=sys.stderr,
+            backtrace=False,
+            diagnose=False,
+            colorize=True,
+            level='WARNING',
+            filter=lambda record: record['level'].no < 40,
+            format=''.join(
+                '<ly>[{level}]</ly> <ly>[{module}.{function}]</ly> {message}',
             ),
-            dict(
-                sink=sys.stderr,
-                backtrace=False,
-                diagnose=False,
-                colorize=True,
-                level='INFO',
-                filter=lambda record: record['level'].no < 30,
-                format='<le>[{level}]</le> {message}',
+        ),
+        dict(
+            sink=sys.stderr,
+            backtrace=False,
+            diagnose=False,
+            colorize=True,
+            level='ERROR',
+            format=''.join(
+                '<lr>[{level}]</lr> <ly>[{module}.{function}]</ly> {message}',
             ),
-            dict(
-                sink=sys.stderr,
-                backtrace=False,
-                diagnose=False,
-                colorize=True,
-                level='WARNING',
-                filter=lambda record: record['level'].no < 40,
-                format=''.join(
-                    '<ly>[{level}]</ly> <ly>[{module}.{function}]</ly> {message}',
-                ),
-            ),
-            dict(
-                sink=sys.stderr,
-                backtrace=False,
-                diagnose=False,
-                colorize=True,
-                level='ERROR',
-                format=''.join(
-                    '<lr>[{level}]</lr> <ly>[{module}.{function}]</ly> {message}',
-                ),
-            ),
-        ],
-    )
-
-    if not config.logging['log_enabled']:
-        logger.remove(2)  # Assume id 2 is the handler with the log file sink
+        ),
+    ])
+    logger.configure(handlers=handlers)
 
 
 def setup_clients():
