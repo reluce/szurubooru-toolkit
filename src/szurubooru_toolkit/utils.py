@@ -563,7 +563,7 @@ def invoke_gallery_dl(urls: list, tmp_path: str, params: list = []) -> str:
     return download_dir
 
 
-def extract_twitter_artist(metadata: dict) -> str:
+def extract_twitter_artist(metadata: dict) -> str | None:
     """
     Extracts the Twitter artist from the metadata.
 
@@ -578,6 +578,7 @@ def extract_twitter_artist(metadata: dict) -> str:
 
     Returns:
         str: The artist if it exists, otherwise the aliases.
+        None: If the artist cannot be found.
     """
 
     from szurubooru_toolkit import config
