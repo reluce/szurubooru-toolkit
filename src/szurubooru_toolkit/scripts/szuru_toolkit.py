@@ -28,11 +28,11 @@ def setup_module(module_name: str, click_context: click.core.Context) -> types.M
     """
 
     setup_config()
-    setup_logger()
 
     from szurubooru_toolkit import config
 
     config.override_config(click_context.obj)
+    setup_logger()
 
     setup_clients()
     module = importlib.import_module('szurubooru_toolkit.scripts.' + module_name)
