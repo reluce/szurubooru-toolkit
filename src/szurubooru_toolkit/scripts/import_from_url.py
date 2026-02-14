@@ -42,7 +42,7 @@ def set_tags(metadata: dict) -> list:
     """
 
     artist = ''
-    allow_tags_for_sites = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere', 'fanbox', 'pixiv', 'twitter']
+    allow_tags_for_sites = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere', 'fanbox', 'pixiv', 'twitter', 'rule34']
 
     if metadata['site'] in allow_tags_for_sites:
         try:
