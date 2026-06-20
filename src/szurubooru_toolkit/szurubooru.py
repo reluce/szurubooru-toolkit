@@ -10,6 +10,19 @@ import pyszuru
 import requests
 from loguru import logger
 
+_TAG_EXISTS_DESCRIPTIONS = (
+    'used by another tag',
+    'duplicate key value',
+    'tag_name already exists',
+)
+
+
+def _is_tag_exists_error(response_json: dict) -> bool:
+    if response_json.get('name') == 'TagAlreadyExistsError':
+        return True
+    description = response_json.get('description', '')
+    return any(phrase in description for phrase in _TAG_EXISTS_DESCRIPTIONS)
+
 
 class Szurubooru:
     """Handles everything related to szurubooru.
@@ -305,19 +318,19 @@ class Szurubooru:
 
         response = requests.post(query_url, headers=self.headers, data=payload)
         try:
-            if 'description' in response.json() and len(response.json()['description']) > 0:
-                if 'used by another tag' in response.json()['description']:
+            response_json = response.json()
+            description = response_json.get('description', '')
+            if description and len(description) > 0:
+                if _is_tag_exists_error(response_json):
                     if overwrite:
                         tag = self.api.getTag(tag_name)
                         if tag.category != category:
                             tag.category = category
                             tag.push()
                     else:
-                        raise TagExistsError(response.json()['description'])
-                elif 'duplicate key value' in response.json()['description']:
-                    raise TagExistsError(response.json()['description'])
+                        raise TagExistsError(description)
                 else:
-                    raise Exception(response.json()['description'])
+                    raise Exception(description)
         except TypeError:
             pass
 
