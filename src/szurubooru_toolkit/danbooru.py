@@ -283,7 +283,11 @@ class Danbooru:
 
             try:
                 logger.info(f'Fetching tags from URL {tag_url}...')
-                yield self.session.get(tag_url, timeout=30).json()
+                tags = self.session.get(tag_url, timeout=30).json()
+                if not isinstance(tags, list):
+                    logger.warning(f'Unexpected Danbooru response on page {page}: {tags!r}')
+                    continue
+                yield tags
             except Exception as e:
                 logger.critical(f'Could not fetch tags: {e}')
 

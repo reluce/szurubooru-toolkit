@@ -91,8 +91,13 @@ def main(tag_file: str = '') -> None:
 
             for result in results:
                 for tag in result:
+                    if not isinstance(tag, dict) or 'name' not in tag:
+                        continue
+                    category = convert_tag_category(tag.get('category'))
+                    if category is None:
+                        continue
                     try:
-                        szuru.create_tag(tag['name'], convert_tag_category(tag['category']), overwrite)
+                        szuru.create_tag(tag['name'], category, overwrite)
                     except TagExistsError as e:  # noqa F841
                         pass
 
