@@ -1,15 +1,15 @@
-import requests
+import httpx
 
 from szurubooru_toolkit import config
 
 
 class Sankaku:
-    def __init__(self) -> None:
+    def __init__(self, transport: httpx.BaseTransport = None) -> None:
         """
-        Initialize a requests session client for Sankaku.
+        Initialize an httpx client for Sankaku.
 
-        Returns:
-            None
+        Args:
+            transport (httpx.BaseTransport, optional): Custom transport, used for testing.
         """
 
         self.headers = {
@@ -25,8 +25,7 @@ class Sankaku:
         if username and password:
             self.headers['Authorization'] = self._authenticate(username, password)
 
-        self.client = requests.Session()
-        self.client.headers.update(self.headers)
+        self.client = httpx.Client(base_url=self.api_url, headers=self.headers, timeout=30, transport=transport)
 
     def _authenticate(self, username: str, password: str) -> str:
         """
@@ -47,7 +46,7 @@ class Sankaku:
         headers = {'Accept': 'application/vnd.sankaku.api+json;v=2'}
         data = {'login': username, 'password': password}
 
-        response = requests.post(url, headers=headers, json=data)
+        response = httpx.post(url, headers=headers, json=data, timeout=30)
         data = response.json()
 
         if response.status_code >= 400 or not data.get('success'):
@@ -75,8 +74,8 @@ class Sankaku:
             'tags': query,
         }
 
-        response = self.client.get(self.api_url + '/posts', params=params)
-        if response:
+        response = self.client.get('/posts', params=params)
+        if response.is_success:
             return response.json()
         else:
             return None

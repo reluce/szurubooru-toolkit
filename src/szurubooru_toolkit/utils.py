@@ -12,14 +12,14 @@ from io import BytesIO
 from pathlib import Path
 from urllib.error import ContentTooShortError
 
-import cunnypy
-import requests
+import httpx
 from httpx import HTTPStatusError
 from httpx import ReadTimeout
 from loguru import logger
 from PIL import Image
 from pixivpy3.utils import PixivError
 
+from szurubooru_toolkit import boorus
 from szurubooru_toolkit.config import Config
 from szurubooru_toolkit.pixiv import Pixiv
 
@@ -118,9 +118,11 @@ def convert_rating(rating: str) -> str:
         'safe': 'safe',
         's': 'safe',
         'g': 'safe',
+        'general': 'safe',
         'Questionable': 'sketchy',
         'questionable': 'sketchy',
         'q': 'sketchy',
+        'sensitive': 'sketchy',
         'Explicit': 'unsafe',
         'explicit': 'unsafe',
         'e': 'unsafe',
@@ -288,7 +290,7 @@ def download_media(content_url: str, md5: str = None) -> bytes:
 
     for _ in range(1, 3):
         try:
-            file: bytes = requests.get(content_url).content
+            file: bytes = httpx.get(content_url, follow_redirects=True, timeout=30).content
         except ContentTooShortError:
             download_media(content_url, md5)
         except Exception as e:
@@ -397,14 +399,14 @@ async def search_boorus(booru: str, query: str, limit: int, page: int = 1, crede
                 if booru == 'sankaku':
                     result = sankaku.search(query, limit, page)
                 elif booru in credentials:
-                    result = await cunnypy.search(booru, query, limit, page, credentials=credentials[booru])
+                    result = await boorus.search(booru, query, limit, page, credentials=credentials[booru])
                 # Search Gelbooru only if credentials are provided
                 # Otherwise the rate limits are too harsh
                 elif booru == 'gelbooru':
                     logger.debug('Skipping Gelbooru as no credentials were provided.')
                     break
                 else:
-                    result = await cunnypy.search(booru, query, limit, page)
+                    result = await boorus.search(booru, query, limit, page)
 
                 if result:
                     results[booru] = result

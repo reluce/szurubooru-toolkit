@@ -3,9 +3,9 @@ from typing import Any
 from typing import List
 from typing import Optional
 
-from aiohttp.client_exceptions import ClientConnectorError
 from loguru import logger
 from pixivpy3 import AppPixivAPI as Pixiv_Module
+from pixivpy3.utils import PixivError
 
 
 class Pixiv:
@@ -51,7 +51,7 @@ class Pixiv:
                     result = self.client.illust_detail(post_id)
                     logger.debug(f'Returning result: {result}')
                     break
-                except ClientConnectorError:
+                except PixivError:
                     logger.debug('Could not establish connection to Pixiv, trying again in 5s...')
                     sleep(5)
                 except KeyError:  # In case the post got deleted but is still indexed

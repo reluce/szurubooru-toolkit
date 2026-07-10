@@ -29,6 +29,9 @@ from szurubooru_toolkit.utils import statistics
         ('rating:safe', 'safe'),
         ('rating:questionable', 'sketchy'),
         ('rating:explicit', 'unsafe'),
+        # full-word ratings as returned by Gelbooru and the in-house booru clients
+        ('general', 'safe'),
+        ('sensitive', 'sketchy'),
         ('unknown', None),
         ('', None),
     ],

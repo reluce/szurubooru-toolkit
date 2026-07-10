@@ -4,9 +4,7 @@ import tomllib
 import urllib
 from pathlib import Path
 
-import validators
 from loguru import logger
-from validators import ValidationError
 
 
 GLOBALS_DEFAULTS = {
@@ -218,16 +216,14 @@ class Config:
         """
 
         self.globals['url'] = self.globals['url'].strip()
-        result = validators.url(self.globals['url'])
-
-        if isinstance(result, ValidationError):
-            logger.critical(f'Your szurubooru URL "{self.globals["url"]}" is not valid!')
-            exit(1)
 
         parsed_url = urllib.parse.urlsplit(self.globals['url'])
 
-        api_scheme = parsed_url.scheme
-        if api_scheme not in ('http', 'https'):
+        if not parsed_url.netloc:
+            logger.critical(f'Your szurubooru URL "{self.globals["url"]}" is not valid!')
+            exit(1)
+
+        if parsed_url.scheme not in ('http', 'https'):
             logger.critical('API URL must be of HTTP or HTTPS scheme!')
             exit(1)
 

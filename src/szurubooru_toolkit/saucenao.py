@@ -1,48 +1,97 @@
 from __future__ import annotations
 
 import re
+import urllib.parse
 from asyncio import sleep
 from asyncio.exceptions import TimeoutError
-from io import BytesIO
 from typing import Any
-from typing import Coroutine  # noqa TYP001
 
-import tldextract
-from aiohttp.client_exceptions import ContentTypeError
+import httpx
 from loguru import logger
-from pysaucenao import SauceNao as PySauceNao
 
 from szurubooru_toolkit.config import Config
+
+
+SEARCH_URL = 'https://saucenao.com/search.php'
+
+# Domains the toolkit knows how to handle, as matched by get_base_domain()
+KNOWN_DOMAINS = ('pixiv', 'donmai', 'gelbooru', 'yande', 'konachan', 'sankakucomplex')
+
+
+class SauceNaoResult:
+    """A single SauceNAO match with the fields the toolkit consumes."""
+
+    def __init__(self, result_json: dict) -> None:
+        header = result_json.get('header', {})
+        data = result_json.get('data', {})
+
+        self.similarity = float(header.get('similarity', 0))
+        self.index_id = header.get('index_id')
+        self.urls = list(data.get('ext_urls', []))
+        self.author_name = data.get('member_name') or data.get('author_name')
+
+        # For pixiv results, expose the canonical illust_id URL since downstream
+        # code extracts the post ID from the 'illust_id=' query param.
+        if data.get('pixiv_id'):
+            self.url = f'https://www.pixiv.net/member_illust.php?mode=medium&illust_id={data["pixiv_id"]}'
+            if self.url not in self.urls:
+                self.urls.insert(0, self.url)
+        else:
+            self.url = self.urls[0] if self.urls else None
+
+
+class SauceNaoResponse:
+    """A SauceNAO API response: iterable results plus the rate limit counters."""
+
+    def __init__(self, response_json: dict, min_similarity: float) -> None:
+        header = response_json.get('header', {})
+
+        self.short_remaining = int(header.get('short_remaining', 1))
+        self.long_remaining = int(header.get('long_remaining', 1))
+        self.results = [
+            SauceNaoResult(result)
+            for result in response_json.get('results') or []
+            if float(result.get('header', {}).get('similarity', 0)) >= min_similarity
+        ]
+
+    def __iter__(self):
+        return iter(self.results)
+
+    def __len__(self) -> int:
+        return len(self.results)
 
 
 class SauceNao:
     """Handles everything related to SauceNAO and aggregating the results."""
 
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Config, transport: httpx.AsyncBaseTransport = None) -> None:
         """
-        Initialize the SauceNAO object.
-
-        This method initializes a SauceNAO object and sets up the client. It uses the provided config object to
-        authenticate with the SauceNAO API and set the minimum similarity for the search results. If the API token is not
-        'None', it logs that it is using the SauceNao API token.
+        Initialize the SauceNAO client.
 
         Args:
-            config (Config): The configuration object containing the SauceNao API token and other settings.
+            config (Config): The configuration object containing the SauceNAO API token and other settings.
+            transport (httpx.AsyncBaseTransport, optional): Custom transport, used for testing.
         """
 
-        self.pysaucenao = PySauceNao(api_key=config.auto_tagger['saucenao_api_token'], min_similarity=80.0)
-        if not config.auto_tagger['saucenao_api_token'] == 'None':
+        api_token = config.auto_tagger['saucenao_api_token']
+        self.api_key = api_token if api_token and api_token != 'None' else None
+        if self.api_key:
             logger.debug('Using SauceNAO API token')
 
+        self.min_similarity = 80.0
+        self.results_limit = 6
         self.retry_attempts = 12
         self.retry_delay = 5
+        self.transport = transport
 
-    def get_base_domain(self, url: str) -> str:
+    @staticmethod
+    def get_base_domain(url: str) -> str:
         """
         Extracts the base domain from a URL.
 
-        This method extracts the base domain from a URL using the `tldextract` library. It returns the base domain as a
-        string.
+        Returns the known domain key (e.g. 'donmai' for danbooru.donmai.us) if the host
+        matches one of the sites the toolkit handles, otherwise the second-level label
+        of the host.
 
         Args:
             url (str): The URL from which to extract the base domain.
@@ -51,8 +100,14 @@ class SauceNao:
             str: The base domain extracted from the URL.
         """
 
-        extracted = tldextract.extract(url)
-        return extracted.domain
+        host = urllib.parse.urlsplit(url).netloc.lower()
+        labels = host.split('.')
+
+        for domain in KNOWN_DOMAINS:
+            if domain in labels:
+                return domain
+
+        return labels[-2] if len(labels) >= 2 else host
 
     async def get_metadata(
         self,
@@ -73,16 +128,9 @@ class SauceNao:
             image (Optional[bytes], optional): The image data in bytes format, if available. Defaults to None.
 
         Returns:
-            Tuple[Dict[str, Union[Dict[str, Union[int, None]], Any]], int, int]: A tuple containing a dictionary of metadata,
-                short limit remaining, and long limit remaining.
-                The metadata dictionary keys are domain names and the values are either another dictionary containing
-                the common booru name and post_id or the result object (only with pixiv).
-                The dictionary values for 'site' are source-specific strings
-                and for 'post_id' are integers representing the post id from the source site.
-
-        Raises:
-            Exception: Any exceptions raised while extracting metadata or due to request limits being reached are propagated
-            upwards.
+            Tuple[Dict, int, int]: A tuple containing a dictionary of metadata, short limit remaining, and long
+                limit remaining. The metadata dictionary keys are domain names and the values are either another
+                dictionary containing the common booru name and post_id or the result object (only with pixiv).
         """
 
         response = await self.get_result(content_url, image)
@@ -136,7 +184,7 @@ class SauceNao:
 
         return matches, short_remaining, long_remaining
 
-    async def get_result(self, content_url: str, image: bytes | None = None) -> Coroutine | None:
+    async def get_result(self, content_url: str, image: bytes | None = None) -> SauceNaoResponse | str | None:
         """
         Attempts to get a result from SauceNAO.
 
@@ -150,27 +198,47 @@ class SauceNao:
             image (Optional[bytes], optional): The image data in bytes format, if available. Defaults to None.
 
         Returns:
-            Optional[Coroutine]: The result from SauceNAO if it exists, 'Limit reached' if the daily search limit is
-            exceeded, None otherwise.
-
-        Raises:
-            ContentTypeError: If the content type of the response is not as expected.
-            TimeoutError: If a timeout occurs while trying to establish a connection to SauceNAO.
+            SauceNaoResponse | str | None: The response from SauceNAO if it exists, 'Limit reached' if the daily
+            search limit is exceeded, None otherwise.
         """
+
+        params = {'output_type': 2, 'db': 999, 'numres': self.results_limit}
+        if self.api_key:
+            params['api_key'] = self.api_key
 
         for attempt in range(self.retry_attempts):
             try:
-                if image:
-                    logger.debug('Trying to get result from uploaded file...')
-                    response = await self.pysaucenao.from_file(BytesIO(image))
-                else:
-                    logger.debug(f'Trying to get result from content_url: {content_url}')
-                    response = await self.pysaucenao.from_url(content_url)
+                async with httpx.AsyncClient(transport=self.transport, timeout=30) as client:
+                    if image:
+                        logger.debug('Trying to get result from uploaded file...')
+                        response = await client.post(SEARCH_URL, params=params, files={'file': ('image', image)})
+                    else:
+                        logger.debug(f'Trying to get result from content_url: {content_url}')
+                        response = await client.post(SEARCH_URL, params=params | {'url': content_url})
 
-                logger.debug(f'Received response {response}')
-                return response
+                response_json = response.json()
+                header = response_json.get('header', {})
+                message = str(header.get('message', ''))
 
-            except (ContentTypeError, TimeoutError):
+                if 'Daily Search Limit Exceeded' in message or int(header.get('long_remaining', 1)) < 0:
+                    return 'Limit reached'
+
+                # Short limit exhausted: SauceNAO answers with 429 until the 30s window resets
+                if response.status_code == 429:
+                    logger.debug('SauceNAO rate limit hit, trying again in 5s...')
+                    if attempt < self.retry_attempts - 1:
+                        await sleep(self.retry_delay)
+                    continue
+
+                if int(header.get('status', 0)) != 0:
+                    logger.warning(f'Could not get result from SauceNAO for "{content_url}": {message}')
+                    return None
+
+                result = SauceNaoResponse(response_json, self.min_similarity)
+                logger.debug(f'Received response with {len(result)} results above similarity threshold')
+                return result
+
+            except (httpx.HTTPError, ValueError, TimeoutError):
                 logger.debug('Could not establish connection to SauceNAO, trying again in 5s...')
                 if attempt < self.retry_attempts - 1:  # no need to sleep on the last attempt
                     await sleep(self.retry_delay)
