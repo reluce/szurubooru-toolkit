@@ -13,6 +13,10 @@ from loguru import logger
 
 USER_AGENT = 'szurubooru-toolkit (https://github.com/reluce/szurubooru-toolkit)'
 
+# One pooled client for all boorus: connections are kept alive per host, so
+# repeated searches skip the TCP/TLS handshake. httpx.Client is thread-safe.
+_client = httpx.Client(headers={'User-Agent': USER_AGENT}, follow_redirects=True, timeout=30)
+
 _RATINGS = {
     's': 'safe',
     'q': 'questionable',
@@ -115,16 +119,18 @@ BOORUS = {
 }
 
 
-async def search(
+def search(
     booru: str,
     query: str,
     limit: int = 100,
     page: int = 1,
     credentials: dict = None,
-    transport: httpx.AsyncBaseTransport = None,
+    transport: httpx.BaseTransport = None,
 ) -> list[BooruPost]:
     """
     Searches the given booru for posts matching the query.
+
+    Uses a shared pooled client, so consecutive searches reuse connections.
 
     Args:
         booru (str): One of 'danbooru', 'gelbooru', 'konachan' or 'yandere'.
@@ -134,7 +140,7 @@ async def search(
         credentials (dict, optional): Booru specific auth params which get passed as
             query params (e.g. {'login': ..., 'api_key': ...} for Danbooru or
             {'api_key': ..., 'user_id': ...} for Gelbooru). Defaults to None.
-        transport (httpx.AsyncBaseTransport, optional): Custom transport, used for testing.
+        transport (httpx.BaseTransport, optional): Custom transport, used for testing.
 
     Returns:
         list[BooruPost]: The normalized search results.
@@ -154,14 +160,18 @@ async def search(
     if credentials:
         params.update(credentials)
 
-    async with httpx.AsyncClient(headers={'User-Agent': USER_AGENT}, transport=transport, follow_redirects=True, timeout=30) as client:
-        response = await client.get(site['url'], params=params)
-        response.raise_for_status()
+    if transport is not None:
+        client = httpx.Client(headers={'User-Agent': USER_AGENT}, follow_redirects=True, timeout=30, transport=transport)
+    else:
+        client = _client
 
-        if not response.text:
-            return []
+    response = client.get(site['url'], params=params)
+    response.raise_for_status()
 
-        posts = site['parse'](response.json())
-        logger.debug(f'Got {len(posts)} result(s) from {booru} for query "{query}"')
+    if not response.text:
+        return []
 
-        return posts
+    posts = site['parse'](response.json())
+    logger.debug(f'Got {len(posts)} result(s) from {booru} for query "{query}"')
+
+    return posts

@@ -1,5 +1,3 @@
-import asyncio
-
 import httpx
 import pytest
 
@@ -8,12 +6,12 @@ from szurubooru_toolkit import boorus
 
 def run_search(handler, *args, **kwargs):
     transport = httpx.MockTransport(handler)
-    return asyncio.run(boorus.search(*args, transport=transport, **kwargs))
+    return boorus.search(*args, transport=transport, **kwargs)
 
 
 def test_unknown_booru_raises():
     with pytest.raises(ValueError):
-        asyncio.run(boorus.search('nosuchbooru', 'foo'))
+        boorus.search('nosuchbooru', 'foo')
 
 
 def test_danbooru_parses_posts_and_filters_banned():

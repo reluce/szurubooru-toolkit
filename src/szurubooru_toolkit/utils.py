@@ -7,12 +7,11 @@ import threading
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
-from asyncio import sleep
-from asyncio.exceptions import CancelledError
 from datetime import datetime
 from functools import total_ordering
 from io import BytesIO
 from pathlib import Path
+from time import sleep
 from urllib.error import ContentTooShortError
 
 import httpx
@@ -38,12 +37,14 @@ _statistics_lock = threading.Lock()
 # Save the original showwarning function
 _original_showwarning = warnings.showwarning
 
+
 # Define a filter function to ignore the DecompressionBombWarning
 def ignore_decompression_bomb_warning(message, category, filename, lineno, file=None, line=None):
     if isinstance(message, Image.DecompressionBombWarning):
         return
     else:
         return _original_showwarning(message, category, filename, lineno, file, line)
+
 
 # Set the filter to ignore the warning
 warnings.filterwarnings('ignore', category=Image.DecompressionBombWarning)
@@ -455,75 +456,88 @@ def generate_src(metadata: dict) -> str:
     return src
 
 
-async def search_boorus(booru: str, query: str, limit: int, page: int = 1, credentials: dict[str, dict] = {}) -> dict:
+def _search_single_booru(booru: str, query: str, limit: int, page: int, credentials: dict[str, dict]) -> list | None:
+    """
+    Searches one booru with retries; returns the results or None.
+    """
 
+    max_attempts = 11
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            if booru == 'sankaku':
+                from szurubooru_toolkit import sankaku
+
+                return sankaku.search(query, limit, page)
+            elif booru in credentials:
+                return boorus.search(booru, query, limit, page, credentials=credentials[booru])
+            # Search Gelbooru only if credentials are provided
+            # Otherwise the rate limits are too harsh
+            elif booru == 'gelbooru':
+                logger.debug('Skipping Gelbooru as no credentials were provided.')
+                return None
+            else:
+                return boorus.search(booru, query, limit, page)
+        except KeyError:
+            logger.debug(f'No result found in {booru} with "{query}"')
+            return None
+        except HTTPStatusError as e:
+            logger.debug(e)
+            if e.response.status_code in [401, 403]:
+                logger.warning(f'Invalid credentials or unauthorized for {booru}.')
+                return None
+            logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
+            if attempt < max_attempts:  # no need to sleep on the last attempt
+                sleep(5)
+        except ReadTimeout:
+            logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
+            if attempt < max_attempts:  # no need to sleep on the last attempt
+                sleep(5)
+        except Exception as e:
+            logger.debug(f'Could not get result from {booru} with "{query}": {e}. Trying again. in 5s...')
+            if attempt < max_attempts:  # no need to sleep on the last attempt
+                sleep(5)
+
+    logger.debug(f'Could not establish connection to {booru}, trying with next post...')
+    statistics(skipped=1)
+    return None
+
+
+def search_boorus(booru: str, query: str, limit: int, page: int = 1, credentials: dict[str, dict] = {}) -> dict:
     """
     Searches the specified Boorus for the given query.
 
-    This function searches the specified Boorus for the given query. It first determines which Boorus to search based
-    on the provided `booru` parameter. It then iterates over the Boorus to search and tries to get the search results
-    from each Booru. If it gets a result, it adds the result to the results dictionary with the Booru as the key. If
-    it encounters an error, it logs the error and tries again after 5 seconds. If it cannot establish a connection to
-    the Booru after 11 attempts, it moves on to the next Booru. It returns the results dictionary.
+    All requested boorus are queried concurrently, so the call takes as long as the
+    slowest booru instead of the sum of all of them. Each booru is retried on
+    connection errors before giving up on it.
 
     Args:
-        Booru (str): The Booru or Boorus to search. If 'all', it searches all Boorus.
+        booru (str): The Booru or Boorus to search. If 'all', it searches all Boorus.
         query (str): The query to search for.
         limit (int): The maximum number of results to return.
         page (int, optional): The page of results to return. Defaults to 1.
-        credentials (dict[str, dict[str, str | None]], optional): HTTP Parameters for Authentication. Defaults to empty dict. 
+        credentials (dict[str, dict[str, str | None]], optional): HTTP Parameters for Authentication. Defaults to empty dict.
 
     Returns:
         dict: The search results, with the Booru as the key and the results as the value.
     """
 
-    results = {}
-
     boorus_to_search = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere'] if booru == 'all' else [booru]
-    if 'sankaku' in boorus_to_search:
-        from szurubooru_toolkit import sankaku
 
-    for booru in boorus_to_search:
-        max_attempts = 11
-        for attempt in range(1, max_attempts + 1):
-            try:
-                if booru == 'sankaku':
-                    result = sankaku.search(query, limit, page)
-                elif booru in credentials:
-                    result = await boorus.search(booru, query, limit, page, credentials=credentials[booru])
-                # Search Gelbooru only if credentials are provided
-                # Otherwise the rate limits are too harsh
-                elif booru == 'gelbooru':
-                    logger.debug('Skipping Gelbooru as no credentials were provided.')
-                    break
-                else:
-                    result = await boorus.search(booru, query, limit, page)
+    if len(boorus_to_search) == 1:
+        name = boorus_to_search[0]
+        result = _search_single_booru(name, query, limit, page, credentials)
+        return {name: result} if result else {}
 
-                if result:
-                    results[booru] = result
-                break
-            except (KeyError, ExceptionGroup, CancelledError):
-                logger.debug(f'No result found in {booru} with "{query}"')
-                break
-            except HTTPStatusError as e:
-                logger.debug(e)
-                if e.response.status_code in [401, 403]:
-                    logger.warning(f'Invalid credentials or unauthorized for {booru}.')
-                    return results
-                logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
-                if attempt < max_attempts:  # no need to sleep on the last attempt
-                    await sleep(5)
-            except ReadTimeout:
-                logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
-                if attempt < max_attempts:  # no need to sleep on the last attempt
-                    await sleep(5)
-            except Exception as e:
-                logger.debug(f'Could not get result from {booru} with "{query}": {e}. Trying again. in 5s...')
-                if attempt < max_attempts:  # no need to sleep on the last attempt
-                    await sleep(5)
-        else:
-            logger.debug(f'Could not establish connection to {booru}, trying with next post...')
-            statistics(skipped=1)
+    results = {}
+    with ThreadPoolExecutor(max_workers=len(boorus_to_search)) as executor:
+        futures = {
+            executor.submit(_search_single_booru, name, query, limit, page, credentials): name for name in boorus_to_search
+        }
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                results[futures[future]] = result
 
     return results
 

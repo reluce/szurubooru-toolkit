@@ -4,8 +4,6 @@ import re
 import threading
 import time
 import urllib.parse
-from asyncio import sleep
-from asyncio.exceptions import TimeoutError
 from typing import Any
 
 import httpx
@@ -97,13 +95,13 @@ class SauceNaoCooldown:
 class SauceNao:
     """Handles everything related to SauceNAO and aggregating the results."""
 
-    def __init__(self, config: Config, transport: httpx.AsyncBaseTransport = None) -> None:
+    def __init__(self, config: Config, transport: httpx.BaseTransport = None) -> None:
         """
         Initialize the SauceNAO client.
 
         Args:
             config (Config): The configuration object containing the SauceNAO API token and other settings.
-            transport (httpx.AsyncBaseTransport, optional): Custom transport, used for testing.
+            transport (httpx.BaseTransport, optional): Custom transport, used for testing.
         """
 
         api_token = config.auto_tagger['saucenao_api_token']
@@ -115,7 +113,9 @@ class SauceNao:
         self.results_limit = 6
         self.retry_attempts = 12
         self.retry_delay = 5
-        self.transport = transport
+        # Pooled client shared by all tagging workers; keeps the TLS connection
+        # to saucenao.com alive across requests. httpx.Client is thread-safe.
+        self.client = httpx.Client(timeout=30, transport=transport)
 
     @staticmethod
     def get_base_domain(url: str) -> str:
@@ -142,7 +142,7 @@ class SauceNao:
 
         return labels[-2] if len(labels) >= 2 else host
 
-    async def get_metadata(
+    def get_metadata(
         self,
         content_url: str,
         image: bytes | None = None,
@@ -166,7 +166,7 @@ class SauceNao:
                 dictionary containing the common booru name and post_id or the result object (only with pixiv).
         """
 
-        response = await self.get_result(content_url, image)
+        response = self.get_result(content_url, image)
 
         matches = {
             'donmai': None,
@@ -217,7 +217,7 @@ class SauceNao:
 
         return matches, short_remaining, long_remaining
 
-    async def get_result(self, content_url: str, image: bytes | None = None) -> SauceNaoResponse | str | None:
+    def get_result(self, content_url: str, image: bytes | None = None) -> SauceNaoResponse | str | None:
         """
         Attempts to get a result from SauceNAO.
 
@@ -241,13 +241,12 @@ class SauceNao:
 
         for attempt in range(self.retry_attempts):
             try:
-                async with httpx.AsyncClient(transport=self.transport, timeout=30) as client:
-                    if image:
-                        logger.debug('Trying to get result from uploaded file...')
-                        response = await client.post(SEARCH_URL, params=params, files={'file': ('image', image)})
-                    else:
-                        logger.debug(f'Trying to get result from content_url: {content_url}')
-                        response = await client.post(SEARCH_URL, params=params | {'url': content_url})
+                if image:
+                    logger.debug('Trying to get result from uploaded file...')
+                    response = self.client.post(SEARCH_URL, params=params, files={'file': ('image', image)})
+                else:
+                    logger.debug(f'Trying to get result from content_url: {content_url}')
+                    response = self.client.post(SEARCH_URL, params=params | {'url': content_url})
 
                 response_json = response.json()
                 header = response_json.get('header', {})
@@ -260,7 +259,7 @@ class SauceNao:
                 if response.status_code == 429:
                     logger.debug('SauceNAO rate limit hit, trying again in 5s...')
                     if attempt < self.retry_attempts - 1:
-                        await sleep(self.retry_delay)
+                        time.sleep(self.retry_delay)
                     continue
 
                 if int(header.get('status', 0)) != 0:
@@ -274,7 +273,7 @@ class SauceNao:
             except (httpx.HTTPError, ValueError, TimeoutError):
                 logger.debug('Could not establish connection to SauceNAO, trying again in 5s...')
                 if attempt < self.retry_attempts - 1:  # no need to sleep on the last attempt
-                    await sleep(self.retry_delay)
+                    time.sleep(self.retry_delay)
 
             except Exception as e:
                 if 'Daily Search Limit Exceeded' in str(e):

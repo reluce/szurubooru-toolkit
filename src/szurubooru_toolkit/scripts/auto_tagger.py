@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import threading
 
 from loguru import logger
@@ -51,11 +50,11 @@ def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes, cooldown: Sa
 
     results = {}
     limit_reached = False
-    matches, limit_short, limit_long = asyncio.run(sauce.get_metadata(post.content_url, image))
+    matches, limit_short, limit_long = sauce.get_metadata(post.content_url, image)
 
     for index, data in matches.items():
         if data and index != 'pixiv':
-            results.update(asyncio.run(search_boorus(data['site'], f'id:{str(data["post_id"])}', 1, 0, credentials=config.credentials)))
+            results.update(search_boorus(data['site'], f'id:{str(data["post_id"])}', 1, 0, credentials=config.credentials))
 
         if data and index == 'pixiv':
             results[index] = data
@@ -124,6 +123,42 @@ def print_statistics(total_posts):
     logger.info(f'Skipped:   {str(total_skipped)}')
 
 
+def image_required(
+    saucenao_enabled: bool,
+    deepbooru_enabled: bool,
+    deepbooru_forced: bool,
+    public: bool,
+    is_video: bool,
+    limit_reached: bool,
+) -> bool:
+    """
+    Decides whether the post content has to be downloaded.
+
+    The image is only needed by SauceNAO (unless the instance is public, in which
+    case SauceNAO fetches the URL itself) and by Deepbooru. An MD5-only run never
+    needs the content since the checksum is part of the post data.
+
+    Args:
+        saucenao_enabled (bool): Whether SauceNAO tagging is enabled.
+        deepbooru_enabled (bool): Whether Deepbooru tagging is enabled.
+        deepbooru_forced (bool): Whether Deepbooru is forced for every post.
+        public (bool): Whether the szurubooru instance is publicly reachable.
+        is_video (bool): Whether the post is a video.
+        limit_reached (bool): Whether the SauceNAO daily limit has been reached.
+
+    Returns:
+        bool: True if the content should be downloaded.
+    """
+
+    if is_video:
+        return False
+
+    needed_for_saucenao = saucenao_enabled and not public and not limit_reached
+    needed_for_deepbooru = deepbooru_enabled or deepbooru_forced
+
+    return needed_for_saucenao or needed_for_deepbooru
+
+
 def process_post(  # noqa C901
     post: Post,
     sauce: SauceNao,
@@ -163,7 +198,7 @@ def process_post(  # noqa C901
 
     # Search boorus by md5 hash of the file
     if config.auto_tagger['md5_search']:
-        md5_results = asyncio.run(search_boorus('all', 'md5:' + (md5 or post.md5), 1, 0, credentials=config.credentials))
+        md5_results = search_boorus('all', 'md5:' + (md5 or post.md5), 1, 0, credentials=config.credentials)
 
         if md5_results:
             tags_by_md5, sources, post.rating = prepare_post(md5_results, config)
@@ -175,10 +210,16 @@ def process_post(  # noqa C901
 
     # Download the file from szurubooru if its not already locally present.
     # This might be the case if this function was called from upload_media.
+    # MD5-only runs never need the content, so nothing gets downloaded there.
     if not file_to_upload:
-        if (
-            (not config.globals['public'] or config.auto_tagger['deepbooru']) or config.auto_tagger['deepbooru_forced']
-        ) and post.type != 'video':
+        if image_required(
+            saucenao_enabled=config.auto_tagger['saucenao'],
+            deepbooru_enabled=config.auto_tagger['deepbooru'],
+            deepbooru_forced=config.auto_tagger['deepbooru_forced'],
+            public=config.globals['public'],
+            is_video=post.type == 'video',
+            limit_reached=limit_event.is_set(),
+        ):
             image = download_media(post.content_url, post.md5)
             # Shrink files >2MB
             try:

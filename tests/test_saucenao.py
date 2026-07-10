@@ -1,5 +1,3 @@
-import asyncio
-
 import httpx
 import pytest
 
@@ -57,7 +55,7 @@ def test_get_result_filters_by_similarity():
         )
 
     sauce = make_saucenao(handler)
-    response = asyncio.run(sauce.get_result('http://szuru.local/img.jpg'))
+    response = sauce.get_result('http://szuru.local/img.jpg')
 
     assert len(response) == 1
     assert response.short_remaining == 3
@@ -69,7 +67,7 @@ def test_get_result_daily_limit_reached():
         return httpx.Response(429, json=saucenao_response(long_remaining=0, message='Daily Search Limit Exceeded'))
 
     sauce = make_saucenao(handler)
-    assert asyncio.run(sauce.get_result('http://szuru.local/img.jpg')) == 'Limit reached'
+    assert sauce.get_result('http://szuru.local/img.jpg') == 'Limit reached'
 
 
 def test_get_result_retries_on_short_limit():
@@ -82,7 +80,7 @@ def test_get_result_retries_on_short_limit():
         return httpx.Response(200, json=saucenao_response())
 
     sauce = make_saucenao(handler)
-    response = asyncio.run(sauce.get_result('http://szuru.local/img.jpg'))
+    response = sauce.get_result('http://szuru.local/img.jpg')
 
     assert len(attempts) == 3
     assert response is not None
@@ -95,7 +93,7 @@ def test_get_result_sends_api_key_and_file():
         return httpx.Response(200, json=saucenao_response())
 
     sauce = make_saucenao(handler, token='secret')
-    asyncio.run(sauce.get_result('http://szuru.local/img.jpg', image=b'fake-image-bytes'))
+    sauce.get_result('http://szuru.local/img.jpg', image=b'fake-image-bytes')
 
 
 def test_get_metadata_maps_sites():
@@ -112,7 +110,7 @@ def test_get_metadata_maps_sites():
         )
 
     sauce = make_saucenao(handler)
-    matches, short_remaining, long_remaining = asyncio.run(sauce.get_metadata('http://szuru.local/img.jpg'))
+    matches, short_remaining, long_remaining = sauce.get_metadata('http://szuru.local/img.jpg')
 
     assert matches['donmai'] == {'site': 'danbooru', 'post_id': 123}
     assert matches['yande'] == {'site': 'yandere', 'post_id': 456}
@@ -128,7 +126,7 @@ def test_get_metadata_limit_reached():
         return httpx.Response(200, json=saucenao_response(long_remaining=-1, message='Daily Search Limit Exceeded'))
 
     sauce = make_saucenao(handler)
-    matches, _, long_remaining = asyncio.run(sauce.get_metadata('http://szuru.local/img.jpg'))
+    matches, _, long_remaining = sauce.get_metadata('http://szuru.local/img.jpg')
 
     assert long_remaining == 0
     assert all(match is None for match in matches.values())
@@ -140,7 +138,7 @@ def test_get_metadata_connection_failure_returns_default_limits():
 
     sauce = make_saucenao(handler)
     sauce.retry_attempts = 2
-    matches, short_remaining, long_remaining = asyncio.run(sauce.get_metadata('http://szuru.local/img.jpg'))
+    matches, short_remaining, long_remaining = sauce.get_metadata('http://szuru.local/img.jpg')
 
     assert all(match is None for match in matches.values())
     assert short_remaining == 1
