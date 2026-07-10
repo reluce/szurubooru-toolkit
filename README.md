@@ -46,7 +46,13 @@ In order to run `szuru-toolkit`, Python `3.11` is required.
 This package is available on [PyPI](https://pypi.org/project/szurubooru-toolkit/) and can be installed with pip:
 `pip install szurubooru-toolkit`
 
-Alternatively, you can clone the package from GitHub and set everything up with [uv](https://docs.astral.sh/uv/). In the root directory of this repository, execute `uv sync`.
+Deepbooru (local machine learning tagging) and Pixiv support are optional extras since they pull in heavy dependencies:
+
+* `pip install "szurubooru-toolkit[deepbooru]"` for Deepbooru support (installs TensorFlow)
+* `pip install "szurubooru-toolkit[pixiv]"` for Pixiv metadata support
+* `pip install "szurubooru-toolkit[deepbooru,pixiv]"` for both
+
+Alternatively, you can clone the package from GitHub and set everything up with [uv](https://docs.astral.sh/uv/). In the root directory of this repository, execute `uv sync` (add `--all-extras` for Deepbooru and Pixiv support).
 
 ### Docker Instructions
 If you would like to run the toolkit in a Docker container instead, follow the
@@ -119,7 +125,7 @@ Creating a SauceNAO account and an API key is recommended.
 Please consider supporting the SauceNAO team as well by upgrading your plan.
 With a free plan, you can request up to 200 posts in 24h.
 
-For Deepbooru support, download the current release [here](https://github.com/KichangKim/DeepDanbooru/releases/tag/v3-20211112-sgd-e28) (v3-20211112-sgd-e28) and extract the contents of the zip file. Specify the path of the folder with the extracted files in `deepbooru_model`.
+For Deepbooru support, install the `deepbooru` extra (`pip install "szurubooru-toolkit[deepbooru]"`), then download the current release [here](https://github.com/KichangKim/DeepDanbooru/releases/tag/v3-20211112-sgd-e28) (v3-20211112-sgd-e28) and extract the contents of the zip file. Specify the path of the folder with the extracted files in `deepbooru_model`.
 Please note that you have to set `deepbooru_enabled` if you want to use it.
 
 ## :page_with_curl: Commands

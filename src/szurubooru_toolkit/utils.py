@@ -17,11 +17,11 @@ from httpx import HTTPStatusError
 from httpx import ReadTimeout
 from loguru import logger
 from PIL import Image
-from pixivpy3.utils import PixivError
 
 from szurubooru_toolkit import boorus
 from szurubooru_toolkit.config import Config
 from szurubooru_toolkit.pixiv import Pixiv
+from szurubooru_toolkit.pixiv import PixivError
 
 
 # Keep track of total tagged posts
@@ -507,6 +507,9 @@ def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], s
                         pixiv_rating = pixiv.get_rating(pixiv_result)
                     else:
                         pixiv_rating = None
+                except ImportError as e:
+                    logger.warning(f'{e} Skipping Pixiv metadata...')
+                    pixiv_rating = None
                 except PixivError as e:
                     logger.warning(f'Could not get result from pixiv: {e}')
                     pixiv_rating = None

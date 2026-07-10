@@ -16,7 +16,7 @@ This Chrome extension allows you to import images from web pages directly to you
 ### Prerequisites
 
 1. Make sure you have the szurubooru-toolkit Python package installed and configured
-2. Start the Flask webserver by running: `python run-webserver.py` from the main repository directory
+2. Start the webserver by running: `python run-webserver.py` from the main repository directory
 
 ### Installing the Extension in Chrome
 
@@ -38,7 +38,7 @@ For development purposes, you can also package the extension:
 
 ## Usage
 
-1. Make sure the Flask webserver is running (`python run-webserver.py`)
+1. Make sure the webserver is running (`python run-webserver.py`)
 2. Click the szurubooru-toolkit icon in the Chrome toolbar
 3. Optionally enter:
    - Cookie file location (for authenticated downloads)
@@ -53,7 +53,7 @@ The extension will remember your cookie file location and range settings between
 
 ## Troubleshooting
 
-- Make sure the Flask webserver is running on `http://localhost:5000`
+- Make sure the webserver is running on `http://localhost:5000`
 - Check the browser console for any error messages
 - Ensure you have the necessary permissions to access the URLs you're trying to import from
 - For authenticated sites, make sure your cookie file is accessible and valid

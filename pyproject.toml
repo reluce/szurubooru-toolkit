@@ -26,12 +26,8 @@ dependencies = [
     "httpx<1.0.0,>=0.24.0",
     "click<9.0.0,>=8.0.0",
     "tqdm<5.0.0,>=4.65.0",
-    "numpy<2.0.0,>=1.23.5",
     "loguru<1.0.0,>=0.7.0",
     "gallery-dl<2.0.0,>=1.26.5",
-    "flask<4.0.0,>=3.0.0",
-    "pixivpy3<4.0.0,>=3.7.4",
-    "tensorflow~=2.15.0",
 ]
 name = "szurubooru-toolkit"
 version = "1.2.2"
@@ -43,6 +39,15 @@ keywords = [
     "booru",
     "saucenao",
     "deepbooru",
+]
+
+[project.optional-dependencies]
+deepbooru = [
+    "tensorflow~=2.15.0",
+    "numpy<2.0.0,>=1.23.5",
+]
+pixiv = [
+    "pixivpy3<4.0.0,>=3.7.4",
 ]
 
 [project.urls]

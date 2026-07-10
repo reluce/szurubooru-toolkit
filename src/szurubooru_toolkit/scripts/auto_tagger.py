@@ -174,7 +174,13 @@ def main(  # noqa C901
             sauce = SauceNao(config)
 
         if config.auto_tagger['deepbooru']:
-            from szurubooru_toolkit.deepbooru import Deepbooru
+            try:
+                from szurubooru_toolkit.deepbooru import Deepbooru
+            except ImportError:
+                logger.critical(
+                    'Deepbooru support requires the "deepbooru" extra. Install it with: pip install szurubooru-toolkit[deepbooru]',
+                )
+                exit(1)
             global deepbooru
             if deepbooru is None:
                 deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])

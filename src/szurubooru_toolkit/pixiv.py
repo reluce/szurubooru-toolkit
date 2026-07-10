@@ -4,8 +4,16 @@ from typing import List
 from typing import Optional
 
 from loguru import logger
-from pixivpy3 import AppPixivAPI as Pixiv_Module
-from pixivpy3.utils import PixivError
+
+
+# pixivpy3 is an optional dependency (the 'pixiv' extra). Fall back to a stub
+# exception so 'except PixivError' clauses keep working without it.
+try:
+    from pixivpy3.utils import PixivError
+except ImportError:
+
+    class PixivError(Exception):
+        pass
 
 
 class Pixiv:
@@ -18,9 +26,19 @@ class Pixiv:
 
         Args:
             token (str): The refresh token for the Pixiv API.
+
+        Raises:
+            ImportError: If pixivpy3 is not installed (the 'pixiv' extra).
         """
 
-        self.client = Pixiv_Module()
+        try:
+            from pixivpy3 import AppPixivAPI
+        except ImportError:
+            raise ImportError(
+                'Pixiv support requires the "pixiv" extra. Install it with: pip install szurubooru-toolkit[pixiv]',
+            ) from None
+
+        self.client = AppPixivAPI()
         self.client.auth(refresh_token=token)
 
     def get_result(self, result_url: str) -> Optional[dict]:

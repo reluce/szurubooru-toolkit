@@ -1,6 +1,13 @@
-from flask import Flask
-from flask import request
-from flask import jsonify
+"""Webserver for the browser extensions, serving /import-from-url and /import-from-all-tabs.
+
+Runs on the standard library only; the browser extensions expect it on http://localhost:5000.
+"""
+import argparse
+import json
+import urllib.parse
+from http.server import BaseHTTPRequestHandler
+from http.server import HTTPServer
+
 from loguru import logger
 
 from szurubooru_toolkit import setup_clients
@@ -16,91 +23,115 @@ from szurubooru_toolkit import config  # noqa: E402
 from szurubooru_toolkit.scripts.import_from_url import main as import_from_url  # noqa: E402
 
 
-app = Flask(__name__)
-
-# Add CORS headers to all responses
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
-
-
-@app.route('/import-from-url', methods=['GET', 'POST', 'OPTIONS'])
-def run_import_from_url():
-    if request.method == 'OPTIONS':
-        # Handle preflight request
-        return '', 200
-    current_url = request.args.get('url')
-    cookie_location = request.args.get('cookies')
-    range = request.args.get('range')
+def apply_overrides(params: dict) -> None:
+    """Apply the cookies/range query params as config overrides."""
 
     overrides = {
         'globals': {'hide_progress': True},
         'import_from_url': {},
     }
 
+    cookie_location = params.get('cookies')
     if cookie_location:
         overrides['import_from_url']['cookies'] = cookie_location
         logger.info(f'Cookie file location: "{cookie_location}"')
 
-    if range:
-        overrides['import_from_url']['range'] = range
-        logger.info(f'Limit range: "{range}"')
+    range_ = params.get('range')
+    if range_:
+        overrides['import_from_url']['range'] = range_
+        logger.info(f'Limit range: "{range_}"')
 
     config.override_config(overrides)
-    import_from_url(urls=[current_url])
-
-    return 'Script executed for URL: ' + current_url
 
 
-@app.route('/import-from-all-tabs', methods=['POST', 'OPTIONS'])
-def run_import_from_all_tabs():
-    if request.method == 'OPTIONS':
-        # Handle preflight request
-        return '', 200
-    cookie_location = request.args.get('cookies')
-    range = request.args.get('range')
-    
-    # Get URLs from JSON body
-    data = request.get_json()
-    if not data or 'urls' not in data:
-        return 'No URLs provided', 400
-    
-    urls = data['urls']
-    logger.info(f'Importing from {len(urls)} tabs')
+class ToolkitRequestHandler(BaseHTTPRequestHandler):
+    def _respond(self, body: str, status: int = 200) -> None:
+        data = body.encode()
+        self.send_response(status)
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.send_header('Content-Length', str(len(data)))
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        self.send_header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        self.end_headers()
+        self.wfile.write(data)
 
-    overrides = {
-        'globals': {'hide_progress': True},
-        'import_from_url': {},
-    }
+    def log_message(self, format: str, *args) -> None:
+        logger.debug(f'{self.address_string()} - {format % args}')
 
-    if cookie_location:
-        overrides['import_from_url']['cookies'] = cookie_location
-        logger.info(f'Cookie file location: "{cookie_location}"')
+    def do_OPTIONS(self) -> None:
+        # CORS preflight
+        self._respond('', 200)
 
-    if range:
-        overrides['import_from_url']['range'] = range
-        logger.info(f'Limit range: "{range}"')
+    def do_GET(self) -> None:
+        self._route()
 
-    config.override_config(overrides)
-    
-    # Process all URLs
-    successful_imports = 0
-    failed_imports = 0
-    
-    for url in urls:
+    def do_POST(self) -> None:
+        self._route()
+
+    def _route(self) -> None:
+        parsed = urllib.parse.urlsplit(self.path)
+        params = {key: values[0] for key, values in urllib.parse.parse_qs(parsed.query).items()}
+
+        if parsed.path == '/import-from-url':
+            self._handle_import_from_url(params)
+        elif parsed.path == '/import-from-all-tabs':
+            if self.command != 'POST':
+                self._respond('Method not allowed', 405)
+            else:
+                self._handle_import_from_all_tabs(params)
+        else:
+            self._respond('Not found', 404)
+
+    def _handle_import_from_url(self, params: dict) -> None:
+        current_url = params.get('url')
+        if not current_url:
+            self._respond('No URL provided', 400)
+            return
+
+        apply_overrides(params)
+        import_from_url(urls=[current_url])
+
+        self._respond('Script executed for URL: ' + current_url)
+
+    def _handle_import_from_all_tabs(self, params: dict) -> None:
         try:
-            logger.info(f'Processing URL: {url}')
-            import_from_url(urls=[url])
-            successful_imports += 1
-        except Exception as e:
-            logger.error(f'Failed to import from {url}: {str(e)}')
-            failed_imports += 1
+            length = int(self.headers.get('Content-Length', 0))
+            data = json.loads(self.rfile.read(length)) if length else None
+        except ValueError:
+            data = None
 
-    return f'Script executed for {len(urls)} URLs. Successful: {successful_imports}, Failed: {failed_imports}'
+        if not data or 'urls' not in data:
+            self._respond('No URLs provided', 400)
+            return
+
+        urls = data['urls']
+        logger.info(f'Importing from {len(urls)} tabs')
+
+        apply_overrides(params)
+
+        successful_imports = 0
+        failed_imports = 0
+
+        for url in urls:
+            try:
+                logger.info(f'Processing URL: {url}')
+                import_from_url(urls=[url])
+                successful_imports += 1
+            except Exception as e:
+                logger.error(f'Failed to import from {url}: {str(e)}')
+                failed_imports += 1
+
+        self._respond(f'Script executed for {len(urls)} URLs. Successful: {successful_imports}, Failed: {failed_imports}')
 
 
 if __name__ == '__main__':
-    app.run()
+    parser = argparse.ArgumentParser(description='Webserver for the szurubooru-toolkit browser extensions.')
+    parser.add_argument('--host', default='127.0.0.1', help='Address to bind to (default: 127.0.0.1)')
+    parser.add_argument('--port', type=int, default=5000, help='Port to listen on (default: 5000)')
+    args = parser.parse_args()
+
+    logger.info(f'Listening on http://{args.host}:{args.port}')
+    # Requests are handled serially on purpose: imports mutate the global config
+    # and the previous Flask dev server was single-threaded as well.
+    HTTPServer((args.host, args.port), ToolkitRequestHandler).serve_forever()
