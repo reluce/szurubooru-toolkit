@@ -13,6 +13,11 @@ from loguru import logger
 # Only the post fields parse_post consumes; slims down large search responses
 POST_FIELDS = 'id,source,contentUrl,version,relations,checksumMD5,type,safety,tags'
 
+# Oxibooru spells the MD5 checksum *selector* checksumMd5 (the response key stays
+# checksumMD5); the client falls back to this automatically when the server
+# rejects the upstream spelling.
+POST_FIELDS_OXIBOORU = POST_FIELDS.replace('checksumMD5', 'checksumMd5')
+
 # How many result pages to fetch concurrently on large queries
 PAGE_FETCH_WORKERS = 8
 
@@ -22,6 +27,10 @@ _TAG_EXISTS_DESCRIPTIONS = (
     'duplicate key value',
     'tag_name already exists',
 )
+
+
+def _is_invalid_fields_error(error: 'SzurubooruApiError') -> bool:
+    return error.name == 'FailedToDeserializeQueryString' or 'invalid field' in error.description
 
 
 def _is_tag_exists_error(response_json: dict) -> bool:
@@ -141,6 +150,9 @@ class Szurubooru:
             transport=transport,
         )
 
+        # Field selection the server accepts; negotiated on first use (None = full resources)
+        self._post_fields = POST_FIELDS
+
         self.allowed_tokens = [
             'ar',
             'area',
@@ -226,6 +238,37 @@ class Szurubooru:
 
         return data
 
+    def _fetch_post_resource(self, path: str, params: dict = None) -> dict:
+        """
+        Sends a GET request for post resources with the slimmest field selection the
+        server supports.
+
+        Upstream szurubooru and oxibooru spell the MD5 checksum field selector
+        differently; if the server rejects the field list, the oxibooru spelling is
+        tried, then the field selection is dropped entirely. The working variant is
+        remembered for all subsequent requests.
+        """
+
+        params = params or {}
+
+        while True:
+            fields = self._post_fields
+
+            try:
+                if fields:
+                    return self._request('GET', path, params=params | {'fields': fields})
+                return self._request('GET', path, params=params)
+            except SzurubooruApiError as e:
+                if fields is None or not _is_invalid_fields_error(e):
+                    raise
+
+                if fields == POST_FIELDS:
+                    logger.debug('Server rejected the field selection, retrying with oxibooru field names...')
+                    self._post_fields = POST_FIELDS_OXIBOORU
+                else:
+                    logger.debug('Server rejected the field selection, requesting full post resources...')
+                    self._post_fields = None
+
     def get_posts(
         self,
         query: str,
@@ -268,10 +311,10 @@ class Szurubooru:
         if not videos:
             query = f'type:image,animation {query}'
 
-        params = {'query': query, 'limit': 100, 'fields': POST_FIELDS}
+        params = {'query': query, 'limit': 100}
         logger.debug(f'Getting posts with query params: {params}')
 
-        response = self._request('GET', '/posts/', params=params)
+        response = self._fetch_post_resource('/posts/', params)
 
         total = str(response['total'])
         logger.debug(f'Got a total of {total} results')
@@ -289,7 +332,7 @@ class Szurubooru:
             if pagination and pages > 1:
                 # Fetch the remaining pages concurrently, but yield them in order
                 def fetch_page(page: int) -> list:
-                    return self._request('GET', '/posts/', params=params | {'offset': page * 100})['results']
+                    return self._fetch_post_resource('/posts/', params | {'offset': page * 100})['results']
 
                 with ThreadPoolExecutor(max_workers=min(PAGE_FETCH_WORKERS, pages - 1)) as executor:
                     for future in [executor.submit(fetch_page, page) for page in range(1, pages)]:
@@ -335,7 +378,7 @@ class Szurubooru:
             Post: The parsed Post object.
         """
 
-        response = self._request('GET', f'/post/{post_id}', params={'fields': POST_FIELDS})
+        response = self._fetch_post_resource(f'/post/{post_id}')
 
         return self.parse_post(response)
 

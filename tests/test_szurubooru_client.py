@@ -411,6 +411,82 @@ def test_update_post_relations_raises_on_other_errors():
     assert [r.method for r in client.requests] == ['GET', 'PUT']
 
 
+def oxibooru_fields_rejection():
+    return httpx.Response(
+        400,
+        json={
+            'name': 'FailedToDeserializeQueryString',
+            'title': 'Query Rejection',
+            'description': 'Failed to deserialize query string: fields: invalid field `checksumMD5`',
+        },
+    )
+
+
+def test_get_posts_falls_back_to_oxibooru_field_names():
+    def handler(request):
+        fields = dict(request.url.params).get('fields', '')
+        if 'checksumMD5' in fields:
+            return oxibooru_fields_rejection()
+        assert 'checksumMd5' in fields
+        return httpx.Response(200, json={'total': 1, 'results': [make_post_json(1)]})
+
+    client = RecordingClient(handler)
+    results = list(client.szuru.get_posts('foo'))
+
+    assert results[0] == '1'
+    assert results[1].md5 == 'md5-1'
+
+    # The accepted spelling must be remembered: no repeated rejection round-trip
+    list(client.szuru.get_posts('bar'))
+    rejected = [r for r in client.requests if 'checksumMD5' in dict(r.url.params).get('fields', '')]
+    assert len(rejected) == 1
+
+
+def test_get_posts_falls_back_to_full_resources():
+    def handler(request):
+        if 'fields' in dict(request.url.params):
+            return oxibooru_fields_rejection()
+        return httpx.Response(200, json={'total': 1, 'results': [make_post_json(1)]})
+
+    client = RecordingClient(handler)
+    results = list(client.szuru.get_posts('foo'))
+
+    assert results[1].id == '1'
+    # Ladder: standard fields -> oxibooru fields -> no fields
+    assert len(client.requests) == 3
+    assert 'fields' not in dict(client.requests[-1].url.params)
+
+
+def test_get_post_shares_negotiated_fields():
+    def handler(request):
+        fields = dict(request.url.params).get('fields', '')
+        if 'checksumMD5' in fields:
+            return oxibooru_fields_rejection()
+        if request.url.path == '/api/posts/':
+            return httpx.Response(200, json={'total': 1, 'results': [make_post_json(1)]})
+        return httpx.Response(200, json=make_post_json(42))
+
+    client = RecordingClient(handler)
+    assert client.szuru.get_post('42').id == '42'
+
+    # Subsequent search must reuse the negotiated spelling immediately
+    list(client.szuru.get_posts('foo'))
+    assert 'checksumMd5' in dict(client.requests[-1].url.params)['fields']
+
+
+def test_unrelated_400_is_not_swallowed_by_fields_fallback():
+    def handler(request):
+        return httpx.Response(
+            400,
+            json={'name': 'SearchError', 'title': 'x', 'description': 'SearchError: Unknown named token'},
+        )
+
+    client = RecordingClient(handler)
+    with pytest.raises(UnknownTokenError):
+        list(client.szuru.get_posts('foo'))
+    assert len(client.requests) == 1
+
+
 def test_non_json_error_raises_api_error():
     client = RecordingClient(lambda request: httpx.Response(502, text='Bad Gateway'))
     with pytest.raises(SzurubooruApiError) as exc_info:
