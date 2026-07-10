@@ -131,28 +131,6 @@ def cli(
     help=f'Set the limit for the number of tagged elements (default: {config.AUTO_TAGGER_DEFAULTS["limit"]}).',
 )
 @click.option(
-    '--deepbooru/--no-deepbooru',
-    is_flag=True,
-    help=f'Tag posts with Deepbooru if file could not be found (default: {config.AUTO_TAGGER_DEFAULTS["deepbooru"]}).',
-)
-@click.option('--deepbooru-model', help='Path to the Deepbooru model.')
-@click.option(
-    '--deepbooru-threshold',
-    help=f'Define how accurate the matched tag from Deepbooru has to be (default: {config.AUTO_TAGGER_DEFAULTS["deepbooru_threshold"]}).',
-)
-@click.option(
-    '--deepbooru-forced/--no-deepbooru-forced',
-    help=(
-        'Always tag with SauceNAO and Deepbooru. Overwrites deepbooru-enabled (default:'
-        f' {config.AUTO_TAGGER_DEFAULTS["deepbooru_forced"]}).'
-    ),
-)
-@click.option(
-    '--deepbooru-set-tag/--no-deepbooru-set-tag',
-    is_flag=True,
-    help=f'Tag Deepbooru posts with tag "deepbooru" (default: {config.AUTO_TAGGER_DEFAULTS["deepbooru_set_tag"]}).',
-)
-@click.option(
     '--wd-tagger/--no-wd-tagger',
     is_flag=True,
     help=f'Tag posts with the WD tagger if file could not be found (default: {config.AUTO_TAGGER_DEFAULTS["wd_tagger"]}).',
@@ -190,7 +168,7 @@ def cli(
 @click.option(
     '--update-relations/--dont-update-relations',
     help=(
-        'Set character <> parody relation if SauceNAO is disabled (or limit reached) and Deepbooru enabled (default:'
+        'Set character <> parody relation if SauceNAO is disabled (or limit reached) and the WD tagger enabled (default:'
         f' {config.AUTO_TAGGER_DEFAULTS["update_relations"]}).'
     ),
 )
@@ -225,11 +203,6 @@ def click_auto_tagger(
     saucenao_api_token,
     md5_search,
     limit,
-    deepbooru,
-    deepbooru_model,
-    deepbooru_threshold,
-    deepbooru_forced,
-    deepbooru_set_tag,
     wd_tagger,
     wd_tagger_model,
     wd_tagger_threshold,
@@ -244,7 +217,7 @@ def click_auto_tagger(
     """
     Tag posts automatically
 
-    Tags can be searched through SauceNAO, the MD5 hash on popular boorus, Deepbooru or the WD tagger.
+    Tags can be searched through SauceNAO, the MD5 hash on popular boorus or the WD tagger.
 
     QUERY is a szurubooru query for posts to tag.
     """
@@ -388,10 +361,6 @@ def click_delete_posts(ctx, query, except_ids):
     help=f'The amount of posts that should be imported (default: {config.IMPORT_FROM_BOORU_DEFAULTS["limit"]}).',
 )
 @click.option(
-    '--deepbooru/--no-deepbooru',
-    help=f'Tag posts additionally with Deepbooru (default: {config.IMPORT_FROM_BOORU_DEFAULTS["deepbooru"]}).',
-)
-@click.option(
     '--wd-tagger/--no-wd-tagger',
     help=f'Tag posts additionally with the WD tagger (default: {config.IMPORT_FROM_BOORU_DEFAULTS["wd_tagger"]}).',
 )
@@ -436,7 +405,6 @@ def click_import_from_booru(
     query,
     booru,
     limit,
-    deepbooru,
     wd_tagger,
     convert_to_jpg,
     convert_threshold,
@@ -475,10 +443,6 @@ def click_import_from_booru(
     ),
 )
 @click.option('--cookies', help='Path to a cookies file for gallery-dl to consume. Used for authentication.')
-@click.option(
-    '--deepbooru/--no-deepbooru',
-    help=f'Tag posts additionally with Deepbooru (default: {config.IMPORT_FROM_URL_DEFAULTS["deepbooru"]}).',
-)
 @click.option(
     '--wd-tagger/--no-wd-tagger',
     help=f'Tag posts additionally with the WD tagger (default: {config.IMPORT_FROM_URL_DEFAULTS["wd_tagger"]}).',
@@ -545,7 +509,6 @@ def click_import_from_url(
     input_file,
     range,
     cookies,
-    deepbooru,
     wd_tagger,
     md5_search,
     saucenao,

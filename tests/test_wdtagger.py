@@ -144,6 +144,13 @@ def test_rgba_image_is_composited(wd_tagger):
     assert rating == 'safe'
 
 
+def test_resolve_providers_keeps_cpu_fallback():
+    from szurubooru_toolkit.utils import resolve_onnx_providers
+
+    assert resolve_onnx_providers(None) == ['CPUExecutionProvider']
+    assert resolve_onnx_providers(['CPUExecutionProvider']) == ['CPUExecutionProvider']
+
+
 def test_unavailable_provider_falls_back_to_cpu(model_dir):
     wd_tagger = WDTagger(str(model_dir), providers=['BogusExecutionProvider'])
 

@@ -26,20 +26,12 @@ log_colorized = true
 saucenao_api_token = "my_saucenao_api_token"
 saucenao = true
 md5_search = true
-deepbooru = false
-deepbooru_model = "./misc/deepbooru/model-resnet_custom_v3.onnx"
-# Optional hardware acceleration, e.g. ["CoreMLExecutionProvider"] on Apple Silicon
-# or ["CUDAExecutionProvider"] on NVIDIA GPUs. CPU is always kept as fallback.
-deepbooru_providers = []
-deepbooru_threshold = 0.7
-deepbooru_forced = false
-deepbooru_set_tag = true
-# The WD tagger is a more modern alternative to Deepbooru with better tag and character detection.
 # wd_tagger_model accepts a Hugging Face repo id (downloaded automatically on first use)
 # or a local directory containing model.onnx and selected_tags.csv.
 wd_tagger = false
 wd_tagger_model = "SmilingWolf/wd-eva02-large-tagger-v3"
-# Optional hardware acceleration, same format as deepbooru_providers.
+# Optional hardware acceleration, e.g. ["CoreMLExecutionProvider"] on Apple Silicon
+# or ["CUDAExecutionProvider"] on NVIDIA GPUs. CPU is always kept as fallback.
 wd_tagger_providers = []
 wd_tagger_threshold = 0.35
 wd_tagger_character_threshold = 0.75
@@ -72,7 +64,6 @@ hide_progress = false
 workers = 4
 
 [import_from_booru]
-deepbooru = false
 wd_tagger = false
 max_similarity = "0.95"
 convert_to_jpg = false
@@ -85,7 +76,6 @@ default_safety = "safe"
 hide_progress = false
 
 [import_from_url]
-deepbooru = false
 wd_tagger = false
 tmp_path = './tmp/gallery_dl'
 use_twitter_artist = false

@@ -28,7 +28,7 @@ from szurubooru_toolkit.pixiv import PixivError
 
 # Keep track of total tagged posts
 total_tagged = 0
-total_deepbooru = 0
+total_wd_tagger = 0
 total_untagged = 0
 total_skipped = 0
 _statistics_lock = threading.Lock()
@@ -176,32 +176,32 @@ def convert_rating(rating: str) -> str:
     return new_rating
 
 
-def statistics(tagged=0, deepbooru=0, untagged=0, skipped=0) -> tuple:
+def statistics(tagged=0, wd_tagger=0, untagged=0, skipped=0) -> tuple:
     """Keep track of how posts were tagged.
 
     Input values will get added to previously set value.
 
     Args:
         tagged (int, optional): If a post got its tags from SauceNAO. Defaults to 0.
-        deepbooru (int, optional): If a post was tagged with Deepbooru. Defaults to 0.
-        untagged (int, optional): If a post was tagged neither with SauceNAO, nor Deepbooru. Defaults to 0.
+        wd_tagger (int, optional): If a post was tagged with the WD tagger. Defaults to 0.
+        untagged (int, optional): If a post was tagged neither with SauceNAO, nor the WD tagger. Defaults to 0.
 
     Returns:
-        tuple: Returns the tracked progress (total_tagged, total_deepbooru, total_untagged)
+        tuple: Returns the tracked progress (total_tagged, total_wd_tagger, total_untagged)
     """
 
     global total_tagged
-    global total_deepbooru
+    global total_wd_tagger
     global total_untagged
     global total_skipped
 
     with _statistics_lock:
         total_tagged += tagged
-        total_deepbooru += deepbooru
+        total_wd_tagger += wd_tagger
         total_untagged += untagged
         total_skipped += skipped
 
-        return total_tagged, total_deepbooru, total_untagged, total_skipped
+        return total_tagged, total_wd_tagger, total_untagged, total_skipped
 
 
 _implications_cache: dict[str, list[str]] = {}

@@ -48,13 +48,13 @@ In order to run `szuru-toolkit`, Python `3.11` or newer is required.
 This package is available on [PyPI](https://pypi.org/project/szurubooru-toolkit/) and can be installed with pip:
 `pip install szurubooru-toolkit`
 
-Deepbooru (local machine learning tagging) and Pixiv support are optional extras since they pull in heavy dependencies:
+The WD tagger (local machine learning tagging) and Pixiv support are optional extras since they pull in heavy dependencies:
 
-* `pip install "szurubooru-toolkit[deepbooru]"` for Deepbooru support (installs ONNX Runtime)
+* `pip install "szurubooru-toolkit[wd-tagger]"` for WD tagger support (installs ONNX Runtime)
 * `pip install "szurubooru-toolkit[pixiv]"` for Pixiv metadata support
-* `pip install "szurubooru-toolkit[deepbooru,pixiv]"` for both
+* `pip install "szurubooru-toolkit[wd-tagger,pixiv]"` for both
 
-Alternatively, you can clone the package from GitHub and set everything up with [uv](https://docs.astral.sh/uv/). In the root directory of this repository, execute `uv sync` (add `--all-extras` for Deepbooru and Pixiv support).
+Alternatively, you can clone the package from GitHub and set everything up with [uv](https://docs.astral.sh/uv/). In the root directory of this repository, execute `uv sync` (add `--all-extras` for WD tagger and Pixiv support).
 
 ### Docker Instructions
 If you would like to run the toolkit in a Docker container instead, follow the
@@ -77,9 +77,8 @@ replacing with your configuration.
 
 1. Create the folder `tmp` in the same location.
 
-1. If you would like to use deepbooru or tag files, create `misc/deepbooru`
-   and/or `misc/tags` in the same location and follow the instructions linked
-   below
+1. If you would like to use tag files, create `misc/tags` in the same location
+   and follow the instructions linked below
 
 1. Run `touch szurubooru_toolkit.log` in the same location to create a file for
    the log. You may need to set the log location to
@@ -127,23 +126,11 @@ Creating a SauceNAO account and an API key is recommended.
 Please consider supporting the SauceNAO team as well by upgrading your plan.
 With a free plan, you can request up to 200 posts in 24h.
 
-For Deepbooru support, install the `deepbooru` extra (`pip install "szurubooru-toolkit[deepbooru]"`), then download the current release [here](https://github.com/KichangKim/DeepDanbooru/releases/tag/v3-20211112-sgd-e28) (v3-20211112-sgd-e28) and extract the contents of the zip file. Specify the path of the model file in `deepbooru_model`.
-
-Deepbooru runs on ONNX Runtime. The DeepDanbooru release ships a Keras model (`.h5`), which has to be converted to ONNX once:
-
-```
-pip install tensorflow~=2.15.0 tf2onnx
-python -m tf2onnx.convert --keras model-resnet_custom_v3.h5 --output model-resnet_custom_v3.onnx
-```
-
-Afterwards tensorflow can be uninstalled again. If a `.h5` path is configured, the toolkit automatically uses (or, with tensorflow and tf2onnx installed, creates) the converted `.onnx` file next to it.
-Please note that you have to set `deepbooru_enabled` if you want to use it.
-
-Inference runs on the CPU by default. For hardware acceleration, set `deepbooru_providers` in `config.toml`, e.g. `["CoreMLExecutionProvider"]` on Apple Silicon or `["CUDAExecutionProvider"]` on NVIDIA GPUs (requires the `onnxruntime-gpu` package). Unavailable providers fall back to the CPU.
-
-Alternatively, you can tag posts with one of [SmilingWolf's WD taggers](https://huggingface.co/SmilingWolf), which are more modern than Deepbooru and generally produce better tags, especially for characters. Install the `wd-tagger` extra (`pip install szurubooru-toolkit[wd-tagger]`) and set `wd_tagger = true` in the `[auto_tagger]` section to use it.
+For local machine learning tagging, posts can be tagged with one of [SmilingWolf's WD taggers](https://huggingface.co/SmilingWolf). Install the `wd-tagger` extra (`pip install "szurubooru-toolkit[wd-tagger]"`) and set `wd_tagger = true` in the `[auto_tagger]` section to use it.
 The model set in `wd_tagger_model` (default: [SmilingWolf/wd-eva02-large-tagger-v3](https://huggingface.co/SmilingWolf/wd-eva02-large-tagger-v3), ~1.2GB) gets downloaded automatically from Hugging Face on first use and is cached locally afterwards. Any of the WD v3/v2 taggers work, e.g. `SmilingWolf/wd-swinv2-tagger-v3` or `SmilingWolf/wd-vit-tagger-v3` for smaller and faster models.
-General tags and character tags use separate confidence thresholds (`wd_tagger_threshold` and `wd_tagger_character_threshold`). Hardware acceleration works the same way as for Deepbooru via `wd_tagger_providers`. If both `wd_tagger` and `deepbooru` are enabled, only the WD tagger is used.
+General tags and character tags use separate confidence thresholds (`wd_tagger_threshold` and `wd_tagger_character_threshold`), since character predictions are usually either confident or wrong.
+
+Inference runs on the CPU by default. For hardware acceleration, set `wd_tagger_providers` in `config.toml`, e.g. `["CoreMLExecutionProvider"]` on Apple Silicon or `["CUDAExecutionProvider"]` on NVIDIA GPUs (requires the `onnxruntime-gpu` package). Unavailable providers fall back to the CPU.
 
 ## :page_with_curl: Commands
 The CLI is installed as `szuru-toolkit` and under the shorter alias `szuructl` — both are identical.
@@ -168,7 +155,7 @@ If you cloned the repo from GitHub, prefix the above scripts with `uv run`, e.g.
 
 If your query starts with a dash (`-`), for example to negate a tag, you have to separate the query from the command with two dashes (This doesn't work with uv run):
 
-`szuru-toolkit auto-tagger --no-deepbooru -- "-foo bar"`
+`szuru-toolkit auto-tagger --no-wd-tagger -- "-foo bar"`
 
 While most commands are self explanatory, the following require a bit of extra attention:
 

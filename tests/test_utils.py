@@ -87,12 +87,12 @@ def test_get_md5sum():
 def test_statistics_accumulates():
     # statistics uses module-level counters; reset them for isolation
     utils.total_tagged = 0
-    utils.total_deepbooru = 0
+    utils.total_wd_tagger = 0
     utils.total_untagged = 0
     utils.total_skipped = 0
 
     assert statistics(tagged=1) == (1, 0, 0, 0)
-    assert statistics(deepbooru=2, untagged=3, skipped=4) == (1, 2, 3, 4)
+    assert statistics(wd_tagger=2, untagged=3, skipped=4) == (1, 2, 3, 4)
     assert statistics() == (1, 2, 3, 4)
 
 

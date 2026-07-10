@@ -22,11 +22,10 @@ def main(booru: str, query: str) -> None:
     """
 
     try:
-        if config.import_from_booru['deepbooru'] or config.import_from_booru['wd_tagger']:
+        if config.import_from_booru['wd_tagger']:
             config.upload_media['auto_tag'] = True
             config.auto_tagger['saucenao'] = False
-            config.auto_tagger['deepbooru'] = config.import_from_booru['deepbooru']
-            config.auto_tagger['wd_tagger'] = config.import_from_booru['wd_tagger']
+            config.auto_tagger['wd_tagger'] = True
         else:
             config.upload_media['auto_tag'] = False
 

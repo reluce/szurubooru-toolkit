@@ -38,14 +38,10 @@ keywords = [
     "szuru",
     "booru",
     "saucenao",
-    "deepbooru",
+    "wd-tagger",
 ]
 
 [project.optional-dependencies]
-deepbooru = [
-    "onnxruntime<2.0.0,>=1.19.0",
-    "numpy<3.0.0,>=1.23.5",
-]
 wd-tagger = [
     "onnxruntime<2.0.0,>=1.19.0",
     "numpy<3.0.0,>=1.23.5",
@@ -70,7 +66,7 @@ dev = [
     "isort<6.0.0,>=5.10.1",
     "pre-commit<4.0.0,>=3.0.0",
     "pytest<9.0.0,>=8.0.0",
-    # For the deepbooru tests: run and build small ONNX models
+    # For the WD tagger tests: run and build small ONNX models
     "onnxruntime<2.0.0,>=1.19.0",
     "onnx<2.0.0,>=1.16.0",
     "numpy<3.0.0,>=1.23.5",

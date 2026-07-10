@@ -883,10 +883,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-deepbooru = [
-    { name = "numpy" },
-    { name = "onnxruntime" },
-]
 pixiv = [
     { name = "pixivpy3" },
 ]
@@ -916,15 +912,13 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.24.0,<1.0.0" },
     { name = "huggingface-hub", marker = "extra == 'wd-tagger'", specifier = ">=0.23.0,<1.0.0" },
     { name = "loguru", specifier = ">=0.7.0,<1.0.0" },
-    { name = "numpy", marker = "extra == 'deepbooru'", specifier = ">=1.23.5,<3.0.0" },
     { name = "numpy", marker = "extra == 'wd-tagger'", specifier = ">=1.23.5,<3.0.0" },
-    { name = "onnxruntime", marker = "extra == 'deepbooru'", specifier = ">=1.19.0,<2.0.0" },
     { name = "onnxruntime", marker = "extra == 'wd-tagger'", specifier = ">=1.19.0,<2.0.0" },
     { name = "pillow", specifier = ">=9.5.0,<12.0.0" },
     { name = "pixivpy3", marker = "extra == 'pixiv'", specifier = ">=3.7.4,<4.0.0" },
     { name = "tqdm", specifier = ">=4.65.0,<5.0.0" },
 ]
-provides-extras = ["deepbooru", "wd-tagger", "pixiv"]
+provides-extras = ["wd-tagger", "pixiv"]
 
 [package.metadata.requires-dev]
 dev = [

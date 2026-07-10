@@ -31,12 +31,6 @@ AUTO_TAGGER_DEFAULTS = {
     'saucenao_api_token': None,
     'saucenao': True,
     'md5_search': True,
-    'deepbooru': False,
-    'deepbooru_model': None,
-    'deepbooru_providers': [],
-    'deepbooru_threshold': 0.7,
-    'deepbooru_forced': False,
-    'deepbooru_set_tag': False,
     'wd_tagger': False,
     'wd_tagger_model': 'SmilingWolf/wd-eva02-large-tagger-v3',
     'wd_tagger_providers': [],
@@ -73,7 +67,6 @@ CREATE_TAGS_DEFAULTS = {
 DELETE_POSTS_DEFAULTS = {'hide_progress': False, 'workers': 4}
 
 IMPORT_FROM_BOORU_DEFAULTS = {
-    'deepbooru': False,
     'wd_tagger': False,
     'limit': 100,
     'hide_progress': False,
@@ -84,7 +77,6 @@ IMPORT_FROM_URL_DEFAULTS = {
     'cookies': None,
     'saucenao': False,
     'md5_search': False,
-    'deepbooru': False,
     'wd_tagger': False,
     'hide_progress': False,
     'md5_search': False,
@@ -249,23 +241,6 @@ class Config:
         if parsed_url.path.startswith('/'):
             self.globals['url'] = self.globals['url'].rstrip('/')
 
-    def validate_deepbooru(self) -> None:
-        """Check if deepbooru_model is an existing file."""
-
-        if not Path(self.auto_tagger['deepbooru_model']).exists():
-            logger.critical(
-                f'Your Deepbooru model "{self.auto_tagger["deepbooru_model"]}" does not exist!',
-            )
-            exit(1)
-
-        deepbooru_path = Path(self.auto_tagger['deepbooru_model']).parent
-        tags_file = deepbooru_path / 'tags.txt'
-        if not tags_file.exists():
-            logger.critical(
-                f'File tags.txt not found. Place it in {deepbooru_path}.',
-            )
-            exit(1)
-
     def validate_wd_tagger(self) -> None:
         """Check if wd_tagger_model is set to a Hugging Face repo id or an existing local model directory."""
 
@@ -368,15 +343,6 @@ class Config:
         self.validate_safety()
         self.validate_convert_attrs()
         self.validate_shrink_attrs()
-
-        if self.auto_tagger['wd_tagger'] and self.auto_tagger['deepbooru']:
-            logger.warning('Both wd_tagger and deepbooru are enabled. Using only the WD tagger...')
-            self.auto_tagger['deepbooru'] = False
-
-        if self.auto_tagger['deepbooru']:
-            self.validate_deepbooru()
-        else:
-            self.auto_tagger['deepbooru_forced'] = False
 
         if self.auto_tagger['wd_tagger']:
             self.validate_wd_tagger()

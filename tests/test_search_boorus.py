@@ -114,7 +114,7 @@ def test_search_boorus_one_failure_does_not_abort_others(monkeypatch, fake_sanka
 
 
 @pytest.mark.parametrize(
-    'saucenao,deepbooru,forced,public,is_video,limit_reached,expected',
+    'saucenao,wd_tagger,forced,public,is_video,limit_reached,expected',
     [
         # md5-only run: nothing needs the image
         (False, False, False, False, False, False, False),
@@ -122,16 +122,16 @@ def test_search_boorus_one_failure_does_not_abort_others(monkeypatch, fake_sanka
         (True, False, False, False, False, False, True),
         # SauceNAO on a public instance fetches the URL itself
         (True, False, False, True, False, False, False),
-        # Deepbooru always needs the image, even on public instances
+        # The WD tagger always needs the image, even on public instances
         (False, True, False, True, False, False, True),
         (False, False, True, True, False, False, True),
         # Videos are never downloaded
         (True, True, True, False, True, False, False),
-        # SauceNAO limit reached and no deepbooru: no download
+        # SauceNAO limit reached and no WD tagger: no download
         (True, False, False, False, False, True, False),
-        # Limit reached but deepbooru still runs
+        # Limit reached but the WD tagger still runs
         (True, True, False, False, False, True, True),
     ],
 )
-def test_image_required(saucenao, deepbooru, forced, public, is_video, limit_reached, expected):
-    assert image_required(saucenao, deepbooru, forced, public, is_video, limit_reached) is expected
+def test_image_required(saucenao, wd_tagger, forced, public, is_video, limit_reached, expected):
+    assert image_required(saucenao, wd_tagger, forced, public, is_video, limit_reached) is expected
