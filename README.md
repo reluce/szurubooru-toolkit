@@ -142,6 +142,8 @@ Please note that you have to set `deepbooru_enabled` if you want to use it.
 Inference runs on the CPU by default. For hardware acceleration, set `deepbooru_providers` in `config.toml`, e.g. `["CoreMLExecutionProvider"]` on Apple Silicon or `["CUDAExecutionProvider"]` on NVIDIA GPUs (requires the `onnxruntime-gpu` package). Unavailable providers fall back to the CPU.
 
 ## :page_with_curl: Commands
+The CLI is installed as `szuru-toolkit` and under the shorter alias `szuructl` — both are identical.
+
 Following commands are currently available:
 
 * `auto-tagger`: Tag posts automatically
