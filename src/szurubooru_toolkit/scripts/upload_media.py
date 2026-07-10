@@ -8,11 +8,12 @@ from types import NoneType
 
 import httpx
 from loguru import logger
-from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.relations import RelationsBatch
+from szurubooru_toolkit.relations import dhash
+from szurubooru_toolkit.utils import run_concurrently
 from szurubooru_toolkit.scripts import auto_tagger
 from szurubooru_toolkit.scripts import tag_posts
 from szurubooru_toolkit.szurubooru import Post
@@ -356,9 +357,13 @@ def upload_post(
 
         # Record similarity edges so the batch reconciliation can complete the
         # relation sets once all files are uploaded (earlier posts don't know
-        # about later ones yet).
-        if relations_batch is not None and post.similar_posts:
-            relations_batch.add(post_id, post.similar_posts)
+        # about later ones yet). The perceptual hash catches similarity between
+        # concurrently uploaded posts which can't see each other in reverse search.
+        if relations_batch is not None:
+            if post.similar_posts:
+                relations_batch.add(post_id, post.similar_posts)
+            if file_ext not in ['mp4', 'webm']:
+                relations_batch.add_hash(post_id, dhash(file))
 
         # Tag post if enabled
         if config.upload_media['auto_tag']:
@@ -431,26 +436,22 @@ def main(
 
                 batch = RelationsBatch()
 
-                for file_path in tqdm(
-                    files_to_upload,
-                    ncols=80,
-                    position=0,
-                    leave=False,
-                    disable=hide_progress,
-                ):
+                def worker(file_path: str) -> None:
                     with open(file_path, 'rb') as f:
                         file = f.read()
-                    success, saucenao_limit_reached = upload_post(
+                    success, _ = upload_post(
                         file,
                         file_ext=Path(file_path).suffix[1:],
                         file_path=file_path,
-                        saucenao_limit_reached=saucenao_limit_reached,
                         relations_batch=batch,
                     )
 
                     if config.upload_media['cleanup'] and success:
                         if os.path.exists(file_path):
                             os.remove(file_path)
+
+                workers = max(1, int(config.upload_media['workers']))
+                run_concurrently(files_to_upload, worker, workers, len(files_to_upload), hide_progress)
 
                 batch.reconcile(szuru)
 

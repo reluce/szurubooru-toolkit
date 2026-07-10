@@ -483,6 +483,11 @@ def click_import_from_booru(
     help=f'Append new tags, if any, to already uploaded posts (default: {config.IMPORT_FROM_URL_DEFAULTS["update_tags_if_exists"]}).',
 )
 @click.option('--verbose', is_flag=True, help='Show download progress of gallery-dl script.')
+@click.option(
+    '--workers',
+    type=int,
+    help=f'How many files to upload concurrently (default: {config.IMPORT_FROM_URL_DEFAULTS["workers"]}).',
+)
 @click.pass_context
 def click_import_from_url(
     ctx,
@@ -504,6 +509,7 @@ def click_import_from_url(
     add_tags,
     update_tags_if_exists,
     verbose,
+    workers,
 ):
     """
     Download images from URLS or file containing URLs
@@ -667,6 +673,11 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_impl
     '--shrink-dimensions',
     help=f'Maximum width and height of the shrunken image (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_dimensions"]}).',
 )
+@click.option(
+    '--workers',
+    type=int,
+    help=f'How many files to upload concurrently (default: {config.UPLOAD_MEDIA_DEFAULTS["workers"]}).',
+)
 @click.pass_context
 def click_upload_media(
     ctx,
@@ -681,6 +692,7 @@ def click_upload_media(
     shrink,
     shrink_threshold,
     shrink_dimensions,
+    workers,
 ):
     """
     Upload media files

@@ -23,6 +23,12 @@ from szurubooru_toolkit.utils import shrink_img
 from szurubooru_toolkit.utils import statistics
 
 deepbooru = None
+_deepbooru_lock = threading.Lock()
+
+# Shared across all main() invocations in this process, so concurrent upload
+# workers which each call auto_tagger.main() share the SauceNAO rate limit state.
+_cooldown = SauceNaoCooldown()
+_limit_event = threading.Event()
 
 
 def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes, cooldown: SauceNaoCooldown) -> tuple[dict, bool]:
@@ -331,8 +337,9 @@ def main(  # noqa C901
                 )
                 exit(1)
             global deepbooru
-            if deepbooru is None:
-                deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
+            with _deepbooru_lock:
+                if deepbooru is None:
+                    deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
 
         posts = szuru.get_posts(query, videos=True)
 
@@ -349,20 +356,18 @@ def main(  # noqa C901
         if not from_upload_media:
             logger.info(f'Found {total_posts} posts. Start tagging...')
 
-        cooldown = SauceNaoCooldown()
-        limit_event = threading.Event()
         if limit_reached:
-            limit_event.set()
+            _limit_event.set()
 
         def worker(post: Post) -> None:
-            process_post(post, sauce, cooldown, limit_event, add_tags, remove_tags, md5, file_to_upload)
+            process_post(post, sauce, _cooldown, _limit_event, add_tags, remove_tags, md5, file_to_upload)
 
         if from_upload_media:
             # Single post handed over from upload-media: process directly
             for post in posts:
                 worker(post)
 
-            return limit_event.is_set()
+            return _limit_event.is_set()
 
         workers = max(1, int(config.auto_tagger['workers']))
         run_concurrently(posts, worker, workers, int(total_posts), hide_progress)

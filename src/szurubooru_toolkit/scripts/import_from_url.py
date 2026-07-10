@@ -6,7 +6,6 @@ from datetime import datetime
 from pathlib import Path
 
 from loguru import logger
-from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
@@ -19,6 +18,7 @@ from szurubooru_toolkit.utils import extract_twitter_artist
 from szurubooru_toolkit.utils import generate_src
 from szurubooru_toolkit.utils import get_site
 from szurubooru_toolkit.utils import invoke_gallery_dl
+from szurubooru_toolkit.utils import run_concurrently
 from szurubooru_toolkit.utils import sort_files
 
 
@@ -193,16 +193,9 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
 
     logger.info(f'Downloaded {len(files)} post(s). Start importing...')
 
-    saucenao_limit_reached = False
     relations_batch = RelationsBatch()
 
-    for file in tqdm(
-        files,
-        ncols=80,
-        position=0,
-        leave=False,
-        disable=hide_progress,
-    ):
+    def worker(file: str) -> None:
         with open(file + '.json') as f:
             metadata = json.load(f)
             try:
@@ -223,21 +216,23 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
                 metadata['tags'] = []
 
             if site == 'twitter':
-                    artistname = extract_twitter_artist(metadata)
-                    if not None in artistname:
-                        metadata['tags'] += artistname
+                artistname = extract_twitter_artist(metadata)
+                if None not in artistname:
+                    metadata['tags'] += artistname
 
             if add_tags:
                 metadata['tags'] += add_tags
 
             with open(file, 'rb') as file_b:
-                saucenao_limit_reached = upload_media.main(
+                upload_media.main(
                     file_to_upload=file_b.read(),
                     file_ext=Path(file).suffix[1:],
                     metadata=metadata,
-                    saucenao_limit_reached=saucenao_limit_reached,
                     relations_batch=relations_batch,
                 )
+
+    workers = max(1, int(config.import_from_url['workers']))
+    run_concurrently(files, worker, workers, len(files), hide_progress)
 
     relations_batch.reconcile(szuru)
 

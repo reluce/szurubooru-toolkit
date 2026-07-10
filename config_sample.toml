@@ -83,6 +83,7 @@ shrink_dimensions = "2500x2500"
 default_safety = "safe"
 update_tags_if_exists = false
 hide_progress = false
+workers = 4
 
 [reset_posts]
 hide_progress = false
@@ -97,6 +98,7 @@ workers = 4
 [upload_media]
 src_path = "/local/path/to/upload/dir"
 cleanup = false
+workers = 4
 tags = ["tagme"]
 auto_tag = true
 max_similarity = "0.95"

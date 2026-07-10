@@ -83,6 +83,7 @@ IMPORT_FROM_URL_DEFAULTS = {
     'tmp_path': './tmp/gallery-dl',
     'use_twitter_artist': False,
     'update_tags_if_exists': False,
+    'workers': 4,
 }
 
 RESET_POSTS_DEFAULTS = {'hide_progress': False, 'workers': 4}
@@ -109,6 +110,7 @@ UPLOAD_MEDIA_DEFAULTS = {
     'shrink_threshold': 6000000,
     'shrink_dimensions': '2500x2500',
     'default_safety': 'safe',
+    'workers': 4,
 }
 
 
