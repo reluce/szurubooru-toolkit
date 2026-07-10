@@ -342,6 +342,62 @@ def test_create_post_returns_id():
     assert post_id == 99
 
 
+def test_update_post_relations_merges_with_existing():
+    def handler(request):
+        if request.method == 'GET':
+            return httpx.Response(200, json=make_post_json(2, relations=[{'id': 1}], version=5))
+        payload = json.loads(request.content)
+        assert payload == {'version': 5, 'relations': [1, 3]}
+        return httpx.Response(200, json=make_post_json(2))
+
+    client = RecordingClient(handler)
+    assert client.szuru.update_post_relations(2, {3}) is True
+    assert [r.method for r in client.requests] == ['GET', 'PUT']
+
+
+def test_update_post_relations_noop_when_complete():
+    def handler(request):
+        return httpx.Response(200, json=make_post_json(3, relations=[{'id': 1}, {'id': 2}]))
+
+    client = RecordingClient(handler)
+    assert client.szuru.update_post_relations(3, {1, 2}) is False
+    assert [r.method for r in client.requests] == ['GET']
+
+
+def test_update_post_relations_retries_on_version_conflict():
+    state = {'puts': 0}
+
+    def handler(request):
+        if request.method == 'GET':
+            version = 5 + state['puts']
+            return httpx.Response(200, json=make_post_json(2, relations=[], version=version))
+        state['puts'] += 1
+        if state['puts'] == 1:
+            return httpx.Response(
+                409,
+                json={'name': 'ResourceModifiedError', 'title': 'x', 'description': 'someone else modified this'},
+            )
+        assert json.loads(request.content)['version'] == 6
+        return httpx.Response(200, json=make_post_json(2))
+
+    client = RecordingClient(handler)
+    assert client.szuru.update_post_relations(2, {1}) is True
+    assert state['puts'] == 2
+
+
+def test_update_post_relations_raises_on_other_errors():
+    def handler(request):
+        if request.method == 'GET':
+            return httpx.Response(200, json=make_post_json(2))
+        return httpx.Response(403, json={'name': 'AuthError', 'title': 'x', 'description': 'insufficient privileges'})
+
+    client = RecordingClient(handler)
+    with pytest.raises(SzurubooruApiError):
+        client.szuru.update_post_relations(2, {1})
+    # No retry on non-conflict errors
+    assert [r.method for r in client.requests] == ['GET', 'PUT']
+
+
 def test_non_json_error_raises_api_error():
     client = RecordingClient(lambda request: httpx.Response(502, text='Bad Gateway'))
     with pytest.raises(SzurubooruApiError) as exc_info:

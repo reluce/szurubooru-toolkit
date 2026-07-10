@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
+from szurubooru_toolkit.relations import RelationsBatch
 from szurubooru_toolkit.scripts import auto_tagger
 from szurubooru_toolkit.scripts import tag_posts
 from szurubooru_toolkit.szurubooru import Post
@@ -285,6 +286,7 @@ def upload_post(
     metadata: dict = None,
     file_path: str = None,
     saucenao_limit_reached: bool = False,
+    relations_batch: RelationsBatch = None,
 ) -> tuple[bool, bool]:
     """
     Uploads given file to szurubooru and checks for similar posts.
@@ -352,6 +354,12 @@ def upload_post(
         if not post_id:
             return False, saucenao_limit_reached
 
+        # Record similarity edges so the batch reconciliation can complete the
+        # relation sets once all files are uploaded (earlier posts don't know
+        # about later ones yet).
+        if relations_batch is not None and post.similar_posts:
+            relations_batch.add(post_id, post.similar_posts)
+
         # Tag post if enabled
         if config.upload_media['auto_tag']:
             saucenao_limit_reached = auto_tagger.main(
@@ -376,6 +384,7 @@ def main(
     file_ext: str = None,
     metadata: dict = None,
     saucenao_limit_reached: bool = False,
+    relations_batch: RelationsBatch = None,
 ) -> int:
     """
     Main logic of the script.
@@ -420,6 +429,8 @@ def main(
                 except KeyError:
                     hide_progress = config.tag_posts['hide_progress']
 
+                batch = RelationsBatch()
+
                 for file_path in tqdm(
                     files_to_upload,
                     ncols=80,
@@ -434,11 +445,14 @@ def main(
                         file_ext=Path(file_path).suffix[1:],
                         file_path=file_path,
                         saucenao_limit_reached=saucenao_limit_reached,
+                        relations_batch=batch,
                     )
 
                     if config.upload_media['cleanup'] and success:
                         if os.path.exists(file_path):
                             os.remove(file_path)
+
+                batch.reconcile(szuru)
 
                 if config.upload_media['cleanup']:
                     cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
@@ -447,7 +461,13 @@ def main(
                     logger.success('Script has finished uploading!')
 
             else:
-                _, saucenao_limit_reached = upload_post(file_to_upload, file_ext, metadata, saucenao_limit_reached=saucenao_limit_reached)
+                _, saucenao_limit_reached = upload_post(
+                    file_to_upload,
+                    file_ext,
+                    metadata,
+                    saucenao_limit_reached=saucenao_limit_reached,
+                    relations_batch=relations_batch,
+                )
 
             return saucenao_limit_reached
         else:

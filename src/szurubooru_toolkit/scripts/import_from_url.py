@@ -9,7 +9,9 @@ from loguru import logger
 from tqdm import tqdm
 
 from szurubooru_toolkit import config
+from szurubooru_toolkit import szuru
 from szurubooru_toolkit.pixiv import Pixiv
+from szurubooru_toolkit.relations import RelationsBatch
 from szurubooru_toolkit.scripts import upload_media
 from szurubooru_toolkit.utils import convert_rating
 from szurubooru_toolkit.utils import convert_tags
@@ -192,6 +194,7 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
     logger.info(f'Downloaded {len(files)} post(s). Start importing...')
 
     saucenao_limit_reached = False
+    relations_batch = RelationsBatch()
 
     for file in tqdm(
         files,
@@ -233,7 +236,10 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
                     file_ext=Path(file).suffix[1:],
                     metadata=metadata,
                     saucenao_limit_reached=saucenao_limit_reached,
+                    relations_batch=relations_batch,
                 )
+
+    relations_batch.reconcile(szuru)
 
     if os.path.exists(download_dir):
         shutil.rmtree(download_dir)

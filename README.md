@@ -33,6 +33,7 @@ Commands:
   create-relations   Create relations between character and parody tag categories
   create-tags        Create tags based on a tag file or query
   delete-posts       Delete posts
+  fix-relations      Complete post relation sets via transitive closure
   import-from-booru  Download and tag posts from various Boorus
   import-from-url    Download images from URLS or file containing URLs
   reset-posts        Remove tags and sources
@@ -135,6 +136,7 @@ Following commands are currently available:
 * `create-relations`: Create relations between character and parody tag categories
 * `create-tags`: Create tags based on a tag file or query
 * `delete-posts`: Delete posts
+* `fix-relations`: Complete post relation sets so every member of a set references all other members
 * `import-from-booru`: Download and tag posts from various Boorus
 * `import-from-url`: Batch importing of URLs based on [gallery-dl](https://github.com/mikf/gallery-dl)
 * `reset-posts`: Remove tags and sources

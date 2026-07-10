@@ -347,6 +347,50 @@ class Szurubooru:
         except (SzurubooruError, httpx.HTTPError) as e:
             logger.warning(f'Could not edit your post: {e}')
 
+    def update_post_relations(self, post_id: int | str, relation_ids: set[int], retries: int = 3) -> bool:
+        """
+        Adds the given relations to a post, keeping any existing ones.
+
+        Fetches the post fresh to get the current version and relations, merges in the
+        requested relation IDs and pushes the change. Retries on version conflicts
+        (someone else modified the post in the meantime).
+
+        Args:
+            post_id (int | str): The ID of the post to update.
+            relation_ids (set[int]): Post IDs to relate to `post_id`.
+            retries (int, optional): How often to retry on a version conflict. Defaults to 3.
+
+        Returns:
+            bool: True if the post was updated, False if the relations were already complete.
+
+        Raises:
+            SzurubooruApiError: If the update keeps failing.
+        """
+
+        last_error = None
+
+        for _ in range(retries):
+            response = self._request('GET', f'/post/{post_id}')
+
+            existing = {relation['id'] for relation in response['relations']}
+            desired = existing | {int(relation_id) for relation_id in relation_ids}
+
+            if desired == existing:
+                return False
+
+            try:
+                self._request('PUT', f'/post/{post_id}', json={'version': response['version'], 'relations': sorted(desired)})
+                logger.debug(f'Updated relations of post {post_id} to {sorted(desired)}')
+                return True
+            except SzurubooruApiError as e:
+                # Retry only on optimistic-locking conflicts
+                if 'version' not in e.description.lower() and 'modified' not in e.name.lower():
+                    raise
+                last_error = e
+                logger.debug(f'Version conflict while updating post {post_id}, retrying...')
+
+        raise last_error
+
     def delete_post(self, post: Post) -> None:
         """
         Deletes a post in szurubooru.

@@ -248,6 +248,24 @@ def click_create_relations(ctx, query, threshold):
     module.main(query)
 
 
+@cli.command('fix-relations', epilog='Example: szuru-toolkit fix-relations "date:today"')
+@click.argument('query')
+@click.pass_context
+def click_fix_relations(ctx, query):
+    """
+    Complete post relation sets via transitive closure
+
+    Posts uploaded one by one only reference the posts that existed at their
+    upload time. This command groups related posts into sets and makes sure
+    every member references all other members.
+
+    QUERY is a szurubooru query for the posts whose relations should be fixed.
+    """
+
+    module = setup_module('fix_relations', ctx)
+    module.main(query)
+
+
 @cli.command('create-tags', epilog='Example: szuru-toolkit create-tags --query "genshin*" --overwrite')
 @click.option(
     '--tag-file',

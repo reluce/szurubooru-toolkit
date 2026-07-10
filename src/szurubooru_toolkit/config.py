@@ -49,6 +49,10 @@ CREATE_RELATIONS_DEFAULTS = {
     'hide_progress': False,
 }
 
+FIX_RELATIONS_DEFAULTS = {
+    'hide_progress': False,
+}
+
 CREATE_TAGS_DEFAULTS = {
     'hide_progress': False,
     'limit': 100,
@@ -131,6 +135,7 @@ class Config:
         self.auto_tagger = AUTO_TAGGER_DEFAULTS
         self.create_tags = CREATE_TAGS_DEFAULTS
         self.create_relations = CREATE_RELATIONS_DEFAULTS
+        self.fix_relations = FIX_RELATIONS_DEFAULTS
         self.delete_posts = DELETE_POSTS_DEFAULTS
         self.import_from_booru = IMPORT_FROM_BOORU_DEFAULTS
         self.import_from_url = IMPORT_FROM_URL_DEFAULTS

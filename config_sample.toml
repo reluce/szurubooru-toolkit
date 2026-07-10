@@ -42,6 +42,9 @@ limit = 0
 threshold = 3
 hide_progress = false
 
+[fix_relations]
+hide_progress = false
+
 [create_tags]
 limit = 100
 min_post_count = 10
