@@ -141,6 +141,10 @@ Please note that you have to set `deepbooru_enabled` if you want to use it.
 
 Inference runs on the CPU by default. For hardware acceleration, set `deepbooru_providers` in `config.toml`, e.g. `["CoreMLExecutionProvider"]` on Apple Silicon or `["CUDAExecutionProvider"]` on NVIDIA GPUs (requires the `onnxruntime-gpu` package). Unavailable providers fall back to the CPU.
 
+Alternatively, you can tag posts with one of [SmilingWolf's WD taggers](https://huggingface.co/SmilingWolf), which are more modern than Deepbooru and generally produce better tags, especially for characters. Install the `wd-tagger` extra (`pip install szurubooru-toolkit[wd-tagger]`) and set `wd_tagger = true` in the `[auto_tagger]` section to use it.
+The model set in `wd_tagger_model` (default: [SmilingWolf/wd-eva02-large-tagger-v3](https://huggingface.co/SmilingWolf/wd-eva02-large-tagger-v3), ~1.2GB) gets downloaded automatically from Hugging Face on first use and is cached locally afterwards. Any of the WD v3/v2 taggers work, e.g. `SmilingWolf/wd-swinv2-tagger-v3` or `SmilingWolf/wd-vit-tagger-v3` for smaller and faster models.
+General tags and character tags use separate confidence thresholds (`wd_tagger_threshold` and `wd_tagger_character_threshold`). Hardware acceleration works the same way as for Deepbooru via `wd_tagger_providers`. If both `wd_tagger` and `deepbooru` are enabled, only the WD tagger is used.
+
 ## :page_with_curl: Commands
 The CLI is installed as `szuru-toolkit` and under the shorter alias `szuructl` — both are identical.
 

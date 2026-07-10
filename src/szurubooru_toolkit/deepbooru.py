@@ -8,6 +8,7 @@ from loguru import logger
 from PIL import Image
 
 from szurubooru_toolkit.utils import convert_rating
+from szurubooru_toolkit.utils import resolve_onnx_providers
 
 
 class Deepbooru:
@@ -33,30 +34,6 @@ class Deepbooru:
 
         self.load_model(model_path, providers)
 
-    @staticmethod
-    def _resolve_providers(providers: list[str] | None) -> list[str]:
-        """
-        Validates the requested execution providers against the available ones.
-
-        Unavailable providers are dropped with a warning; the CPU provider is always
-        appended as fallback.
-        """
-
-        available = onnxruntime.get_available_providers()
-        resolved = []
-
-        for provider in providers or []:
-            if provider == 'CPUExecutionProvider':
-                continue
-            if provider in available:
-                resolved.append(provider)
-            else:
-                logger.warning(f'Requested Deepbooru provider "{provider}" is not available in this onnxruntime build.')
-
-        resolved.append('CPUExecutionProvider')
-
-        return resolved
-
     def load_model(self, model_path: str, providers: list[str] = None) -> None:
         """
         Loads the Deepbooru ONNX model and the tags file next to it.
@@ -67,7 +44,7 @@ class Deepbooru:
         """
 
         onnx_path = self._resolve_model_path(model_path)
-        resolved_providers = self._resolve_providers(providers)
+        resolved_providers = resolve_onnx_providers(providers)
 
         try:
             # Inference session; session.run is thread-safe, so concurrent

@@ -37,6 +37,13 @@ AUTO_TAGGER_DEFAULTS = {
     'deepbooru_threshold': 0.7,
     'deepbooru_forced': False,
     'deepbooru_set_tag': False,
+    'wd_tagger': False,
+    'wd_tagger_model': 'SmilingWolf/wd-eva02-large-tagger-v3',
+    'wd_tagger_providers': [],
+    'wd_tagger_threshold': 0.35,
+    'wd_tagger_character_threshold': 0.75,
+    'wd_tagger_forced': False,
+    'wd_tagger_set_tag': False,
     'default_safety': 'safe',
     'hide_progress': False,
     'use_pixiv_artist': False,
@@ -67,6 +74,7 @@ DELETE_POSTS_DEFAULTS = {'hide_progress': False, 'workers': 4}
 
 IMPORT_FROM_BOORU_DEFAULTS = {
     'deepbooru': False,
+    'wd_tagger': False,
     'limit': 100,
     'hide_progress': False,
     'tmp_path': './tmp/gallery-dl',
@@ -77,6 +85,7 @@ IMPORT_FROM_URL_DEFAULTS = {
     'saucenao': False,
     'md5_search': False,
     'deepbooru': False,
+    'wd_tagger': False,
     'hide_progress': False,
     'md5_search': False,
     'range': ':100',
@@ -257,6 +266,27 @@ class Config:
             )
             exit(1)
 
+    def validate_wd_tagger(self) -> None:
+        """Check if wd_tagger_model is set to a Hugging Face repo id or an existing local model directory."""
+
+        model = self.auto_tagger['wd_tagger_model']
+
+        if not model:
+            logger.critical('You have to specify a wd_tagger_model (Hugging Face repo id or local directory)!')
+            exit(1)
+
+        model_dir = Path(model)
+        if model_dir.is_dir():
+            for file in ['model.onnx', 'selected_tags.csv']:
+                if not (model_dir / file).is_file():
+                    logger.critical(f'Your WD tagger model directory "{model}" is missing {file}!')
+                    exit(1)
+        elif not re.match(r'^[\w.-]+/[\w.-]+$', model):
+            logger.critical(
+                f'Your wd_tagger_model "{model}" is neither an existing local directory nor a valid Hugging Face repo id!',
+            )
+            exit(1)
+
     def validate_convert_attrs(self) -> None:
         """Convert the threshold from a human readable to a machine readable size."""
 
@@ -339,10 +369,19 @@ class Config:
         self.validate_convert_attrs()
         self.validate_shrink_attrs()
 
+        if self.auto_tagger['wd_tagger'] and self.auto_tagger['deepbooru']:
+            logger.warning('Both wd_tagger and deepbooru are enabled. Using only the WD tagger...')
+            self.auto_tagger['deepbooru'] = False
+
         if self.auto_tagger['deepbooru']:
             self.validate_deepbooru()
         else:
             self.auto_tagger['deepbooru_forced'] = False
+
+        if self.auto_tagger['wd_tagger']:
+            self.validate_wd_tagger()
+        else:
+            self.auto_tagger['wd_tagger_forced'] = False
 
     def update_upload_media_config(self, section: str) -> None:
         """

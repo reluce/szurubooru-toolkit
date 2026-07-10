@@ -106,6 +106,40 @@ def shrink_img(
     return image
 
 
+def resolve_onnx_providers(providers: list[str] | None) -> list[str]:
+    """
+    Validates the requested ONNX Runtime execution providers against the available ones.
+
+    Unavailable providers are dropped with a warning; the CPU provider is always
+    appended as fallback.
+
+    Args:
+        providers (list[str], optional): Execution providers in order of preference,
+            e.g. ['CoreMLExecutionProvider'] on Apple Silicon or ['CUDAExecutionProvider']
+            on NVIDIA GPUs.
+
+    Returns:
+        list[str]: The available providers, ending with the CPU provider.
+    """
+
+    import onnxruntime
+
+    available = onnxruntime.get_available_providers()
+    resolved = []
+
+    for provider in providers or []:
+        if provider == 'CPUExecutionProvider':
+            continue
+        if provider in available:
+            resolved.append(provider)
+        else:
+            logger.warning(f'Requested ONNX execution provider "{provider}" is not available in this onnxruntime build.')
+
+    resolved.append('CPUExecutionProvider')
+
+    return resolved
+
+
 def convert_rating(rating: str) -> str:
     """Map different ratings to szurubooru compatible rating.
 

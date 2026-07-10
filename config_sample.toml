@@ -34,6 +34,17 @@ deepbooru_providers = []
 deepbooru_threshold = 0.7
 deepbooru_forced = false
 deepbooru_set_tag = true
+# The WD tagger is a more modern alternative to Deepbooru with better tag and character detection.
+# wd_tagger_model accepts a Hugging Face repo id (downloaded automatically on first use)
+# or a local directory containing model.onnx and selected_tags.csv.
+wd_tagger = false
+wd_tagger_model = "SmilingWolf/wd-eva02-large-tagger-v3"
+# Optional hardware acceleration, same format as deepbooru_providers.
+wd_tagger_providers = []
+wd_tagger_threshold = 0.35
+wd_tagger_character_threshold = 0.75
+wd_tagger_forced = false
+wd_tagger_set_tag = true
 default_safety = "safe"
 use_pixiv_artist = false
 use_pixiv_tags = false
@@ -62,6 +73,7 @@ workers = 4
 
 [import_from_booru]
 deepbooru = false
+wd_tagger = false
 max_similarity = "0.95"
 convert_to_jpg = false
 convert_threshold = "3MB"
@@ -74,6 +86,7 @@ hide_progress = false
 
 [import_from_url]
 deepbooru = false
+wd_tagger = false
 tmp_path = './tmp/gallery_dl'
 use_twitter_artist = false
 max_similarity = "0.95"

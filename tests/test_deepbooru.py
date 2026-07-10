@@ -118,8 +118,10 @@ def test_unavailable_provider_falls_back_to_cpu(model_dir):
 
 
 def test_resolve_providers_keeps_cpu_fallback():
-    assert Deepbooru._resolve_providers(None) == ['CPUExecutionProvider']
-    assert Deepbooru._resolve_providers(['CPUExecutionProvider']) == ['CPUExecutionProvider']
+    from szurubooru_toolkit.utils import resolve_onnx_providers
+
+    assert resolve_onnx_providers(None) == ['CPUExecutionProvider']
+    assert resolve_onnx_providers(['CPUExecutionProvider']) == ['CPUExecutionProvider']
 
 
 def test_h5_without_conversion_exits(tmp_path):

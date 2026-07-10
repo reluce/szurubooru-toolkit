@@ -46,6 +46,11 @@ deepbooru = [
     "onnxruntime<2.0.0,>=1.19.0",
     "numpy<3.0.0,>=1.23.5",
 ]
+wd-tagger = [
+    "onnxruntime<2.0.0,>=1.19.0",
+    "numpy<3.0.0,>=1.23.5",
+    "huggingface-hub<1.0.0,>=0.23.0",
+]
 pixiv = [
     "pixivpy3<4.0.0,>=3.7.4",
 ]

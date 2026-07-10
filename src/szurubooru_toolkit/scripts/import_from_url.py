@@ -152,7 +152,14 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
     except KeyError:
         hide_progress = config.import_from_url['hide_progress']
 
-    if any([config.import_from_url['deepbooru'], config.import_from_url['md5_search'], config.import_from_url['saucenao']]):
+    if any(
+        [
+            config.import_from_url['deepbooru'],
+            config.import_from_url['wd_tagger'],
+            config.import_from_url['md5_search'],
+            config.import_from_url['saucenao'],
+        ],
+    ):
         config.upload_media['auto_tag'] = True
 
         if config.import_from_url['deepbooru']:
@@ -160,6 +167,12 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
         else:
             config.auto_tagger['deepbooru'] = False
             config.auto_tagger['deepbooru_forced'] = False
+
+        if config.import_from_url['wd_tagger']:
+            config.auto_tagger['wd_tagger'] = True
+        else:
+            config.auto_tagger['wd_tagger'] = False
+            config.auto_tagger['wd_tagger_forced'] = False
         config.auto_tagger['md5_search'] = True if config.import_from_url['md5_search'] else False
         config.auto_tagger['saucenao'] = True if config.import_from_url['saucenao'] else False
     else:
