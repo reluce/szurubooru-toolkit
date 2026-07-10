@@ -3,6 +3,7 @@ from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
+from szurubooru_toolkit.szurubooru import SzurubooruError
 
 
 @logger.catch
@@ -54,6 +55,9 @@ def main(query: str, except_ids: str) -> None:
                 szuru.delete_post(post)
 
         logger.success('Finished deleting!')
+    except SzurubooruError as e:
+        logger.critical(f'Could not process your query: {e}')
+        exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
         exit(1)

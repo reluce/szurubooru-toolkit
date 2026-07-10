@@ -3,6 +3,7 @@ from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
+from szurubooru_toolkit.szurubooru import SzurubooruError
 from szurubooru_toolkit.utils import collect_sources
 
 
@@ -67,16 +68,18 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
 
             if update_implications:
                 for tag in post.tags:
-                    szuru_tag = szuru.api.getTag(tag)
+                    szuru_tag = szuru.get_tag(tag)
                     for implication in szuru_tag.implications:
-                        szuru_implication = szuru.api.getTag(implication)
-                        if szuru_implication not in post.tags:
-                            post.tags.append(szuru_implication.primary_name)
+                        if implication.primary_name not in post.tags:
+                            post.tags.append(implication.primary_name)
 
             szuru.update_post(post)
 
         if not config.tag_posts['silence_info']:
             logger.success('Finished tagging!')
+    except SzurubooruError as e:
+        logger.critical(f'Could not process your query: {e}')
+        exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
         exit(1)

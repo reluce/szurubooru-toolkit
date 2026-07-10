@@ -26,9 +26,11 @@ dependencies = [
     "Pybooru<5.0.0,>=4.2.2",
     "pysaucenao<2.0.0,>=1.6.1",
     "requests<3.0.0,>=2.25.1",
+    # httpx <0.24 upper bound comes from cunnypy 2.0.0; lift when cunnypy is replaced in-house
+    "httpx<1.0.0,>=0.23.0",
+    "click<9.0.0,>=8.0.0",
     "tqdm<5.0.0,>=4.65.0",
     "numpy<2.0.0,>=1.23.5",
-    "pyszuru<1.0.0,>=0.3.1",
     "loguru<1.0.0,>=0.7.0",
     "validators>=0.20.0,<1.0.0",
     "gallery-dl<2.0.0,>=1.26.5",
@@ -63,4 +65,8 @@ dev = [
     "flake8<7.0.0,>=6.0.0",
     "isort<6.0.0,>=5.10.1",
     "pre-commit<4.0.0,>=3.0.0",
+    "pytest<9.0.0,>=8.0.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

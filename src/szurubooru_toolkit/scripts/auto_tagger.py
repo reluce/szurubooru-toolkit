@@ -5,13 +5,14 @@ from time import sleep
 
 from loguru import logger
 from PIL import UnidentifiedImageError
-from pyszuru import SzurubooruHTTPError
 from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.saucenao import SauceNao
 from szurubooru_toolkit.szurubooru import Post
+from szurubooru_toolkit.szurubooru import SzurubooruError
+from szurubooru_toolkit.szurubooru import TagNotFoundError
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import download_media
 from szurubooru_toolkit.utils import prepare_post
@@ -83,10 +84,10 @@ def set_tags_from_relations(post: Post) -> None:
     """
 
     for relation in post.relations:
-        result = szuru.api.getPost(relation['id'])
+        result = szuru.get_post(relation['id'])
 
-        for relation_tag in result.tags:
-            if not relation_tag.category == 'default' or not relation_tag.category == 'meta':
+        for relation_tag in result.micro_tags:
+            if relation_tag.category not in ('default', 'meta'):
                 post.tags.append(relation_tag.primary_name)
 
 
@@ -269,14 +270,12 @@ def main(  # noqa C901
                     if not tags_by_md5 and not tags_by_sauce and config.auto_tagger['update_relations']:
                         for tag in tags_by_deepbooru:
                             try:
-                                szuru_tag = szuru.api.getTag(tag)
-                            except SzurubooruHTTPError as msg:
-                                if 'TagNotFoundError' in str(msg):
-                                    szuru_tag = szuru.api.createTag(tag)
+                                szuru_tag = szuru.get_tag(tag)
+                            except TagNotFoundError:
+                                szuru_tag = szuru.create_tag(tag)
                             for implication in szuru_tag.implications:
-                                szuru_implication = szuru.api.getTag(implication)
-                                if szuru_implication not in post.tags:
-                                    post.tags.append(szuru_implication.primary_name)
+                                if implication.primary_name not in post.tags:
+                                    post.tags.append(implication.primary_name)
 
                 if post.relations:
                     set_tags_from_relations(post)
@@ -320,6 +319,9 @@ def main(  # noqa C901
             print_statistics(total_posts)
         else:
             return limit_reached
+    except SzurubooruError as e:
+        logger.critical(f'Could not process your query: {e}')
+        exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
         try:

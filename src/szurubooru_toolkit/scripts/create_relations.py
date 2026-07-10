@@ -1,10 +1,11 @@
 from loguru import logger
-from pyszuru import Tag
-from pyszuru.api import SzurubooruHTTPError
 from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
+from szurubooru_toolkit.szurubooru import SzurubooruError
+from szurubooru_toolkit.szurubooru import Tag
+from szurubooru_toolkit.szurubooru import UnknownTokenError
 
 
 def collect_related_tags(tags: list[Tag]) -> list[Tag]:
@@ -42,23 +43,27 @@ def update_tag(tag: Tag, relation: Tag) -> None:
     implications or suggestions. After adding the related tag, it pushes the changes to szurubooru.
 
     Args:
-        tag (Tag): A szurubooru Tag object to update.
+        tag (Tag): A szurubooru Tag object to update (micro tag, gets fetched in full before updating).
         relation (Tag): A szurubooru Tag object that is related to the tag.
 
     Returns:
         None
     """
 
-    # Add parody/series tag as an implication for character tags
     if tag.category == 'character' and relation.category in ['parody', 'series']:
-        if relation.primary_name not in [implication.primary_name for implication in tag.implications]:
-            tag.implications.append(relation)
-            tag.push()
-    # Add character tags as a suggestion to parody/series tags
+        target_list = 'implications'
     elif tag.category in ['parody', 'series'] and relation.category == 'character':
-        if relation.primary_name not in [suggestion.primary_name for suggestion in tag.suggestions]:
-            tag.suggestions.append(relation)
-            tag.push()
+        target_list = 'suggestions'
+    else:
+        return
+
+    # Micro tags don't carry implications/suggestions, so fetch the full tag before updating
+    full_tag = szuru.get_tag(tag.primary_name)
+    existing = getattr(full_tag, target_list)
+
+    if relation.primary_name not in [entry.primary_name for entry in existing]:
+        existing.append(relation)
+        szuru.update_tag(full_tag)
 
 
 def evaluate_relations(tag: Tag, relation: Tag, found_relations: dict) -> None:
@@ -127,10 +132,9 @@ def check_found_relations(related_tags: list[Tag], found_relations: dict) -> Non
             try:
                 if relation.primary_name not in found_relations:
                     evaluate_relations(tag, relation, found_relations)
-            # This exception gets thrown sometimes if 'name' is not set.
-            # I could not pinpoint what this 'name' was referencing and it still worked, so we just ignore it.
-            except SzurubooruHTTPError:
-                pass
+            # Skip tags szurubooru cannot search for, e.g. tags with unescaped special chars
+            except SzurubooruError as e:
+                logger.debug(f'Skipping relation {tag.primary_name} <> {relation.primary_name}: {e}')
 
 
 @logger.catch
@@ -153,9 +157,6 @@ def main(query: str) -> None:
         except KeyError:
             hide_progress = config.create_relations['hide_progress']
 
-        # Use this method to only retrieve the total amount of posts.
-        # Otherwise using szuru.api.search_post(query), we would have to use len(list(<generator>)),
-        # which would take too much time (and also consume the generator).
         posts = szuru.get_posts(query, videos=True)
 
         try:
@@ -163,41 +164,31 @@ def main(query: str) -> None:
         except StopIteration:
             logger.info(f'Found no posts for your query: {query}')
             exit()
+        except UnknownTokenError as e:
+            logger.critical(f'Could not process your query: {e}')
+            exit(1)
 
         logger.info(f'Found {total_posts} posts. Start generating relations...')
-
-        # Use this method to get the tag objects already included
-        posts = szuru.api.search_post(query)
 
         # Keep track of found relations to reduce overhead
         found_relations = {}
 
-        # Skip posts with unescaped chars in tag.
-        # Wrap it so we can catch the exception within the loop.
-        def wrapper(gen):
-            while True:
-                try:
-                    yield next(gen)
-                except StopIteration:
-                    break
-                except SzurubooruHTTPError as e:
-                    if 'SearchError: Unknown named token' in str(e):
-                        logger.warning(f'Skipping tag: {str(e)}')
-                        continue
-
         for post in tqdm(
-            wrapper(posts),
+            posts,
             ncols=80,
             position=0,
             leave=False,
             total=int(total_posts),
             disable=hide_progress,
         ):
-            related_tags = collect_related_tags(post.tags)
+            related_tags = collect_related_tags(post.micro_tags)
             check_found_relations(related_tags, found_relations)
 
         logger.success('Finished creating relations!')
         exit(0)
+    except SzurubooruError as e:
+        logger.critical(f'Could not process your query: {e}')
+        exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
         exit(1)

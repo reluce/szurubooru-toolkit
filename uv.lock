@@ -103,15 +103,6 @@ wheels = [
 ]
 
 [[package]]
-name = "appdirs"
-version = "1.4.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d7/d8/05696357e0311f5b5c316d7b95f46c669dd9c15aaeecbb48c7d0aeb88c40/appdirs-1.4.4.tar.gz", hash = "sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41", size = 13470, upload-time = "2020-05-11T07:59:51.037Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/00/2344469e2084fb287c2e0b57b72910309874c3245463acd6cf5e3db69324/appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128", size = 9566, upload-time = "2020-05-11T07:59:49.499Z" },
-]
-
-[[package]]
 name = "astunparse"
 version = "1.6.3"
 source = { registry = "https://pypi.org/simple" }
@@ -564,6 +555,15 @@ wheels = [
 ]
 
 [[package]]
+name = "iniconfig"
+version = "2.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc35312d08ba8bf51fdd999c576889fc2c24cb97f4f10/iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730", size = 20503, upload-time = "2025-10-18T21:55:43.219Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
+]
+
+[[package]]
 name = "isort"
 version = "5.13.2"
 source = { registry = "https://pypi.org/simple" }
@@ -827,6 +827,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pluggy"
+version = "1.6.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
+]
+
+[[package]]
 name = "pre-commit"
 version = "3.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -941,6 +950,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pygments"
+version = "2.20.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c3/b2/bc9c9196916376152d655522fdcebac55e66de6603a76a02bca1b6414f6c/pygments-2.20.0.tar.gz", hash = "sha256:6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f", size = 4955991, upload-time = "2026-03-29T13:29:33.898Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f4/7e/a72dd26f3b0f4f2bf1dd8923c85f7ceb43172af56d63c7383eb62b332364/pygments-2.20.0-py3-none-any.whl", hash = "sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176", size = 1231151, upload-time = "2026-03-29T13:29:30.038Z" },
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
@@ -963,17 +981,19 @@ wheels = [
 ]
 
 [[package]]
-name = "pyszuru"
-version = "0.4.0"
+name = "pytest"
+version = "8.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "appdirs" },
-    { name = "requests" },
-    { name = "tqdm" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "iniconfig" },
+    { name = "packaging" },
+    { name = "pluggy" },
+    { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fc/89/64cd2f0206f9a24a4996d2d56f97e60dbd83fce1371eb20c26a35246abca/pyszuru-0.4.0.tar.gz", hash = "sha256:f2ab5cf0995eb4e074d7f91b1c88b0373a076c5a7f9d939e918a1f6092b9bc37", size = 23350, upload-time = "2025-02-19T04:20:18.664Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/5c/00a0e072241553e1a7496d638deababa67c5058571567b92a7eaa258397c/pytest-8.4.2.tar.gz", hash = "sha256:86c0d0b93306b961d58d62a4db4879f27fe25513d4b969df351abdddb3c30e01", size = 1519618, upload-time = "2025-09-04T14:34:22.711Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f1/ef/e17d640dd3729c36246376cb9ba9f1dc256a0d6e178ebe986cb254fde977/pyszuru-0.4.0-py3-none-any.whl", hash = "sha256:8bb38ca44550628a096be7d4201c99225ee3a5c5e7fee6b49f27fe6e780a48e0", size = 24498, upload-time = "2025-02-19T04:20:17.635Z" },
+    { url = "https://files.pythonhosted.org/packages/a8/a4/20da314d277121d6534b3a980b29035dcd51e6744bd79075a6ce8fa4eb8d/pytest-8.4.2-py3-none-any.whl", hash = "sha256:872f880de3fc3a5bdc88a11b39c9710c3497a547cfa9320bc3c5e62fbf272e79", size = 365750, upload-time = "2025-09-04T14:34:20.226Z" },
 ]
 
 [[package]]
@@ -1122,16 +1142,17 @@ name = "szurubooru-toolkit"
 version = "1.2.2"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "cunnypy" },
     { name = "flask" },
     { name = "gallery-dl" },
+    { name = "httpx" },
     { name = "loguru" },
     { name = "numpy" },
     { name = "pillow" },
     { name = "pixivpy3" },
     { name = "pybooru" },
     { name = "pysaucenao" },
-    { name = "pyszuru" },
     { name = "requests" },
     { name = "tensorflow" },
     { name = "tldextract" },
@@ -1145,20 +1166,22 @@ dev = [
     { name = "flake8" },
     { name = "isort" },
     { name = "pre-commit" },
+    { name = "pytest" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "click", specifier = ">=8.0.0,<9.0.0" },
     { name = "cunnypy", specifier = ">=2.0.0,<3.0.0" },
     { name = "flask", specifier = ">=3.0.0,<4.0.0" },
     { name = "gallery-dl", specifier = ">=1.26.5,<2.0.0" },
+    { name = "httpx", specifier = ">=0.23.0,<1.0.0" },
     { name = "loguru", specifier = ">=0.7.0,<1.0.0" },
     { name = "numpy", specifier = ">=1.23.5,<2.0.0" },
     { name = "pillow", specifier = ">=9.5.0,<10.0.0" },
     { name = "pixivpy3", specifier = ">=3.7.4,<4.0.0" },
     { name = "pybooru", specifier = ">=4.2.2,<5.0.0" },
     { name = "pysaucenao", specifier = ">=1.6.1,<2.0.0" },
-    { name = "pyszuru", specifier = ">=0.3.1,<1.0.0" },
     { name = "requests", specifier = ">=2.25.1,<3.0.0" },
     { name = "tensorflow", specifier = "~=2.15.0" },
     { name = "tldextract", specifier = ">=3.4.4,<4.0.0" },
@@ -1172,6 +1195,7 @@ dev = [
     { name = "flake8", specifier = ">=6.0.0,<7.0.0" },
     { name = "isort", specifier = ">=5.10.1,<6.0.0" },
     { name = "pre-commit", specifier = ">=3.0.0,<4.0.0" },
+    { name = "pytest", specifier = ">=8.0.0,<9.0.0" },
 ]
 
 [[package]]

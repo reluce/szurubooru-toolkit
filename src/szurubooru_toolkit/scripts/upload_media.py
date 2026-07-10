@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import json
 import os
 import shutil
 from glob import glob
 from pathlib import Path
 from types import NoneType
 
-import requests
+import httpx
 from loguru import logger
 from tqdm import tqdm
 
@@ -17,6 +16,7 @@ from szurubooru_toolkit.scripts import auto_tagger
 from szurubooru_toolkit.scripts import tag_posts
 from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.szurubooru import Szurubooru
+from szurubooru_toolkit.szurubooru import SzurubooruError
 from szurubooru_toolkit.utils import get_md5sum
 from szurubooru_toolkit.utils import shrink_img
 
@@ -64,43 +64,9 @@ def get_media_token(szuru: Szurubooru, media: bytes, file_ext: str = None) -> st
                    error message.
     """
 
-    # Map file extensions to MIME types
-    mime_types = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp',
-        'mp4': 'video/mp4',
-        'webm': 'video/webm'
-    }
-    
-    # Determine MIME type
-    if file_ext and file_ext.lower() in mime_types:
-        mime_type = mime_types[file_ext.lower()]
-        filename = f'file.{file_ext.lower()}'
-    else:
-        mime_type = 'application/octet-stream'
-        filename = 'file'
-
-    post_url = szuru.szuru_api_url + '/uploads'
-    headers = szuru.headers.copy()
-    
-    # Set proper Content-Type for multipart with boundary - let requests handle it
-    if 'Content-Type' in headers:
-        del headers['Content-Type']
-    
     try:
-        # Use tuple format to specify MIME type for the file content
-        files = {'content': (filename, media, mime_type)}
-        response = requests.post(post_url, files=files, headers=headers)
-
-        if 'description' in response.json() and len(response.json()['description']) > 0:
-            raise Exception(response.json()['description'])
-        else:
-            token = response.json()['token']
-            return token
-    except Exception as e:
+        return szuru.upload_temporary_file(media, file_ext)
+    except (SzurubooruError, httpx.HTTPError) as e:
         logger.critical(f'An error occured while getting the image token: {e}')
 
 
@@ -124,24 +90,17 @@ def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
                    error message.
     """
 
-    post_url = szuru.szuru_api_url + '/posts/reverse-search'
-    metadata = json.dumps({'contentToken': image_token})
-
     try:
-        response = requests.post(post_url, headers=szuru.headers, data=metadata)
-
-        # if 'description' in response.json() and len(response.json()['description']) > 0:
-        if response.status_code != 200:
-            raise Exception(response.text)
-        else:
-            exact_post = [response.json()['exactPost']]
-            similar_posts = response.json()['similarPosts']
-            errors = False
-            return exact_post, similar_posts, errors
-    except Exception as e:
+        response = szuru.reverse_search(image_token)
+        exact_post = [response['exactPost']]
+        similar_posts = response['similarPosts']
+        errors = False
+        return exact_post, similar_posts, errors
+    except (SzurubooruError, httpx.HTTPError) as e:
         logger.warning(f'An error occured during the similarity check: {e}. Skipping post...')
         errors = True
         return [], [], errors
+
 
 def update_tags(post: Post, metadata: dict, saucenao_limit_reached: bool, original_md5: str, file_to_upload: bytes) -> bool:
     """
@@ -208,25 +167,17 @@ def upload_file(szuru: Szurubooru, post: Post) -> None:
     source = post.source if post.source else ''
     tags = post.tags if post.tags else config.upload_media['tags']
 
-    post_url = szuru.szuru_api_url + '/posts'
-    metadata = json.dumps(
-        {
-            'tags': tags,
-            'safety': safety,
-            'source': source,
-            'relations': post.similar_posts,
-            'contentToken': post.token,
-        },
-    )
+    metadata = {
+        'tags': tags,
+        'safety': safety,
+        'source': source,
+        'relations': post.similar_posts,
+        'contentToken': post.token,
+    }
 
     try:
-        response = requests.post(post_url, headers=szuru.headers, data=metadata)
-
-        if response.status_code != 200:
-            raise Exception(response.text)
-        else:
-            return response.json()['id']
-    except Exception as e:
+        return szuru.create_post(metadata)
+    except (SzurubooruError, httpx.HTTPError) as e:
         logger.warning(f'An error occured during the upload for file "{post.file_path}": {e}')
         return None
 
