@@ -33,6 +33,7 @@ AUTO_TAGGER_DEFAULTS = {
     'md5_search': True,
     'deepbooru': False,
     'deepbooru_model': None,
+    'deepbooru_providers': [],
     'deepbooru_threshold': 0.7,
     'deepbooru_forced': False,
     'deepbooru_set_tag': False,

@@ -81,9 +81,22 @@ def test_get_posts_paginates_without_extra_request():
 
     assert results[0] == '250'
     assert len(results) - 1 == 250
-    # 250 results at 100 per page must be exactly 3 requests
+    # Pages are fetched concurrently, but posts must still be yielded in page order
+    assert [post.id for post in results[1:]] == [str(i) for i in range(250)]
+    # 250 results at 100 per page must be exactly 3 requests (order may vary)
     assert len(client.requests) == 3
-    assert [dict(r.url.params).get('offset') for r in client.requests] == [None, '100', '200']
+    assert {dict(r.url.params).get('offset') for r in client.requests} == {None, '100', '200'}
+
+
+def test_get_posts_requests_only_needed_fields():
+    client = RecordingClient(lambda request: httpx.Response(200, json={'total': 0, 'results': []}))
+    list(client.szuru.get_posts('foo'))
+
+    fields = dict(client.requests[0].url.params)['fields'].split(',')
+    assert 'id' in fields
+    assert 'version' in fields
+    assert 'tags' in fields
+    assert 'checksumMD5' in fields
 
 
 def test_get_posts_numeric_query_searches_by_id():

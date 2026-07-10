@@ -2,11 +2,19 @@ from __future__ import annotations
 
 import urllib.parse
 from base64 import b64encode
+from concurrent.futures import ThreadPoolExecutor
 from math import ceil
 from typing import Generator
 
 import httpx
 from loguru import logger
+
+
+# Only the post fields parse_post consumes; slims down large search responses
+POST_FIELDS = 'id,source,contentUrl,version,relations,checksumMD5,type,safety,tags'
+
+# How many result pages to fetch concurrently on large queries
+PAGE_FETCH_WORKERS = 8
 
 
 _TAG_EXISTS_DESCRIPTIONS = (
@@ -260,7 +268,7 @@ class Szurubooru:
         if not videos:
             query = f'type:image,animation {query}'
 
-        params = {'query': query, 'limit': 100}
+        params = {'query': query, 'limit': 100, 'fields': POST_FIELDS}
         logger.debug(f'Getting posts with query params: {params}')
 
         response = self._request('GET', '/posts/', params=params)
@@ -278,13 +286,15 @@ class Szurubooru:
             for result in results:
                 yield self.parse_post(result)
 
-            if pagination:
-                for page in range(1, pages):
-                    params['offset'] = page * 100
-                    results = self._request('GET', '/posts/', params=params)['results']
+            if pagination and pages > 1:
+                # Fetch the remaining pages concurrently, but yield them in order
+                def fetch_page(page: int) -> list:
+                    return self._request('GET', '/posts/', params=params | {'offset': page * 100})['results']
 
-                    for result in results:
-                        yield self.parse_post(result)
+                with ThreadPoolExecutor(max_workers=min(PAGE_FETCH_WORKERS, pages - 1)) as executor:
+                    for future in [executor.submit(fetch_page, page) for page in range(1, pages)]:
+                        for result in future.result():
+                            yield self.parse_post(result)
 
     def parse_post(self, response: dict) -> Post:
         """
@@ -325,7 +335,7 @@ class Szurubooru:
             Post: The parsed Post object.
         """
 
-        response = self._request('GET', f'/post/{post_id}')
+        response = self._request('GET', f'/post/{post_id}', params={'fields': POST_FIELDS})
 
         return self.parse_post(response)
 
@@ -370,7 +380,7 @@ class Szurubooru:
         last_error = None
 
         for _ in range(retries):
-            response = self._request('GET', f'/post/{post_id}')
+            response = self._request('GET', f'/post/{post_id}', params={'fields': 'version,relations'})
 
             existing = {relation['id'] for relation in response['relations']}
             desired = existing | {int(relation_id) for relation_id in relation_ids}

@@ -380,7 +380,7 @@ def main(  # noqa C901
             global deepbooru
             with _deepbooru_lock:
                 if deepbooru is None:
-                    deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
+                    deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'], config.auto_tagger['deepbooru_providers'])
 
         posts = szuru.get_posts(query, videos=True)
 

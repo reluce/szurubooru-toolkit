@@ -28,6 +28,9 @@ saucenao = true
 md5_search = true
 deepbooru = false
 deepbooru_model = "./misc/deepbooru/model-resnet_custom_v3.onnx"
+# Optional hardware acceleration, e.g. ["CoreMLExecutionProvider"] on Apple Silicon
+# or ["CUDAExecutionProvider"] on NVIDIA GPUs. CPU is always kept as fallback.
+deepbooru_providers = []
 deepbooru_threshold = 0.7
 deepbooru_forced = false
 deepbooru_set_tag = true

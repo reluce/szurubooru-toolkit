@@ -18,33 +18,63 @@ class Deepbooru:
     instructions are printed.
     """
 
-    def __init__(self, model_path: str) -> None:
+    def __init__(self, model_path: str, providers: list[str] = None) -> None:
         """
         Initializes a Deepbooru object and loads the DeepDanbooru model.
 
         Args:
             model_path (str): The local path to the DeepDanbooru model (.onnx, or .h5 which
                 gets converted to .onnx next to it).
+            providers (list[str], optional): ONNX Runtime execution providers to use, in order
+                of preference (e.g. ['CoreMLExecutionProvider'] on Apple Silicon or
+                ['CUDAExecutionProvider'] on NVIDIA GPUs). CPU is always kept as fallback.
+                Defaults to CPU only.
         """
 
-        self.load_model(model_path)
+        self.load_model(model_path, providers)
 
-    def load_model(self, model_path: str) -> None:
+    @staticmethod
+    def _resolve_providers(providers: list[str] | None) -> list[str]:
+        """
+        Validates the requested execution providers against the available ones.
+
+        Unavailable providers are dropped with a warning; the CPU provider is always
+        appended as fallback.
+        """
+
+        available = onnxruntime.get_available_providers()
+        resolved = []
+
+        for provider in providers or []:
+            if provider == 'CPUExecutionProvider':
+                continue
+            if provider in available:
+                resolved.append(provider)
+            else:
+                logger.warning(f'Requested Deepbooru provider "{provider}" is not available in this onnxruntime build.')
+
+        resolved.append('CPUExecutionProvider')
+
+        return resolved
+
+    def load_model(self, model_path: str, providers: list[str] = None) -> None:
         """
         Loads the Deepbooru ONNX model and the tags file next to it.
 
         Args:
             model_path (str): The local path to the DeepDanbooru model.
+            providers (list[str], optional): ONNX Runtime execution providers. Defaults to CPU only.
         """
 
         onnx_path = self._resolve_model_path(model_path)
+        resolved_providers = self._resolve_providers(providers)
 
         try:
             # Inference session; session.run is thread-safe, so concurrent
             # tagging workers can share it without a lock.
-            self.session = onnxruntime.InferenceSession(str(onnx_path), providers=['CPUExecutionProvider'])
+            self.session = onnxruntime.InferenceSession(str(onnx_path), providers=resolved_providers)
             self.input_name = self.session.get_inputs()[0].name
-            logger.debug(f'Model loaded successfully from {onnx_path}')
+            logger.debug(f'Model loaded successfully from {onnx_path} with providers {self.session.get_providers()}')
         except Exception as e:
             logger.debug(f'Model loading error: {e}')
             logger.critical('Model could not be read. Download it from https://github.com/KichangKim/DeepDanbooru')

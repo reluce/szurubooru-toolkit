@@ -108,6 +108,20 @@ def test_h5_path_uses_converted_sibling(model_dir):
     assert rating == 'unsafe'
 
 
+def test_unavailable_provider_falls_back_to_cpu(model_dir):
+    deepbooru = Deepbooru(str(model_dir / 'model.onnx'), providers=['BogusExecutionProvider'])
+
+    assert deepbooru.session.get_providers() == ['CPUExecutionProvider']
+    # Inference must still work on the fallback provider
+    _, rating = deepbooru.tag_image(make_image((255, 0, 0)), 'safe', threshold=0.7, set_tag=False)
+    assert rating == 'unsafe'
+
+
+def test_resolve_providers_keeps_cpu_fallback():
+    assert Deepbooru._resolve_providers(None) == ['CPUExecutionProvider']
+    assert Deepbooru._resolve_providers(['CPUExecutionProvider']) == ['CPUExecutionProvider']
+
+
 def test_h5_without_conversion_exits(tmp_path):
     # No sibling .onnx and no tensorflow installed: must exit with instructions
     (tmp_path / 'model.h5').write_bytes(b'fake keras model')

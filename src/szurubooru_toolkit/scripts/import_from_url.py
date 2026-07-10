@@ -182,7 +182,12 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
     if not verbose:
         params.append('-q')
 
-    download_dir = invoke_gallery_dl(urls, config.import_from_url['tmp_path'], params)
+    download_dir = invoke_gallery_dl(
+        urls,
+        config.import_from_url['tmp_path'],
+        params,
+        workers=max(1, int(config.import_from_url['workers'])),
+    )
 
     files = [
         file

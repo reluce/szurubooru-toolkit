@@ -638,19 +638,21 @@ def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], s
     return final_tags, sources, rating
 
 
-def invoke_gallery_dl(urls: list, tmp_path: str, params: list = []) -> str:
+def invoke_gallery_dl(urls: list, tmp_path: str, params: list = [], workers: int = 1) -> str:
     """
-    Invokes the gallery-dl command with the provided URLs and parameters.
+    Invokes gallery-dl for the provided URLs and parameters.
 
-    This function invokes the gallery-dl command with the provided URLs and parameters. It first creates a timestamp
-    and a download directory based on the timestamp. It then constructs the base command with the gallery-dl command
-    and the download directory. It adds the provided parameters and URLs to the command and runs the command using
-    subprocess. It returns the download directory.
+    All downloads end up in a shared timestamped directory below `tmp_path`. When
+    multiple URLs are given, one gallery-dl process is started per URL and up to
+    `workers` of them run concurrently, since gallery-dl itself downloads
+    sequentially. A single URL (or an input file passed via params) runs as one
+    process.
 
     Args:
         urls (list): The URLs to download.
         tmp_path (str): The temporary path where the downloads should be stored.
         params (list, optional): The parameters to pass to the gallery-dl command. Defaults to [].
+        workers (int, optional): How many gallery-dl processes to run concurrently. Defaults to 1.
 
     Returns:
         str: The download directory.
@@ -659,16 +661,15 @@ def invoke_gallery_dl(urls: list, tmp_path: str, params: list = []) -> str:
     current_time = datetime.now()
     timestamp = current_time.timestamp()
     download_dir = f'{tmp_path}/{timestamp}'
-    base_command = [
-        'gallery-dl',
-        f'-D={download_dir}',
-    ]
+    base_command = ['gallery-dl', f'-D={download_dir}'] + params
 
-    command = base_command
-    command += params
-    command += urls
-
-    subprocess.run(command)
+    if len(urls) > 1 and workers > 1:
+        with ThreadPoolExecutor(max_workers=min(workers, len(urls))) as executor:
+            futures = [executor.submit(subprocess.run, base_command + [url]) for url in urls]
+            for future in futures:
+                future.result()
+    else:
+        subprocess.run(base_command + urls)
 
     return download_dir
 
