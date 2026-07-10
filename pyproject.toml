@@ -20,9 +20,9 @@ authors = [
     {name = "reluce", email = "reluce@fkosquad.moe"},
 ]
 license = "GPL-3.0-only"
-requires-python = "<3.12,>=3.11"
+requires-python = ">=3.11"
 dependencies = [
-    "Pillow<10.0.0,>=9.5.0",
+    "Pillow<12.0.0,>=9.5.0",
     "httpx<1.0.0,>=0.24.0",
     "click<9.0.0,>=8.0.0",
     "tqdm<5.0.0,>=4.65.0",
@@ -43,8 +43,8 @@ keywords = [
 
 [project.optional-dependencies]
 deepbooru = [
-    "tensorflow~=2.15.0",
-    "numpy<2.0.0,>=1.23.5",
+    "onnxruntime<2.0.0,>=1.19.0",
+    "numpy<3.0.0,>=1.23.5",
 ]
 pixiv = [
     "pixivpy3<4.0.0,>=3.7.4",
@@ -64,6 +64,10 @@ dev = [
     "isort<6.0.0,>=5.10.1",
     "pre-commit<4.0.0,>=3.0.0",
     "pytest<9.0.0,>=8.0.0",
+    # For the deepbooru tests: run and build small ONNX models
+    "onnxruntime<2.0.0,>=1.19.0",
+    "onnx<2.0.0,>=1.16.0",
+    "numpy<3.0.0,>=1.23.5",
 ]
 
 [tool.pytest.ini_options]

@@ -1,103 +1,118 @@
-import os
 import re
-import threading
 from io import BytesIO
+from pathlib import Path
 
+import numpy as np
+import onnxruntime
+from loguru import logger
 from PIL import Image
 
 from szurubooru_toolkit.utils import convert_rating
 
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
-import numpy as np  # noqa E402
-import tensorflow as tf  # noqa E402
-import warnings  # noqa E402
-from loguru import logger  # noqa E402
-from tensorflow.python.ops.numpy_ops import np_config  # noqa E402
-
-# Suppress specific Keras warnings about input structure
-warnings.filterwarnings('ignore', message='The structure of `inputs` doesn\'t match the expected structure.*')
-
-# Optimize TensorFlow for Apple Silicon
-if len(tf.config.list_physical_devices('GPU')) > 0:
-    # Enable memory growth to avoid allocating all GPU memory at once
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    if gpus:
-        try:
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
-        except RuntimeError as e:
-            logger.debug(f"GPU memory growth setting failed: {e}")
-    
-    logger.debug("TensorFlow Metal GPU acceleration enabled for Apple Silicon")
-
-
 class Deepbooru:
-    """Handles everything related to guessing tags based on machine learning."""
+    """Handles everything related to guessing tags based on machine learning.
+
+    Runs the DeepDanbooru model with ONNX Runtime. Keras (.h5) models get converted
+    to ONNX once if tensorflow and tf2onnx are available, otherwise the conversion
+    instructions are printed.
+    """
 
     def __init__(self, model_path: str) -> None:
         """
         Initializes a Deepbooru object and loads the DeepDanbooru model.
 
-        This method initializes a Deepbooru object and loads the DeepDanbooru model from the provided path. It also enables
-        numpy behavior for TensorFlow.
+        Args:
+            model_path (str): The local path to the DeepDanbooru model (.onnx, or .h5 which
+                gets converted to .onnx next to it).
+        """
+
+        self.load_model(model_path)
+
+    def load_model(self, model_path: str) -> None:
+        """
+        Loads the Deepbooru ONNX model and the tags file next to it.
 
         Args:
             model_path (str): The local path to the DeepDanbooru model.
         """
 
-        self.load_model(model_path)
-        np_config.enable_numpy_behavior()
-        # Serialize model inference: multiple tagging workers share one model
-        self._predict_lock = threading.Lock()
-
-    def load_model(self, model_path: str) -> None:
-        """
-        Loads the Deepbooru model.
-
-        This method loads the Deepbooru model from the provided path. If the model cannot be loaded, it logs the error and
-        exits the program. It also loads the tags from a text file and stores them in a numpy array.
-
-        Args:
-            model_path (str): The local path to the Deepbooru model.
-
-        Raises:
-            Exception: If the model cannot be loaded.
-        """
+        onnx_path = self._resolve_model_path(model_path)
 
         try:
-            # Load model with additional options for better compatibility
-            self.model = tf.keras.models.load_model(
-                model_path, 
-                compile=False,
-                safe_mode=False  # Disable safe mode for older models
-            )
-            logger.debug(f"Model loaded successfully from {model_path}")
-            
-            # Log model input information for debugging
-            if hasattr(self.model, 'input_names') and self.model.input_names:
-                logger.debug(f"Model input names: {self.model.input_names}")
-            if hasattr(self.model, 'input_shape'):
-                logger.debug(f"Model input shape: {self.model.input_shape}")
-                
-            self.predict_fn = tf.function(
-                lambda inputs: self.model(inputs, training=False),
-                input_signature=[tf.TensorSpec(shape=(None, 512, 512, 3), dtype=tf.float32)],
-                reduce_retracing=True,
-            )
-
+            # Inference session; session.run is thread-safe, so concurrent
+            # tagging workers can share it without a lock.
+            self.session = onnxruntime.InferenceSession(str(onnx_path), providers=['CPUExecutionProvider'])
+            self.input_name = self.session.get_inputs()[0].name
+            logger.debug(f'Model loaded successfully from {onnx_path}')
         except Exception as e:
-            logger.debug(f"Model loading error: {e}")
+            logger.debug(f'Model loading error: {e}')
             logger.critical('Model could not be read. Download it from https://github.com/KichangKim/DeepDanbooru')
             exit()
 
         try:
-            deepbooru_path = os.path.dirname(model_path)
-            with open(deepbooru_path + '/tags.txt') as tags_stream:
+            tags_file = Path(model_path).parent / 'tags.txt'
+            with open(tags_file) as tags_stream:
                 self.tags = np.array([tag for tag in (tag.strip() for tag in tags_stream) if tag])
         except FileNotFoundError:
             logger.critical('tags.txt not found. Place it in the same directory as the Deepbooru model.')
+            exit()
+
+    @staticmethod
+    def _resolve_model_path(model_path: str) -> Path:
+        """
+        Resolves the configured model path to an ONNX model.
+
+        Keras models (.h5) are looked up as a sibling .onnx file first. If none exists,
+        a one-time conversion is attempted, which requires tensorflow and tf2onnx to be
+        installed (only for the conversion, not for regular use).
+
+        Args:
+            model_path (str): The configured model path (.onnx or .h5).
+
+        Returns:
+            Path: The path to the ONNX model.
+        """
+
+        path = Path(model_path)
+
+        if path.suffix != '.h5':
+            return path
+
+        onnx_path = path.with_suffix('.onnx')
+
+        if onnx_path.exists():
+            logger.debug(f'Using already converted ONNX model {onnx_path}')
+            return onnx_path
+
+        logger.info(f'Converting Keras model {path} to ONNX (one-time operation)...')
+
+        try:
+            import tensorflow as tf
+            import tf2onnx
+        except ImportError:
+            logger.critical(
+                f'Deepbooru now runs on ONNX Runtime, but "{path}" is a Keras model and no converted'
+                f' model was found at "{onnx_path}". Convert it once with:\n'
+                f'  pip install tensorflow~=2.15.0 tf2onnx\n'
+                f'  python -m tf2onnx.convert --keras "{path}" --output "{onnx_path}"\n'
+                'Afterwards tensorflow can be uninstalled again.',
+            )
+            exit(1)
+
+        try:
+            model = tf.keras.models.load_model(str(path), compile=False)
+            tf2onnx.convert.from_keras(
+                model,
+                input_signature=[tf.TensorSpec(shape=(None, 512, 512, 3), dtype=tf.float32, name='input')],
+                output_path=str(onnx_path),
+            )
+            logger.info(f'Converted model saved to {onnx_path}')
+        except Exception as e:
+            logger.critical(f'Could not convert the Keras model to ONNX: {e}')
+            exit(1)
+
+        return onnx_path
 
     def tag_image(self, image: bytes, default_safety: str, threshold: float = 0.6, set_tag: bool = True) -> tuple[list, str]:
         """
@@ -129,10 +144,8 @@ class Deepbooru:
             return
 
         try:
-            image = np.expand_dims(image, axis=0)
-            image = tf.convert_to_tensor(image, dtype=tf.float32)
-            with self._predict_lock:
-                results = self.predict_fn(image).numpy()[0]
+            image = np.expand_dims(image, axis=0).astype(np.float32)
+            results = self.session.run(None, {self.input_name: image})[0][0]
         except Exception:
             logger.warning('Failed to predict image with Deepbooru')
             return [], default_safety

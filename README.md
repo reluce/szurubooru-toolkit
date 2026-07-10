@@ -41,7 +41,7 @@ Commands:
   upload-media       Upload media files
 ```
 ## :ballot_box_with_check: Requirements
-In order to run `szuru-toolkit`, Python `3.11` is required.
+In order to run `szuru-toolkit`, Python `3.11` or newer is required.
 
 ## :hammer_and_wrench: Installation
 This package is available on [PyPI](https://pypi.org/project/szurubooru-toolkit/) and can be installed with pip:
@@ -49,7 +49,7 @@ This package is available on [PyPI](https://pypi.org/project/szurubooru-toolkit/
 
 Deepbooru (local machine learning tagging) and Pixiv support are optional extras since they pull in heavy dependencies:
 
-* `pip install "szurubooru-toolkit[deepbooru]"` for Deepbooru support (installs TensorFlow)
+* `pip install "szurubooru-toolkit[deepbooru]"` for Deepbooru support (installs ONNX Runtime)
 * `pip install "szurubooru-toolkit[pixiv]"` for Pixiv metadata support
 * `pip install "szurubooru-toolkit[deepbooru,pixiv]"` for both
 
@@ -126,7 +126,16 @@ Creating a SauceNAO account and an API key is recommended.
 Please consider supporting the SauceNAO team as well by upgrading your plan.
 With a free plan, you can request up to 200 posts in 24h.
 
-For Deepbooru support, install the `deepbooru` extra (`pip install "szurubooru-toolkit[deepbooru]"`), then download the current release [here](https://github.com/KichangKim/DeepDanbooru/releases/tag/v3-20211112-sgd-e28) (v3-20211112-sgd-e28) and extract the contents of the zip file. Specify the path of the folder with the extracted files in `deepbooru_model`.
+For Deepbooru support, install the `deepbooru` extra (`pip install "szurubooru-toolkit[deepbooru]"`), then download the current release [here](https://github.com/KichangKim/DeepDanbooru/releases/tag/v3-20211112-sgd-e28) (v3-20211112-sgd-e28) and extract the contents of the zip file. Specify the path of the model file in `deepbooru_model`.
+
+Deepbooru runs on ONNX Runtime. The DeepDanbooru release ships a Keras model (`.h5`), which has to be converted to ONNX once:
+
+```
+pip install tensorflow~=2.15.0 tf2onnx
+python -m tf2onnx.convert --keras model-resnet_custom_v3.h5 --output model-resnet_custom_v3.onnx
+```
+
+Afterwards tensorflow can be uninstalled again. If a `.h5` path is configured, the toolkit automatically uses (or, with tensorflow and tf2onnx installed, creates) the converted `.onnx` file next to it.
 Please note that you have to set `deepbooru_enabled` if you want to use it.
 
 ## :page_with_curl: Commands
