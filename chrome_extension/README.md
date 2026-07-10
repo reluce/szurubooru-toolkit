@@ -16,7 +16,7 @@ This Chrome extension allows you to import images from web pages directly to you
 ### Prerequisites
 
 1. Make sure you have the szurubooru-toolkit Python package installed and configured
-2. Start the webserver by running: `python run-webserver.py` from the main repository directory
+2. Start the webserver by running: `szuru-toolkit webserver`
 
 ### Installing the Extension in Chrome
 
@@ -38,7 +38,7 @@ For development purposes, you can also package the extension:
 
 ## Usage
 
-1. Make sure the webserver is running (`python run-webserver.py`)
+1. Make sure the webserver is running (`szuru-toolkit webserver`)
 2. Click the szurubooru-toolkit icon in the Chrome toolbar
 3. Optionally enter:
    - Cookie file location (for authenticated downloads)

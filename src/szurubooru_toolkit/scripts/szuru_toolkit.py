@@ -709,5 +709,21 @@ def click_upload_media(
     module.main()
 
 
+@cli.command('webserver', epilog='Example: szuru-toolkit webserver --port 5000')
+@click.option('--host', default='127.0.0.1', help='Address to bind to (default: 127.0.0.1).')
+@click.option('--port', type=int, default=5000, help='Port to listen on (default: 5000).')
+@click.pass_context
+def click_webserver(ctx, host, port):
+    """
+    Run the webserver for the browser extensions
+
+    Serves /import-from-url and /import-from-all-tabs on localhost:5000,
+    which the Chrome extension and Firefox addon connect to.
+    """
+
+    module = setup_module('webserver', ctx)
+    module.main(host, port)
+
+
 if __name__ == '__main__':
     cli()

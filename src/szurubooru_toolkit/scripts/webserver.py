@@ -2,7 +2,6 @@
 
 Runs on the standard library only; the browser extensions expect it on http://localhost:5000.
 """
-import argparse
 import json
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
@@ -10,17 +9,8 @@ from http.server import HTTPServer
 
 from loguru import logger
 
-from szurubooru_toolkit import setup_clients
-from szurubooru_toolkit import setup_config
-from szurubooru_toolkit import setup_logger
-
-
-setup_config()
-setup_logger()
-setup_clients()
-
-from szurubooru_toolkit import config  # noqa: E402
-from szurubooru_toolkit.scripts.import_from_url import main as import_from_url  # noqa: E402
+from szurubooru_toolkit import config
+from szurubooru_toolkit.scripts.import_from_url import main as import_from_url
 
 
 def apply_overrides(params: dict) -> None:
@@ -125,13 +115,27 @@ class ToolkitRequestHandler(BaseHTTPRequestHandler):
         self._respond(f'Script executed for {len(urls)} URLs. Successful: {successful_imports}, Failed: {failed_imports}')
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Webserver for the szurubooru-toolkit browser extensions.')
-    parser.add_argument('--host', default='127.0.0.1', help='Address to bind to (default: 127.0.0.1)')
-    parser.add_argument('--port', type=int, default=5000, help='Port to listen on (default: 5000)')
-    args = parser.parse_args()
+def main(host: str = '127.0.0.1', port: int = 5000) -> None:
+    """
+    Runs the webserver for the browser extensions.
 
-    logger.info(f'Listening on http://{args.host}:{args.port}')
-    # Requests are handled serially on purpose: imports mutate the global config
-    # and the previous Flask dev server was single-threaded as well.
-    HTTPServer((args.host, args.port), ToolkitRequestHandler).serve_forever()
+    Args:
+        host (str, optional): Address to bind to. Defaults to '127.0.0.1'.
+        port (int, optional): Port to listen on. Defaults to 5000, which the browser
+            extensions expect.
+
+    Returns:
+        None
+    """
+
+    try:
+        logger.info(f'Listening on http://{host}:{port}')
+        # Requests are handled serially on purpose: imports mutate the global config
+        HTTPServer((host, port), ToolkitRequestHandler).serve_forever()
+    except KeyboardInterrupt:
+        logger.info('Received keyboard interrupt from user.')
+        exit(0)
+
+
+if __name__ == '__main__':
+    main()

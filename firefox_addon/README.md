@@ -15,7 +15,7 @@ This Firefox add-on allows you to import images from web pages directly to your 
 ### Prerequisites
 
 1. Make sure you have the szurubooru-toolkit Python package installed and configured
-2. Start the webserver by running: `python run-webserver.py` from the main repository directory
+2. Start the webserver by running: `szuru-toolkit webserver`
 
 ### Installing the Add-on in Firefox
 
@@ -41,7 +41,7 @@ For development purposes, you can also:
 
 ## Usage
 
-1. Make sure the webserver is running (`python run-webserver.py`)
+1. Make sure the webserver is running (`szuru-toolkit webserver`)
 2. Click the szurubooru-toolkit icon in the Firefox toolbar
 3. Optionally enter:
    - Cookie file location (for authenticated downloads)

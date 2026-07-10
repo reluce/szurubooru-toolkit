@@ -39,6 +39,7 @@ Commands:
   reset-posts        Remove tags and sources
   tag-posts          Tag posts manually
   upload-media       Upload media files
+  webserver          Run the webserver for the browser extensions
 ```
 ## :ballot_box_with_check: Requirements
 In order to run `szuru-toolkit`, Python `3.11` or newer is required.
@@ -153,6 +154,7 @@ Following commands are currently available:
 * `reset-posts`: Remove tags and sources
 * `tag-posts`: Tag posts manually
 * `upload-media`: Upload media files
+* `webserver`: Run the webserver for the browser extensions
 
 Check `szuru-toolkit -h` or `szuru-toolkit COMMAND -h` for a detailed description of supported options.
 
