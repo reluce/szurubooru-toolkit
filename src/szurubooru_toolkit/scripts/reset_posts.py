@@ -1,9 +1,9 @@
 from loguru import logger
-from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.szurubooru import SzurubooruError
+from szurubooru_toolkit.utils import run_concurrently
 
 
 @logger.catch
@@ -38,18 +38,14 @@ def main(query: str, except_ids: list = [], add_tags: list = []) -> None:
         if except_ids:
             logger.info(f'Won\'t reset the following ids: {except_ids}')
 
-        for post in tqdm(
-            posts,
-            ncols=80,
-            position=0,
-            leave=False,
-            total=int(total_posts),
-            disable=hide_progress,
-        ):
+        def worker(post) -> None:
             if post.id not in except_ids:
                 post.tags = add_tags if add_tags else []
                 post.source = ''
                 szuru.update_post(post)
+
+        workers = max(1, int(config.reset_posts['workers']))
+        run_concurrently(posts, worker, workers, int(total_posts), hide_progress)
 
         logger.success('Finished resetting!')
     except SzurubooruError as e:

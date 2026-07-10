@@ -3,7 +3,10 @@ from __future__ import annotations
 import hashlib
 import re
 import subprocess
+import threading
 import warnings
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
 from asyncio import sleep
 from asyncio.exceptions import CancelledError
 from datetime import datetime
@@ -29,6 +32,7 @@ total_tagged = 0
 total_deepbooru = 0
 total_untagged = 0
 total_skipped = 0
+_statistics_lock = threading.Lock()
 
 
 # Save the original showwarning function
@@ -156,12 +160,99 @@ def statistics(tagged=0, deepbooru=0, untagged=0, skipped=0) -> tuple:
     global total_untagged
     global total_skipped
 
-    total_tagged += tagged
-    total_deepbooru += deepbooru
-    total_untagged += untagged
-    total_skipped += skipped
+    with _statistics_lock:
+        total_tagged += tagged
+        total_deepbooru += deepbooru
+        total_untagged += untagged
+        total_skipped += skipped
 
-    return total_tagged, total_deepbooru, total_untagged, total_skipped
+        return total_tagged, total_deepbooru, total_untagged, total_skipped
+
+
+_implications_cache: dict[str, list[str]] = {}
+_implications_lock = threading.Lock()
+
+
+def get_cached_implications(tag_name: str, create_missing: bool = False) -> list[str]:
+    """
+    Returns the implication names of a tag, cached across posts.
+
+    Tag implications rarely change during a run, so fetching them once per tag
+    instead of once per post removes an N+1 query pattern.
+
+    Args:
+        tag_name (str): The tag whose implications to fetch.
+        create_missing (bool, optional): Create the tag if it doesn't exist. Defaults to False.
+
+    Returns:
+        list[str]: The primary names of the tag's implications.
+
+    Raises:
+        TagNotFoundError: If the tag doesn't exist and create_missing is False.
+    """
+
+    from szurubooru_toolkit import szuru
+    from szurubooru_toolkit.szurubooru import TagNotFoundError
+
+    with _implications_lock:
+        if tag_name in _implications_cache:
+            return _implications_cache[tag_name]
+
+    try:
+        szuru_tag = szuru.get_tag(tag_name)
+    except TagNotFoundError:
+        if not create_missing:
+            raise
+        szuru_tag = szuru.create_tag(tag_name)
+
+    implications = [implication.primary_name for implication in szuru_tag.implications]
+
+    with _implications_lock:
+        _implications_cache[tag_name] = implications
+
+    return implications
+
+
+def run_concurrently(items, worker, workers: int, total: int, hide_progress: bool) -> None:
+    """
+    Runs the worker over all items on a thread pool, showing progress.
+
+    Worker errors are logged per item and don't abort the remaining items. With
+    workers <= 1 the items are processed sequentially without a pool.
+
+    Args:
+        items: Iterable of items to process (may be a generator).
+        worker: Callable invoked with a single item.
+        workers (int): Number of concurrent workers.
+        total (int): Total number of items, for the progress bar.
+        hide_progress (bool): Whether to hide the progress bar.
+
+    Returns:
+        None
+    """
+
+    from tqdm import tqdm
+
+    def safe_worker(item) -> None:
+        try:
+            worker(item)
+        except Exception as e:
+            logger.error(f'Could not process {item}: {e}')
+
+    if workers <= 1:
+        for item in tqdm(items, ncols=80, position=0, leave=False, total=total, disable=hide_progress):
+            safe_worker(item)
+        return
+
+    executor = ThreadPoolExecutor(max_workers=workers)
+    try:
+        futures = [executor.submit(safe_worker, item) for item in items]
+        for _ in tqdm(as_completed(futures), ncols=80, position=0, leave=False, total=total, disable=hide_progress):
+            pass
+    except KeyboardInterrupt:
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise
+    executor.shutdown()
 
 
 def audit_rating(*ratings: str) -> str:

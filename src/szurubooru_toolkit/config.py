@@ -42,6 +42,7 @@ AUTO_TAGGER_DEFAULTS = {
     'use_pixiv_tags': False,
     'update_relations': False,
     'limit': None,
+    'workers': 4,
 }
 
 CREATE_RELATIONS_DEFAULTS = {
@@ -61,7 +62,7 @@ CREATE_TAGS_DEFAULTS = {
     'overwrite': False,
 }
 
-DELETE_POSTS_DEFAULTS = {'hide_progress': False}
+DELETE_POSTS_DEFAULTS = {'hide_progress': False, 'workers': 4}
 
 IMPORT_FROM_BOORU_DEFAULTS = {
     'deepbooru': False,
@@ -84,13 +85,14 @@ IMPORT_FROM_URL_DEFAULTS = {
     'update_tags_if_exists': False,
 }
 
-RESET_POSTS_DEFAULTS = {'hide_progress': False}
+RESET_POSTS_DEFAULTS = {'hide_progress': False, 'workers': 4}
 
 TAG_POSTS_DEFAULTS = {
     'hide_progress': False,
     'update_implications': False,
     'mode': 'append',
     'silence_info': False,
+    'workers': 4,
 }
 
 UPLOAD_MEDIA_DEFAULTS = {

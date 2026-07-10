@@ -1,9 +1,9 @@
 from loguru import logger
-from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.szurubooru import SzurubooruError
+from szurubooru_toolkit.utils import run_concurrently
 
 
 @logger.catch
@@ -43,16 +43,12 @@ def main(query: str, except_ids: str) -> None:
         if except_ids:
             logger.info(f'Won\'t delete the following ids: {except_ids}')
 
-        for post in tqdm(
-            posts,
-            ncols=80,
-            position=0,
-            leave=False,
-            total=int(total_posts),
-            disable=hide_progress,
-        ):
+        def worker(post) -> None:
             if post.id not in except_ids:
                 szuru.delete_post(post)
+
+        workers = max(1, int(config.delete_posts['workers']))
+        run_concurrently(posts, worker, workers, int(total_posts), hide_progress)
 
         logger.success('Finished deleting!')
     except SzurubooruError as e:

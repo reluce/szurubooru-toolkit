@@ -37,6 +37,7 @@ use_pixiv_tags = false
 update_relations = true
 hide_progress = false
 limit = 0
+workers = 4
 
 [create_relations]
 threshold = 3
@@ -54,6 +55,7 @@ hide_progress = false
 
 [delete_posts]
 hide_progress = false
+workers = 4
 
 [import_from_booru]
 deepbooru = false
@@ -84,11 +86,13 @@ hide_progress = false
 
 [reset_posts]
 hide_progress = false
+workers = 4
 
 [tag_posts]
 update_implications = false
 mode = 'append'
 hide_progress = false
+workers = 4
 
 [upload_media]
 src_path = "/local/path/to/upload/dir"

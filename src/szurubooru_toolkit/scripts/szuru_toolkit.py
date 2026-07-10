@@ -175,6 +175,11 @@ def cli(
         f' {config.AUTO_TAGGER_DEFAULTS["use_pixiv_tags"]}).'
     ),
 )
+@click.option(
+    '--workers',
+    type=int,
+    help=f'How many posts to process concurrently (default: {config.AUTO_TAGGER_DEFAULTS["workers"]}).',
+)
 @click.pass_context
 def click_auto_tagger(
     ctx,
@@ -193,6 +198,7 @@ def click_auto_tagger(
     update_relations,
     use_pixiv_artist,
     use_pixiv_tags,
+    workers,
 ):
     """
     Tag posts automatically
@@ -579,8 +585,13 @@ def click_reset_posts(ctx, query, except_ids, add_tags):
         f' {config.TAG_POSTS_DEFAULTS["update_implications"]}).'
     ),
 )
+@click.option(
+    '--workers',
+    type=int,
+    help=f'How many posts to process concurrently (default: {config.TAG_POSTS_DEFAULTS["workers"]}).',
+)
 @click.pass_context
-def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_implications):
+def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_implications, workers):
     """
     Tag posts manually
 
@@ -592,14 +603,14 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_impl
         click.echo('\nYou need to specify either --add-tags, --remove-tags, --source or --update-implications as an argument!')
         exit(1)
 
-    module = setup_module('tag_posts', ctx)
-
-    from loguru import logger
-
     for param in ctx.command.params:
         parameter_source = click.get_current_context().get_parameter_source(param.name)
         if parameter_source == ParameterSource.COMMANDLINE:
             ctx.obj.setdefault('tag_posts', {}).update({param.name: ctx.params[param.name]})
+
+    module = setup_module('tag_posts', ctx)
+
+    from loguru import logger
 
     if add_tags:
         add_tags = add_tags.replace(' ', '').split(',')

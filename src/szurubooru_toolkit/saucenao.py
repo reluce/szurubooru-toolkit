@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import threading
+import time
 import urllib.parse
 from asyncio import sleep
 from asyncio.exceptions import TimeoutError
@@ -59,6 +61,37 @@ class SauceNaoResponse:
 
     def __len__(self) -> int:
         return len(self.results)
+
+
+class SauceNaoCooldown:
+    """Shared cooldown gate for SauceNAO's short rate limit.
+
+    When one worker exhausts the 30-second window, it triggers the cooldown and
+    every worker waits before its next SauceNAO request — instead of each worker
+    sleeping (or erroring) on its own. Other pipeline steps keep running.
+    """
+
+    def __init__(self) -> None:
+        self._resume_at = 0.0
+        self._lock = threading.Lock()
+
+    def wait(self) -> None:
+        """Blocks until the cooldown (if any) has passed."""
+
+        while True:
+            with self._lock:
+                remaining = self._resume_at - time.monotonic()
+
+            if remaining <= 0:
+                return
+
+            time.sleep(min(remaining, 1))
+
+    def trigger(self, seconds: float = 35.0) -> None:
+        """Starts a cooldown so that all workers pause SauceNAO requests."""
+
+        with self._lock:
+            self._resume_at = max(self._resume_at, time.monotonic() + seconds)
 
 
 class SauceNao:

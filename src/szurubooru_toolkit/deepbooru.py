@@ -1,5 +1,6 @@
 import os
 import re
+import threading
 from io import BytesIO
 
 from PIL import Image
@@ -48,6 +49,8 @@ class Deepbooru:
 
         self.load_model(model_path)
         np_config.enable_numpy_behavior()
+        # Serialize model inference: multiple tagging workers share one model
+        self._predict_lock = threading.Lock()
 
     def load_model(self, model_path: str) -> None:
         """
@@ -128,7 +131,8 @@ class Deepbooru:
         try:
             image = np.expand_dims(image, axis=0)
             image = tf.convert_to_tensor(image, dtype=tf.float32)
-            results = self.predict_fn(image).numpy()[0]
+            with self._predict_lock:
+                results = self.predict_fn(image).numpy()[0]
         except Exception:
             logger.warning('Failed to predict image with Deepbooru')
             return [], default_safety
