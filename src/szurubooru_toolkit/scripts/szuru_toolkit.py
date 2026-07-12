@@ -474,7 +474,7 @@ def click_delete_posts(ctx, query, except_ids):
 )
 @click.option(
     '--max-similarity',
-    type=int,
+    type=str,
     help=f'Images that exceeds this value won\'t get uploaded (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
 )
 @click.option(
@@ -566,7 +566,7 @@ def click_import_from_booru(
 )
 @click.option(
     '--max-similarity',
-    type=int,
+    type=str,
     help=f'Images that exceeds this value won\'t get uploaded (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
 )
 @click.option(
@@ -763,7 +763,7 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_impl
 )
 @click.option(
     '--max-similarity',
-    type=int,
+    type=str,
     help=f'Images that exceeds this value won\'t get uploaded (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
 )
 @click.option(
@@ -810,6 +810,10 @@ def click_upload_media(
         parameter_source = click.get_current_context().get_parameter_source(param.name)
         if parameter_source == ParameterSource.COMMANDLINE:
             ctx.obj.setdefault('upload_media', {}).update({param.name: ctx.params[param.name]})
+
+    upload_media_cli = ctx.obj.get('upload_media', {})
+    if isinstance(upload_media_cli.get('tags'), str):
+        upload_media_cli['tags'] = upload_media_cli['tags'].replace(' ', '').split(',')
 
     module = setup_module('upload_media', ctx)
     module.main()
