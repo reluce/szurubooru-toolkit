@@ -9,6 +9,7 @@ This module fixes that by treating relations as similarity *edges*, computing th
 transitive closure over them (union-find), and writing the complete member list to
 every member of each set.
 """
+
 from __future__ import annotations
 
 from io import BytesIO
@@ -153,7 +154,7 @@ class RelationsBatch:
         edges = []
 
         for index, (post_a, hash_a) in enumerate(entries):
-            for post_b, hash_b in entries[index + 1:]:
+            for post_b, hash_b in entries[index + 1 :]:
                 if hamming_distance(hash_a, hash_b) <= PHASH_THRESHOLD:
                     edges.append((post_a, post_b))
 

@@ -3,6 +3,7 @@
 Supports the boorus the toolkit actually queries: Danbooru, Gelbooru, Konachan
 and Yandere. Sankaku has its own module since it needs authentication.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

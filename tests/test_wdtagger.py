@@ -6,14 +6,14 @@ import pytest
 pytest.importorskip('onnxruntime')
 onnx = pytest.importorskip('onnx')
 
+import shutil  # noqa: E402
+import subprocess  # noqa: E402
+
 import numpy as np  # noqa: E402
 from onnx import TensorProto  # noqa: E402
 from onnx import helper  # noqa: E402
 from onnx import numpy_helper  # noqa: E402
 from PIL import Image  # noqa: E402
-
-import shutil  # noqa: E402
-import subprocess  # noqa: E402
 
 from szurubooru_toolkit.wdtagger import WDTagger  # noqa: E402
 from szurubooru_toolkit.wdtagger import frame_timestamps  # noqa: E402

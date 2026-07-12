@@ -543,9 +543,7 @@ def search_boorus(booru: str, query: str, limit: int, page: int = 1, credentials
 
     results = {}
     with ThreadPoolExecutor(max_workers=len(boorus_to_search)) as executor:
-        futures = {
-            executor.submit(_search_single_booru, name, query, limit, page, credentials): name for name in boorus_to_search
-        }
+        futures = {executor.submit(_search_single_booru, name, query, limit, page, credentials): name for name in boorus_to_search}
         for future in as_completed(futures):
             result = future.result()
             if result:

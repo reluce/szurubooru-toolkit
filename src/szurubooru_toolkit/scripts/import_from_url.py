@@ -69,7 +69,7 @@ def set_tags(metadata: dict) -> list:
                 if tag.startswith('artist'):
                     index = tag.find(':')
                     if index != -1:
-                        artist = tag[index + 1 :]  # noqa E203
+                        artist = tag[index + 1 :]
                         artist = artist.replace(' ', '_')
         elif metadata['site'] in ['fanbox', 'pixiv']:
             try:

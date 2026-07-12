@@ -2,6 +2,7 @@
 
 Runs on the standard library only; the browser extensions expect it on http://localhost:5000.
 """
+
 import json
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
