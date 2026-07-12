@@ -12,7 +12,11 @@ from onnx import helper  # noqa: E402
 from onnx import numpy_helper  # noqa: E402
 from PIL import Image  # noqa: E402
 
+import shutil  # noqa: E402
+import subprocess  # noqa: E402
+
 from szurubooru_toolkit.wdtagger import WDTagger  # noqa: E402
+from szurubooru_toolkit.wdtagger import frame_timestamps  # noqa: E402
 
 
 INPUT_SIZE = 448
@@ -142,6 +146,75 @@ def test_rgba_image_is_composited(wd_tagger):
 
     assert sorted(tags) == ['hatsune_miku', 'solo']
     assert rating == 'safe'
+
+
+def test_review_band_adds_needs_review(wd_tagger):
+    # hatsune_miku scores 0.6 on a blue image: below the character threshold but inside the review band
+    tags, _ = wd_tagger.tag_image(make_image((0, 0, 255)), 'safe', set_tag=False, review_threshold=0.5)
+
+    assert 'needs_review' in tags
+    assert 'hatsune_miku' not in tags
+
+
+def test_no_review_band_without_threshold(wd_tagger):
+    tags, _ = wd_tagger.tag_image(make_image((0, 0, 255)), 'safe', set_tag=False)
+
+    assert 'needs_review' not in tags
+
+
+def test_confident_character_not_marked_for_review(wd_tagger):
+    # hatsune_miku scores 0.95 on a red image: clears the character threshold, no review needed
+    tags, _ = wd_tagger.tag_image(make_image((255, 0, 0)), 'safe', set_tag=False, review_threshold=0.5)
+
+    assert 'hatsune_miku' in tags
+    assert 'needs_review' not in tags
+
+
+def test_frame_timestamps_scale_with_duration():
+    # Short video: minimum of 3 frames
+    assert len(frame_timestamps(10)) == 3
+    # ~2 minutes: one frame per 15s
+    assert len(frame_timestamps(120)) == 8
+    # Long video: capped at 16 frames
+    assert len(frame_timestamps(3600)) == 16
+
+
+def test_frame_timestamps_stay_within_duration():
+    for duration in (1, 30, 300, 7200):
+        timestamps = frame_timestamps(duration)
+        assert timestamps == sorted(timestamps)
+        assert all(0 <= timestamp <= duration for timestamp in timestamps)
+
+
+def test_frame_timestamps_zero_duration():
+    assert frame_timestamps(0) == [0.0]
+
+
+@pytest.mark.skipif(
+    not (shutil.which('ffmpeg') and shutil.which('ffprobe')),
+    reason='ffmpeg/ffprobe not installed',
+)
+def test_tag_video_averages_frames(wd_tagger, tmp_path):
+    # A solid red test video must produce the same tags as a solid red image
+    video_path = tmp_path / 'red.mp4'
+    subprocess.run(
+        ['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=red:s=64x64:d=5:r=10'] + ['-pix_fmt', 'yuv420p', str(video_path)],
+        check=True,
+        capture_output=True,
+    )
+
+    tags, rating = wd_tagger.tag_video(video_path.read_bytes(), 'sketchy', set_tag=False)
+
+    assert 'solo' in tags
+    assert 'hatsune_miku' in tags
+    assert rating == 'safe'
+
+
+def test_tag_video_invalid_content_falls_back(wd_tagger):
+    tags, rating = wd_tagger.tag_video(b'not-a-video', 'sketchy')
+
+    assert tags == []
+    assert rating == 'sketchy'
 
 
 def test_resolve_providers_keeps_cpu_fallback():

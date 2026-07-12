@@ -37,6 +37,12 @@ wd_tagger_threshold = 0.35
 wd_tagger_character_threshold = 0.75
 wd_tagger_forced = false
 wd_tagger_set_tag = true
+# Tag videos from frames sampled across their duration (requires ffmpeg on the PATH)
+wd_tagger_videos = true
+# Tag posts with "needs_review" if a character score lands between
+# wd_tagger_review_threshold and wd_tagger_character_threshold
+wd_tagger_review = false
+wd_tagger_review_threshold = 0.5
 default_safety = "safe"
 use_pixiv_artist = false
 use_pixiv_tags = false
@@ -62,6 +68,17 @@ hide_progress = false
 [delete_posts]
 hide_progress = false
 workers = 4
+
+[find_duplicates]
+# Maximum Hamming distance between perceptual hashes to consider posts duplicates
+threshold = 4
+set_relations = false
+workers = 4
+hide_progress = false
+
+[preview_tags]
+# Hide scores below this value in the report
+min_score = 0.1
 
 [import_from_booru]
 wd_tagger = false

@@ -128,7 +128,11 @@ With a free plan, you can request up to 200 posts in 24h.
 
 For local machine learning tagging, posts can be tagged with one of [SmilingWolf's WD taggers](https://huggingface.co/SmilingWolf). Install the `wd-tagger` extra (`pip install "szurubooru-toolkit[wd-tagger]"`) and set `wd_tagger = true` in the `[auto_tagger]` section to use it.
 The model set in `wd_tagger_model` (default: [SmilingWolf/wd-eva02-large-tagger-v3](https://huggingface.co/SmilingWolf/wd-eva02-large-tagger-v3), ~1.2GB) gets downloaded automatically from Hugging Face on first use and is cached locally afterwards. Any of the WD v3/v2 taggers work, e.g. `SmilingWolf/wd-swinv2-tagger-v3` or `SmilingWolf/wd-vit-tagger-v3` for smaller and faster models.
-General tags and character tags use separate confidence thresholds (`wd_tagger_threshold` and `wd_tagger_character_threshold`), since character predictions are usually either confident or wrong.
+General tags and character tags use separate confidence thresholds (`wd_tagger_threshold` and `wd_tagger_character_threshold`), since character predictions are usually either confident or wrong. Use `szuru-toolkit preview-tags <file-or-post-id>` to see all scores near the thresholds when tuning them, and `szuru-toolkit auto-tagger --dry-run <query>` to preview which tags a run would change without updating any post.
+
+With `wd_tagger_review = true`, posts whose best character score lands between `wd_tagger_review_threshold` and `wd_tagger_character_threshold` get tagged `needs_review` — a szurubooru query for exactly the ambiguous character matches worth curating manually.
+
+Videos are tagged as well if ffmpeg is installed (`wd_tagger_videos`): frames are sampled across the duration — longer videos get more frames — and their scores averaged, so tags that only appear in a single frame don't stick.
 
 Inference runs on the CPU by default. For hardware acceleration, set `wd_tagger_providers` in `config.toml`, e.g. `["CoreMLExecutionProvider"]` on Apple Silicon or `["CUDAExecutionProvider"]` on NVIDIA GPUs (requires the `onnxruntime-gpu` package). Unavailable providers fall back to the CPU.
 
@@ -141,7 +145,9 @@ Following commands are currently available:
 * `create-relations`: Create relations between character and parody tag categories
 * `create-tags`: Create tags based on a tag file or query
 * `delete-posts`: Delete posts
+* `find-duplicates`: Find visually duplicate posts via perceptual hashing
 * `fix-relations`: Complete post relation sets so every member of a set references all other members
+* `preview-tags`: Show WD tagger scores near the thresholds for a file or post without tagging anything
 * `import-from-booru`: Download and tag posts from various Boorus
 * `import-from-url`: Batch importing of URLs based on [gallery-dl](https://github.com/mikf/gallery-dl)
 * `reset-posts`: Remove tags and sources

@@ -38,6 +38,10 @@ AUTO_TAGGER_DEFAULTS = {
     'wd_tagger_character_threshold': 0.75,
     'wd_tagger_forced': False,
     'wd_tagger_set_tag': False,
+    'wd_tagger_videos': True,
+    'wd_tagger_review': False,
+    'wd_tagger_review_threshold': 0.5,
+    'dry_run': False,
     'default_safety': 'safe',
     'hide_progress': False,
     'use_pixiv_artist': False,
@@ -65,6 +69,18 @@ CREATE_TAGS_DEFAULTS = {
 }
 
 DELETE_POSTS_DEFAULTS = {'hide_progress': False, 'workers': 4}
+
+FIND_DUPLICATES_DEFAULTS = {
+    'threshold': 4,
+    'workers': 4,
+    'limit': None,
+    'set_relations': False,
+    'hide_progress': False,
+}
+
+PREVIEW_TAGS_DEFAULTS = {
+    'min_score': 0.1,
+}
 
 IMPORT_FROM_BOORU_DEFAULTS = {
     'wd_tagger': False,
@@ -143,6 +159,8 @@ class Config:
         self.create_relations = CREATE_RELATIONS_DEFAULTS
         self.fix_relations = FIX_RELATIONS_DEFAULTS
         self.delete_posts = DELETE_POSTS_DEFAULTS
+        self.find_duplicates = FIND_DUPLICATES_DEFAULTS
+        self.preview_tags = PREVIEW_TAGS_DEFAULTS
         self.import_from_booru = IMPORT_FROM_BOORU_DEFAULTS
         self.import_from_url = IMPORT_FROM_URL_DEFAULTS
         self.reset_posts = RESET_POSTS_DEFAULTS

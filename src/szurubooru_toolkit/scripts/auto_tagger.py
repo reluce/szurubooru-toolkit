@@ -130,13 +130,15 @@ def image_required(
     public: bool,
     is_video: bool,
     limit_reached: bool,
+    wd_tagger_videos: bool = False,
 ) -> bool:
     """
     Decides whether the post content has to be downloaded.
 
     The image is only needed by SauceNAO (unless the instance is public, in which
     case SauceNAO fetches the URL itself) and by the WD tagger. An MD5-only run
-    never needs the content since the checksum is part of the post data.
+    never needs the content since the checksum is part of the post data. Videos
+    are only downloaded when the WD tagger is enabled and video tagging is on.
 
     Args:
         saucenao_enabled (bool): Whether SauceNAO tagging is enabled.
@@ -145,16 +147,18 @@ def image_required(
         public (bool): Whether the szurubooru instance is publicly reachable.
         is_video (bool): Whether the post is a video.
         limit_reached (bool): Whether the SauceNAO daily limit has been reached.
+        wd_tagger_videos (bool, optional): Whether videos get tagged via frame sampling. Defaults to False.
 
     Returns:
         bool: True if the content should be downloaded.
     """
 
+    needed_for_wd_tagger = wd_tagger_enabled or wd_tagger_forced
+
     if is_video:
-        return False
+        return wd_tagger_videos and needed_for_wd_tagger
 
     needed_for_saucenao = saucenao_enabled and not public and not limit_reached
-    needed_for_wd_tagger = wd_tagger_enabled or wd_tagger_forced
 
     return needed_for_saucenao or needed_for_wd_tagger
 
@@ -196,6 +200,10 @@ def process_post(  # noqa C901
         statistics(untagged=1)
         return
 
+    dry_run = config.auto_tagger['dry_run']
+    original_tags = set(post.tags)
+    original_safety = post.safety
+
     # Search boorus by md5 hash of the file
     if config.auto_tagger['md5_search']:
         md5_results = search_boorus('all', 'md5:' + (md5 or post.md5), 1, 0, credentials=config.credentials)
@@ -219,11 +227,12 @@ def process_post(  # noqa C901
             public=config.globals['public'],
             is_video=post.type == 'video',
             limit_reached=limit_event.is_set(),
+            wd_tagger_videos=config.auto_tagger['wd_tagger_videos'],
         ):
             image = download_media(post.content_url, post.md5)
             # Shrink files >2MB
             try:
-                if len(image) > 2000000:
+                if post.type != 'video' and len(image) > 2000000:
                     image = shrink_img(image, resize=True, convert=True)
             except UnidentifiedImageError:
                 logger.debug('Could not shrink image')
@@ -248,28 +257,37 @@ def process_post(  # noqa C901
     else:
         tags_by_sauce = []
 
-    # Tag with the WD tagger.
+    # Tag with the WD tagger. Videos are tagged from sampled frames if enabled.
+    is_video = post.type == 'video'
+    can_tag_media = not is_video or (config.auto_tagger['wd_tagger_videos'] and image)
     pixiv_result_only = True if len(tags_by_sauce) < 2 else False
     if (
         (not tags_by_md5 and pixiv_result_only and config.auto_tagger['wd_tagger']) or config.auto_tagger['wd_tagger_forced']
-    ) and post.type != 'video':
-        result = wd_tagger.tag_image(
+    ) and can_tag_media:
+        review_threshold = config.auto_tagger['wd_tagger_review_threshold'] if config.auto_tagger['wd_tagger_review'] else None
+        tag_media = wd_tagger.tag_video if is_video else wd_tagger.tag_image
+
+        result = tag_media(
             image,
             config.auto_tagger['default_safety'],
             config.auto_tagger['wd_tagger_threshold'],
             config.auto_tagger['wd_tagger_character_threshold'],
             config.auto_tagger['wd_tagger_set_tag'],
+            review_threshold,
         )
 
         tags_by_wd_tagger, post.safety = result
 
-        if tags_by_wd_tagger:
+        # Marker tags don't count as substantive results for the tagme decision below
+        substantive_wd_tags = [tag for tag in tags_by_wd_tagger if tag not in ('wd_tagger', 'needs_review')]
+
+        if substantive_wd_tags:
             # The WD tagger detects characters, but not the parody.
             # Set the parody based on the character if configured.
             # Only do this if no previous tags where found as this operation takes quite some time
             if not tags_by_md5 and not tags_by_sauce and config.auto_tagger['update_relations']:
-                for tag in tags_by_wd_tagger:
-                    for implication in get_cached_implications(tag, create_missing=True):
+                for tag in substantive_wd_tags:
+                    for implication in get_cached_implications(tag, create_missing=not dry_run):
                         if implication not in post.tags:
                             post.tags.append(implication)
 
@@ -277,6 +295,7 @@ def process_post(  # noqa C901
             set_tags_from_relations(post)
     else:
         tags_by_wd_tagger = []
+        substantive_wd_tags = []
 
     # Keep previous tags and add user tags if configured
     if add_tags:
@@ -290,21 +309,27 @@ def process_post(  # noqa C901
     if remove_tags:
         [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]
 
-    # If any tags were collected, remove the tagme tag
-    if tags_by_md5 or tags_by_sauce or tags_by_wd_tagger:
+    # If any substantive tags were collected, remove the tagme tag
+    if tags_by_md5 or tags_by_sauce or substantive_wd_tags:
         [post.tags.remove(tag) for tag in post.tags if tag == 'tagme']
     else:
         post.tags.append('tagme')
 
-    szuru.update_post(post)
+    if dry_run:
+        added = sorted(set(post.tags) - original_tags)
+        removed = sorted(original_tags - set(post.tags))
+        safety = f'{original_safety} -> {post.safety}' if post.safety != original_safety else post.safety
+        logger.info(f'Dry run: post {post.id}: tags +{added} -{removed}, safety {safety}')
+    else:
+        szuru.update_post(post)
 
     if tags_by_md5 or tags_by_sauce:
         statistics(tagged=1)
 
-    if tags_by_wd_tagger:
+    if substantive_wd_tags:
         statistics(wd_tagger=1)
 
-    if not tags_by_md5 and not tags_by_sauce and not tags_by_wd_tagger:
+    if not tags_by_md5 and not tags_by_sauce and not substantive_wd_tags:
         statistics(untagged=1)
 
 
@@ -355,6 +380,9 @@ def main(  # noqa C901
         if not config.auto_tagger['saucenao'] and not config.auto_tagger['wd_tagger'] and not config.auto_tagger['md5_search']:
             logger.info('Nothing to do. Enable either SauceNAO or the WD tagger in your config.')
             exit()
+
+        if config.auto_tagger['dry_run']:
+            logger.info('Dry run enabled: no posts will be updated.')
 
         # If posts are being tagged directly from upload-media script
         if not from_upload_media:

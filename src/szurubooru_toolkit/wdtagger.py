@@ -1,4 +1,7 @@
 import csv
+import shutil
+import subprocess
+import tempfile
 from io import BytesIO
 from pathlib import Path
 
@@ -23,6 +26,46 @@ RATING_MAP = {
     'questionable': 'sketchy',
     'explicit': 'unsafe',
 }
+
+# Marker tag for posts whose character prediction landed in the review band
+REVIEW_TAG = 'needs_review'
+
+# Videos get one sampled frame per this many seconds, clamped to the min/max below
+VIDEO_SECONDS_PER_FRAME = 15
+VIDEO_MIN_FRAMES = 3
+VIDEO_MAX_FRAMES = 16
+
+
+def frame_timestamps(duration: float, seconds_per_frame: int = VIDEO_SECONDS_PER_FRAME) -> list[float]:
+    """
+    Returns the timestamps at which to sample frames from a video.
+
+    Longer videos get more frames (one per `seconds_per_frame`, clamped to
+    [VIDEO_MIN_FRAMES, VIDEO_MAX_FRAMES]), spread evenly across 5%-95% of the
+    duration so intros and credits don't dominate the samples.
+
+    Args:
+        duration (float): The video duration in seconds.
+        seconds_per_frame (int, optional): Target seconds of video per sampled frame.
+
+    Returns:
+        list[float]: The timestamps in seconds, ascending.
+    """
+
+    if duration <= 0:
+        return [0.0]
+
+    count = max(VIDEO_MIN_FRAMES, min(VIDEO_MAX_FRAMES, round(duration / seconds_per_frame)))
+
+    start = duration * 0.05
+    end = duration * 0.95
+
+    if count == 1:
+        return [duration / 2]
+
+    step = (end - start) / (count - 1)
+
+    return [start + index * step for index in range(count)]
 
 
 class WDTagger:
@@ -132,29 +175,17 @@ class WDTagger:
 
         return np.expand_dims(image_array, axis=0)
 
-    def tag_image(
-        self,
-        image: bytes,
-        default_safety: str,
-        threshold: float = 0.35,
-        character_threshold: float = 0.75,
-        set_tag: bool = True,
-    ) -> tuple[list, str]:
+    def predict(self, image: bytes) -> np.ndarray | None:
         """
-        Guesses the tags and rating of the provided image.
+        Returns the raw per-tag confidence scores for an image.
 
-        General tags and character tags use separate confidence thresholds since character predictions are usually
-        either confident or wrong. The rating is picked from the most confident of the model's four rating outputs.
+        The scores align index-wise with `self.tags` and `self.categories`.
 
         Args:
-            image (bytes): The image in bytes which tags and rating should be guessed.
-            default_safety (str): The safety rating to fall back to if the image cannot be processed.
-            threshold (float): The confidence threshold for general tags, 1 being 100%. Defaults to `0.35`.
-            character_threshold (float): The confidence threshold for character tags. Defaults to `0.75`.
-            set_tag (bool): Add tag "wd_tagger" to the post.
+            image (bytes): The image content.
 
         Returns:
-            tuple[list, str]: A tuple with the guessed tags as a `list` and the rating as a `str`.
+            np.ndarray | None: The confidence scores, or None if the image could not be processed.
         """
 
         try:
@@ -162,17 +193,116 @@ class WDTagger:
                 image_array = self.prepare_image(opened_image)
         except Exception:
             logger.warning('Failed to convert image to WD tagger format')
-            return [], default_safety
+            return None
 
         try:
-            results = self.session.run([self.output_name], {self.input_name: image_array})[0][0]
+            return self.session.run([self.output_name], {self.input_name: image_array})[0][0]
         except Exception as e:
             logger.debug(f'Prediction error: {e}')
             logger.warning('Failed to predict image with WD tagger')
-            return [], default_safety
+            return None
 
+    def predict_video(self, video: bytes) -> np.ndarray | None:
+        """
+        Returns the averaged per-tag confidence scores over frames sampled from a video.
+
+        Frames are extracted with ffmpeg at timestamps spread across the video; longer
+        videos get more frames (see `frame_timestamps`). Averaging the scores keeps tags
+        that hold up across the video and suppresses single-frame flukes.
+
+        Args:
+            video (bytes): The video content.
+
+        Returns:
+            np.ndarray | None: The averaged confidence scores, or None if no frame could be processed.
+        """
+
+        ffmpeg = shutil.which('ffmpeg')
+        ffprobe = shutil.which('ffprobe')
+
+        if not ffmpeg or not ffprobe:
+            logger.warning('Video tagging requires ffmpeg and ffprobe on the PATH. Skipping video...')
+            return None
+
+        with tempfile.NamedTemporaryFile(suffix='.video') as video_file:
+            video_file.write(video)
+            video_file.flush()
+
+            try:
+                probe = subprocess.run(
+                    [ffprobe, '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', video_file.name],
+                    capture_output=True,
+                    check=True,
+                    timeout=60,
+                )
+                duration = float(probe.stdout.strip())
+            except (subprocess.SubprocessError, ValueError) as e:
+                logger.debug(f'ffprobe error: {e}')
+                logger.warning('Could not determine video duration. Skipping video...')
+                return None
+
+            timestamps = frame_timestamps(duration)
+            logger.debug(f'Sampling {len(timestamps)} frames from a {duration:.1f}s video')
+
+            frame_scores = []
+            for timestamp in timestamps:
+                try:
+                    frame = subprocess.run(
+                        [ffmpeg, '-v', 'error', '-ss', f'{timestamp:.2f}', '-i', video_file.name]
+                        + ['-frames:v', '1', '-f', 'image2pipe', '-vcodec', 'png', '-'],
+                        capture_output=True,
+                        check=True,
+                        timeout=120,
+                    ).stdout
+                except subprocess.SubprocessError as e:
+                    logger.debug(f'ffmpeg error at {timestamp:.2f}s: {e}')
+                    continue
+
+                if not frame:
+                    continue
+
+                scores = self.predict(frame)
+                if scores is not None:
+                    frame_scores.append(scores)
+
+        if not frame_scores:
+            logger.warning('Could not extract any usable frame from video')
+            return None
+
+        return np.mean(frame_scores, axis=0)
+
+    def scores_to_tags(
+        self,
+        results: np.ndarray,
+        default_safety: str,
+        threshold: float,
+        character_threshold: float,
+        set_tag: bool,
+        review_threshold: float = None,
+    ) -> tuple[list, str]:
+        """
+        Converts raw confidence scores into a tag list and rating.
+
+        General tags and character tags use separate confidence thresholds since character predictions are usually
+        either confident or wrong. The rating is picked from the most confident of the model's four rating outputs.
+        With a review threshold set, character scores landing in [review_threshold, character_threshold) add the
+        "needs_review" tag so ambiguous character matches can be curated manually.
+
+        Args:
+            results (np.ndarray): The per-tag confidence scores from `predict` or `predict_video`.
+            default_safety (str): The safety rating to fall back to.
+            threshold (float): The confidence threshold for general tags.
+            character_threshold (float): The confidence threshold for character tags.
+            set_tag (bool): Add tag "wd_tagger" to the post.
+            review_threshold (float, optional): Lower bound of the character review band. Disabled if None.
+
+        Returns:
+            tuple[list, str]: A tuple with the guessed tags as a `list` and the rating as a `str`.
+        """
+
+        character_categories = self.categories == CATEGORY_CHARACTER
         general = (self.categories == CATEGORY_GENERAL) & (results > float(threshold))
-        characters = (self.categories == CATEGORY_CHARACTER) & (results > float(character_threshold))
+        characters = character_categories & (results > float(character_threshold))
         tags = self.tags[general | characters].tolist()
 
         rating_indices = np.where(self.categories == CATEGORY_RATING)[0]
@@ -193,4 +323,75 @@ class WDTagger:
             if set_tag:
                 tags.append('wd_tagger')
 
+        if review_threshold is not None:
+            review = character_categories & (results > float(review_threshold)) & (results <= float(character_threshold))
+            near_misses = {tag: results[index] for index, tag in enumerate(self.tags) if review[index]}
+
+            if near_misses:
+                formatted = ', '.join(f'{tag} ({score:.2f})' for tag, score in near_misses.items())
+                logger.debug(f'Character scores in review band: {formatted}')
+                tags.append(REVIEW_TAG)
+
         return tags, rating
+
+    def tag_image(
+        self,
+        image: bytes,
+        default_safety: str,
+        threshold: float = 0.35,
+        character_threshold: float = 0.75,
+        set_tag: bool = True,
+        review_threshold: float = None,
+    ) -> tuple[list, str]:
+        """
+        Guesses the tags and rating of the provided image.
+
+        Args:
+            image (bytes): The image in bytes which tags and rating should be guessed.
+            default_safety (str): The safety rating to fall back to if the image cannot be processed.
+            threshold (float): The confidence threshold for general tags, 1 being 100%. Defaults to `0.35`.
+            character_threshold (float): The confidence threshold for character tags. Defaults to `0.75`.
+            set_tag (bool): Add tag "wd_tagger" to the post.
+            review_threshold (float, optional): Lower bound of the character review band. Disabled if None.
+
+        Returns:
+            tuple[list, str]: A tuple with the guessed tags as a `list` and the rating as a `str`.
+        """
+
+        results = self.predict(image)
+
+        if results is None:
+            return [], default_safety
+
+        return self.scores_to_tags(results, default_safety, threshold, character_threshold, set_tag, review_threshold)
+
+    def tag_video(
+        self,
+        video: bytes,
+        default_safety: str,
+        threshold: float = 0.35,
+        character_threshold: float = 0.75,
+        set_tag: bool = True,
+        review_threshold: float = None,
+    ) -> tuple[list, str]:
+        """
+        Guesses the tags and rating of the provided video from frames sampled across its duration.
+
+        Args:
+            video (bytes): The video content which tags and rating should be guessed.
+            default_safety (str): The safety rating to fall back to if the video cannot be processed.
+            threshold (float): The confidence threshold for general tags, 1 being 100%. Defaults to `0.35`.
+            character_threshold (float): The confidence threshold for character tags. Defaults to `0.75`.
+            set_tag (bool): Add tag "wd_tagger" to the post.
+            review_threshold (float, optional): Lower bound of the character review band. Disabled if None.
+
+        Returns:
+            tuple[list, str]: A tuple with the guessed tags as a `list` and the rating as a `str`.
+        """
+
+        results = self.predict_video(video)
+
+        if results is None:
+            return [], default_safety
+
+        return self.scores_to_tags(results, default_safety, threshold, character_threshold, set_tag, review_threshold)

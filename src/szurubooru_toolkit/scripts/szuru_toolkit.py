@@ -166,6 +166,29 @@ def cli(
     help=f'Tag WD tagger posts with tag "wd_tagger" (default: {config.AUTO_TAGGER_DEFAULTS["wd_tagger_set_tag"]}).',
 )
 @click.option(
+    '--wd-tagger-videos/--no-wd-tagger-videos',
+    help=(
+        'Tag videos from frames sampled across their duration, requires ffmpeg (default:'
+        f' {config.AUTO_TAGGER_DEFAULTS["wd_tagger_videos"]}).'
+    ),
+)
+@click.option(
+    '--wd-tagger-review/--no-wd-tagger-review',
+    help=(
+        'Tag posts with "needs_review" if a character score lands between review-threshold and character-threshold'
+        f' (default: {config.AUTO_TAGGER_DEFAULTS["wd_tagger_review"]}).'
+    ),
+)
+@click.option(
+    '--wd-tagger-review-threshold',
+    help=f'Lower bound of the character review band (default: {config.AUTO_TAGGER_DEFAULTS["wd_tagger_review_threshold"]}).',
+)
+@click.option(
+    '--dry-run',
+    is_flag=True,
+    help='Show which tags would be added or removed without updating any post.',
+)
+@click.option(
     '--update-relations/--dont-update-relations',
     help=(
         'Set character <> parody relation if SauceNAO is disabled (or limit reached) and the WD tagger enabled (default:'
@@ -209,6 +232,10 @@ def click_auto_tagger(
     wd_tagger_character_threshold,
     wd_tagger_forced,
     wd_tagger_set_tag,
+    wd_tagger_videos,
+    wd_tagger_review,
+    wd_tagger_review_threshold,
+    dry_run,
     update_relations,
     use_pixiv_artist,
     use_pixiv_tags,
@@ -239,6 +266,71 @@ def click_auto_tagger(
         logger.debug(f'remove_tags = {remove_tags}')
 
     module.main(query, add_tags, remove_tags)
+
+
+@cli.command('preview-tags', epilog='Example: szuru-toolkit preview-tags 1234')
+@click.argument('target')
+@click.option(
+    '--min-score',
+    type=float,
+    help=f'Hide scores below this value (default: {config.PREVIEW_TAGS_DEFAULTS["min_score"]}).',
+)
+@click.pass_context
+def click_preview_tags(ctx, target, min_score):
+    """
+    Show WD tagger scores near the thresholds without tagging anything
+
+    TARGET is a path to a local media file or a szurubooru post id.
+    """
+
+    for param in ctx.command.params:
+        parameter_source = click.get_current_context().get_parameter_source(param.name)
+        if parameter_source == ParameterSource.COMMANDLINE:
+            ctx.obj.setdefault('preview_tags', {}).update({param.name: ctx.params[param.name]})
+
+    module = setup_module('preview_tags', ctx)
+    module.main(target)
+
+
+@cli.command('find-duplicates', epilog='Example: szuru-toolkit find-duplicates --threshold 4 "date:2026"')
+@click.argument('query', required=False, default='*')
+@click.option(
+    '--threshold',
+    type=int,
+    help=(
+        'Maximum Hamming distance between perceptual hashes to consider posts duplicates (default:'
+        f' {config.FIND_DUPLICATES_DEFAULTS["threshold"]}).'
+    ),
+)
+@click.option(
+    '--limit',
+    type=int,
+    help=f'Limit the number of posts to scan (default: {config.FIND_DUPLICATES_DEFAULTS["limit"]}).',
+)
+@click.option(
+    '--set-relations/--no-set-relations',
+    help=f'Relate the posts of each duplicate set to each other (default: {config.FIND_DUPLICATES_DEFAULTS["set_relations"]}).',
+)
+@click.option(
+    '--workers',
+    type=int,
+    help=f'How many posts to download and hash concurrently (default: {config.FIND_DUPLICATES_DEFAULTS["workers"]}).',
+)
+@click.pass_context
+def click_find_duplicates(ctx, query, threshold, limit, set_relations, workers):
+    """
+    Find visually duplicate posts via perceptual hashing
+
+    QUERY is a szurubooru query for posts to scan (default: all image posts).
+    """
+
+    for param in ctx.command.params:
+        parameter_source = click.get_current_context().get_parameter_source(param.name)
+        if parameter_source == ParameterSource.COMMANDLINE:
+            ctx.obj.setdefault('find_duplicates', {}).update({param.name: ctx.params[param.name]})
+
+    module = setup_module('find_duplicates', ctx)
+    module.main(query)
 
 
 @cli.command('create-relations', epilog='Example: szuru-toolkit create-relations hitori_bocchi')
