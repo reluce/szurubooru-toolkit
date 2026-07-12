@@ -46,6 +46,18 @@ def setup_module(module_name: str, click_context: click.core.Context) -> types.M
 CONTEXT_SETTINGS = {'help_option_names': ['-h', '--help'], 'max_content_width': shutil.get_terminal_size().columns - 10}
 
 
+def collect_user_params(ctx: click.core.Context, section: str) -> None:
+    """Store the options the user passed on the command line under ctx.obj[section].
+
+    Only parameters that actually came from the command line are collected, so
+    config file values are only overridden for explicitly passed options.
+    """
+
+    for param in ctx.command.params:
+        if ctx.get_parameter_source(param.name) == ParameterSource.COMMANDLINE:
+            ctx.obj.setdefault(section, {}).update({param.name: ctx.params[param.name]})
+
+
 @click.group(context_settings=CONTEXT_SETTINGS)
 # Global Options
 @click.option('--url', help='Base URL to your szurubooru instance.')
@@ -99,21 +111,10 @@ def cli(
             user_params[param.name] = ctx.params[param.name]
 
     for item, value in user_params.items():
-        if item in ['url', 'username', 'api_token', 'public']:
+        if item in ['url', 'username', 'api_token', 'public', 'hide_progress']:
             ctx.obj.setdefault('globals', {}).update({item: value})
-        elif item in ['log', 'log_colorized', 'log_file', 'log_level']:
+        elif item in ['log_enabled', 'log_colorized', 'log_file', 'log_level']:
             ctx.obj.setdefault('logging', {}).update({item: value})
-        elif item in [
-            'hide_progress',
-            'convert_to_jpg',
-            'convert_threshold',
-            'default_safety',
-            'max_similarity',
-            'shrink',
-            'shrink_threshold',
-            'shrink_dimensions',
-        ]:
-            ctx.obj.setdefault('globals', {}).update({item: value})
 
 
 @cli.command('auto-tagger', epilog='Example: szuru-toolkit auto-tagger --add-tags "foo,bar" --no-saucenao "tag-count:..2 date:today"')
@@ -249,10 +250,7 @@ def click_auto_tagger(
     QUERY is a szurubooru query for posts to tag.
     """
 
-    for param in ctx.command.params:
-        parameter_source = click.get_current_context().get_parameter_source(param.name)
-        if parameter_source == ParameterSource.COMMANDLINE:
-            ctx.obj.setdefault('auto_tagger', {}).update({param.name: ctx.params[param.name]})
+    collect_user_params(ctx, 'auto_tagger')
 
     module = setup_module('auto_tagger', ctx)
 
@@ -283,10 +281,7 @@ def click_preview_tags(ctx, target, min_score):
     TARGET is a path to a local media file or a szurubooru post id.
     """
 
-    for param in ctx.command.params:
-        parameter_source = click.get_current_context().get_parameter_source(param.name)
-        if parameter_source == ParameterSource.COMMANDLINE:
-            ctx.obj.setdefault('preview_tags', {}).update({param.name: ctx.params[param.name]})
+    collect_user_params(ctx, 'preview_tags')
 
     module = setup_module('preview_tags', ctx)
     module.main(target)
@@ -324,10 +319,7 @@ def click_find_duplicates(ctx, query, threshold, limit, set_relations, workers):
     QUERY is a szurubooru query for posts to scan (default: all image posts).
     """
 
-    for param in ctx.command.params:
-        parameter_source = click.get_current_context().get_parameter_source(param.name)
-        if parameter_source == ParameterSource.COMMANDLINE:
-            ctx.obj.setdefault('find_duplicates', {}).update({param.name: ctx.params[param.name]})
+    collect_user_params(ctx, 'find_duplicates')
 
     module = setup_module('find_duplicates', ctx)
     module.main(query)
@@ -351,10 +343,7 @@ def click_create_relations(ctx, query, threshold):
     QUERY is a szurubooru query you want to create relations for.
     """
 
-    for param in ctx.command.params:
-        parameter_source = click.get_current_context().get_parameter_source(param.name)
-        if parameter_source == ParameterSource.COMMANDLINE:
-            ctx.obj['create_relations'] = {param.name: ctx.params[param.name]}
+    collect_user_params(ctx, 'create_relations')
 
     module = setup_module('create_relations', ctx)
     module.main(query)
@@ -406,10 +395,7 @@ def click_create_tags(ctx, tag_file, query, limit, min_post_count, overwrite):
     Create tags based on a tag file or query
     """
 
-    for param in ctx.command.params:
-        parameter_source = click.get_current_context().get_parameter_source(param.name)
-        if parameter_source == ParameterSource.COMMANDLINE:
-            ctx.obj.setdefault('create_tags', {}).update({param.name: ctx.params[param.name]})
+    collect_user_params(ctx, 'create_tags')
 
     module = setup_module('create_tags', ctx)
     module.main(tag_file)
@@ -512,10 +498,7 @@ def click_import_from_booru(
     QUERY is a query you want to search for.
     """
 
-    for param in ctx.command.params:
-        parameter_source = click.get_current_context().get_parameter_source(param.name)
-        if parameter_source == ParameterSource.COMMANDLINE:
-            ctx.obj.setdefault('import_from_booru', {}).update({param.name: ctx.params[param.name]})
+    collect_user_params(ctx, 'import_from_booru')
 
     module = setup_module('import_from_booru', ctx)
     module.main(booru, query)
@@ -628,10 +611,7 @@ def click_import_from_url(
         click.echo('\nYou need to specify either URLs or --input-file!')
         exit(1)
 
-    for param in ctx.command.params:
-        parameter_source = click.get_current_context().get_parameter_source(param.name)
-        if parameter_source == ParameterSource.COMMANDLINE:
-            ctx.obj.setdefault('import_from_url', {}).update({param.name: ctx.params[param.name]})
+    collect_user_params(ctx, 'import_from_url')
 
     module = setup_module('import_from_url', ctx)
 
@@ -715,10 +695,7 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_impl
         click.echo('\nYou need to specify either --add-tags, --remove-tags, --source or --update-implications as an argument!')
         exit(1)
 
-    for param in ctx.command.params:
-        parameter_source = click.get_current_context().get_parameter_source(param.name)
-        if parameter_source == ParameterSource.COMMANDLINE:
-            ctx.obj.setdefault('tag_posts', {}).update({param.name: ctx.params[param.name]})
+    collect_user_params(ctx, 'tag_posts')
 
     module = setup_module('tag_posts', ctx)
 
@@ -806,10 +783,7 @@ def click_upload_media(
     SRC_PATH is the path to the media files you want to upload.
     """
 
-    for param in ctx.command.params:
-        parameter_source = click.get_current_context().get_parameter_source(param.name)
-        if parameter_source == ParameterSource.COMMANDLINE:
-            ctx.obj.setdefault('upload_media', {}).update({param.name: ctx.params[param.name]})
+    collect_user_params(ctx, 'upload_media')
 
     upload_media_cli = ctx.obj.get('upload_media', {})
     if isinstance(upload_media_cli.get('tags'), str):

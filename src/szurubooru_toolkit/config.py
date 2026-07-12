@@ -1,3 +1,4 @@
+import copy
 import os
 import re
 import tomllib
@@ -7,12 +8,14 @@ from pathlib import Path
 from loguru import logger
 
 
+# 'hide_progress' is deliberately absent: scripts try config.globals['hide_progress']
+# first and fall back to their own section's value on KeyError, so a global default
+# would silently override every per-section hide_progress setting.
 GLOBALS_DEFAULTS = {
     'url': None,
     'username': None,
     'api_token': None,
     'public': False,
-    'hide_progress': False,
 }
 
 CREDENTIALS_DEFAULTS = {
@@ -95,9 +98,7 @@ IMPORT_FROM_URL_DEFAULTS = {
     'md5_search': False,
     'wd_tagger': False,
     'hide_progress': False,
-    'md5_search': False,
     'range': ':100',
-    'saucenao': False,
     'tmp_path': './tmp/gallery-dl',
     'use_twitter_artist': False,
     'update_tags_if_exists': False,
@@ -152,21 +153,23 @@ class Config:
             None
         """
 
-        self.globals = GLOBALS_DEFAULTS
-        self.logging = LOGGING_DEFAULTS
-        self.auto_tagger = AUTO_TAGGER_DEFAULTS
-        self.create_tags = CREATE_TAGS_DEFAULTS
-        self.create_relations = CREATE_RELATIONS_DEFAULTS
-        self.fix_relations = FIX_RELATIONS_DEFAULTS
-        self.delete_posts = DELETE_POSTS_DEFAULTS
-        self.find_duplicates = FIND_DUPLICATES_DEFAULTS
-        self.preview_tags = PREVIEW_TAGS_DEFAULTS
-        self.import_from_booru = IMPORT_FROM_BOORU_DEFAULTS
-        self.import_from_url = IMPORT_FROM_URL_DEFAULTS
-        self.reset_posts = RESET_POSTS_DEFAULTS
-        self.tag_posts = TAG_POSTS_DEFAULTS
-        self.upload_media = UPLOAD_MEDIA_DEFAULTS
-        self.credentials = CREDENTIALS_DEFAULTS
+        # Deep copies so config file values and runtime overrides never mutate the
+        # module-level default dicts (and with them every other Config instance)
+        self.globals = copy.deepcopy(GLOBALS_DEFAULTS)
+        self.logging = copy.deepcopy(LOGGING_DEFAULTS)
+        self.auto_tagger = copy.deepcopy(AUTO_TAGGER_DEFAULTS)
+        self.create_tags = copy.deepcopy(CREATE_TAGS_DEFAULTS)
+        self.create_relations = copy.deepcopy(CREATE_RELATIONS_DEFAULTS)
+        self.fix_relations = copy.deepcopy(FIX_RELATIONS_DEFAULTS)
+        self.delete_posts = copy.deepcopy(DELETE_POSTS_DEFAULTS)
+        self.find_duplicates = copy.deepcopy(FIND_DUPLICATES_DEFAULTS)
+        self.preview_tags = copy.deepcopy(PREVIEW_TAGS_DEFAULTS)
+        self.import_from_booru = copy.deepcopy(IMPORT_FROM_BOORU_DEFAULTS)
+        self.import_from_url = copy.deepcopy(IMPORT_FROM_URL_DEFAULTS)
+        self.reset_posts = copy.deepcopy(RESET_POSTS_DEFAULTS)
+        self.tag_posts = copy.deepcopy(TAG_POSTS_DEFAULTS)
+        self.upload_media = copy.deepcopy(UPLOAD_MEDIA_DEFAULTS)
+        self.credentials = copy.deepcopy(CREDENTIALS_DEFAULTS)
 
         # Define default locations for the config file
         if os.name == 'nt':  # Windows
@@ -400,5 +403,5 @@ class Config:
         for option in upload_media_options:
             try:
                 self.upload_media[option] = config_src_obj[option]
-            except AttributeError:
+            except KeyError:
                 pass

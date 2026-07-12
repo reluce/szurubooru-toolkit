@@ -7,13 +7,13 @@ from szurubooru_toolkit.utils import run_concurrently
 
 
 @logger.catch
-def main(query: str, except_ids: str) -> None:
+def main(query: str, except_ids: list = []) -> None:
     """
     Retrieve the posts from input query and delete them in szurubooru.
 
     Args:
         query (str): The query to use for retrieving posts.
-        except_ids (str): A comma-separated string of post IDs that should not be deleted.
+        except_ids (list, optional): A list of post IDs that should not be deleted. Defaults to [].
 
     Returns:
         None
@@ -26,10 +26,6 @@ def main(query: str, except_ids: str) -> None:
             hide_progress = config.delete_posts['hide_progress']
 
         logger.debug(f'query = {query}')
-
-        if except_ids:
-            except_ids = except_ids.replace(' ', '').split(',')
-            logger.debug(f'except_ids = {except_ids}')
 
         posts = szuru.get_posts(query, pagination=False, videos=True)
 

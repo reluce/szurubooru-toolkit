@@ -12,7 +12,6 @@ from functools import total_ordering
 from io import BytesIO
 from pathlib import Path
 from time import sleep
-from urllib.error import ContentTooShortError
 
 import httpx
 from httpx import HTTPStatusError
@@ -34,21 +33,7 @@ total_skipped = 0
 _statistics_lock = threading.Lock()
 
 
-# Save the original showwarning function
-_original_showwarning = warnings.showwarning
-
-
-# Define a filter function to ignore the DecompressionBombWarning
-def ignore_decompression_bomb_warning(message, category, filename, lineno, file=None, line=None):
-    if isinstance(message, Image.DecompressionBombWarning):
-        return
-    else:
-        return _original_showwarning(message, category, filename, lineno, file, line)
-
-
-# Set the filter to ignore the warning
 warnings.filterwarnings('ignore', category=Image.DecompressionBombWarning)
-warnings.showwarning = ignore_decompression_bomb_warning
 warnings.filterwarnings('ignore', '.*Palette images with Transparency.*', module='PIL')
 
 
@@ -319,18 +304,18 @@ def audit_rating(*ratings: str) -> str:
 
 
 def sanitize_tags(tags: list) -> list:
-    """Collect tags, remove duplicates and replace whitespaces with underscores.
+    """Replace whitespaces in tags with underscores.
 
-    Retuns an empty list if tags is an empty list.
+    Returns an empty list if tags is an empty list.
 
     Args:
         tags (list): A list of tags.
 
     Returns:
-        list: A list of sanitized tag.
+        list: A list of sanitized tags.
 
     Example:
-        sanitize_tags(['tag1', 'tag 2', 'tag1']) -> ['tag1', 'tag_2']
+        sanitize_tags(['tag1', 'tag 2']) -> ['tag1', 'tag_2']
     """
 
     tags_sanitized = []
@@ -395,39 +380,32 @@ def get_md5sum(file: bytes) -> str:
     return md5sum
 
 
-def download_media(content_url: str, md5: str = None) -> bytes:
+def download_media(content_url: str, md5: str = None) -> bytes | None:
     """
-    Downloads media from the specified content URL and verifies its MD5 checksum.
+    Downloads media from the specified content URL, verifying its MD5 checksum.
 
-    This function downloads media from the specified content URL and verifies its MD5 checksum. It tries to download
-    the media twice. If the download fails due to a ContentTooShortError, it tries to download the media again. If the
-    download fails due to any other exception, it logs a warning and continues. If an MD5 checksum is provided, it
-    calculates the MD5 checksum of the downloaded media and compares it to the provided checksum. If the checksums
-    match, it breaks out of the loop. If no MD5 checksum is provided, it breaks out of the loop after the first
-    download attempt.
+    Tries up to two times. If an MD5 checksum is provided and the downloaded content
+    doesn't match it, the download is retried once; the last downloaded content is
+    returned even on a checksum mismatch.
 
     Args:
         content_url (str): The URL from which to download the media.
         md5 (str, optional): The MD5 checksum to verify. Defaults to None.
 
     Returns:
-        bytes: The downloaded media.
+        bytes | None: The downloaded media, or None if both attempts failed.
     """
 
-    for _ in range(1, 3):
+    file = None
+
+    for _ in range(2):
         try:
-            file: bytes = httpx.get(content_url, follow_redirects=True, timeout=30).content
-        except ContentTooShortError:
-            download_media(content_url, md5)
+            file = httpx.get(content_url, follow_redirects=True, timeout=30).content
         except Exception as e:
             logger.warning(f'Could not download post from {content_url}: {e}')
+            continue
 
-        if md5:
-            md5sum = get_md5sum(file)
-
-            if md5 == md5sum:
-                break
-        else:
+        if not md5 or get_md5sum(file) == md5:
             break
 
     return file

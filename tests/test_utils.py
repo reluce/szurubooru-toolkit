@@ -127,3 +127,31 @@ def test_shrink_img_threshold_shrinks_only_above():
 
     untouched = shrink_img(original, shrink_threshold=1000000, shrink_dimensions=(100, 100))
     assert untouched == original
+
+
+def test_download_media_returns_none_when_all_attempts_fail(monkeypatch):
+    attempts = []
+
+    def failing_get(*args, **kwargs):
+        attempts.append(1)
+        raise OSError('connection refused')
+
+    monkeypatch.setattr(utils.httpx, 'get', failing_get)
+
+    assert utils.download_media('http://szuru.local/data/1.jpg', md5='abc') is None
+    assert len(attempts) == 2
+
+
+def test_download_media_retries_once_on_md5_mismatch(monkeypatch):
+    responses = [b'corrupt', b'intact']
+
+    class FakeResponse:
+        def __init__(self, content):
+            self.content = content
+
+    monkeypatch.setattr(utils.httpx, 'get', lambda *a, **k: FakeResponse(responses.pop(0)))
+
+    file = utils.download_media('http://szuru.local/data/1.jpg', md5=get_md5sum(b'intact'))
+
+    assert file == b'intact'
+    assert responses == []

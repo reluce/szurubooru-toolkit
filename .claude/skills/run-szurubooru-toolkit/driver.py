@@ -138,8 +138,18 @@ def smoke() -> int:
     assert 'tagme' in puts[0][2]['tags'], 'append mode should keep existing tags'
     assert 'Finished tagging' in result.stderr
 
+    # 'smoke' matches no id: token, so the fake booru returns all seeded posts
+    result = run_cli(url, ['delete-posts', '--except-ids', '2,3', 'smoke'])
+    print(result.stdout, end='')
+    print(result.stderr, end='', file=sys.stderr)
+
+    deleted = sorted(m[1].rsplit('/', 1)[1] for m in FakeSzurubooru.mutations if m[0] == 'DELETE')
+    assert result.returncode == 0, f'CLI exited {result.returncode}'
+    assert 'Finished deleting' in result.stderr
+    assert deleted == ['1'], f'expected only post 1 deleted (2 and 3 excepted), got {deleted}'
+
     server.shutdown()
-    print('[driver] SMOKE PASS: tag-posts added smoke_tag to post 1 via PUT /api/post/1')
+    print('[driver] SMOKE PASS: tag-posts PUT verified, delete-posts honored --except-ids')
     return 0
 
 

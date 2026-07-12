@@ -4,7 +4,6 @@ import os
 import shutil
 from glob import glob
 from pathlib import Path
-from types import NoneType
 
 import httpx
 from loguru import logger
@@ -13,13 +12,13 @@ from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.relations import RelationsBatch
 from szurubooru_toolkit.relations import dhash
-from szurubooru_toolkit.utils import run_concurrently
 from szurubooru_toolkit.scripts import auto_tagger
 from szurubooru_toolkit.scripts import tag_posts
 from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.szurubooru import Szurubooru
 from szurubooru_toolkit.szurubooru import SzurubooruError
 from szurubooru_toolkit.utils import get_md5sum
+from szurubooru_toolkit.utils import run_concurrently
 from szurubooru_toolkit.utils import shrink_img
 
 
@@ -84,24 +83,15 @@ def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
         image_token (str): An image token from szurubooru.
 
     Returns:
-        tuple: A tuple containing the metadata of the exact match post and a list of similar posts, if any.
-        None: If no exact match or similar posts are found.
-
-    Raises:
-        Exception: If the response contains a 'description' field, an exception is raised with the description as the
-                   error message.
+        tuple: The exact match post (or None), the list of similar posts, and an error flag.
     """
 
     try:
         response = szuru.reverse_search(image_token)
-        exact_post = [response['exactPost']]
-        similar_posts = response['similarPosts']
-        errors = False
-        return exact_post, similar_posts, errors
+        return response['exactPost'], response['similarPosts'], False
     except (SzurubooruError, httpx.HTTPError) as e:
         logger.warning(f'An error occured during the similarity check: {e}. Skipping post...')
-        errors = True
-        return [], [], errors
+        return None, [], True
 
 
 def update_tags(post: Post, metadata: dict, saucenao_limit_reached: bool, original_md5: str, file_to_upload: bytes) -> bool:
@@ -318,23 +308,27 @@ def upload_post(
         updated_file_ext = file_ext
 
     post.token = get_media_token(szuru, post.media, updated_file_ext)
-    post.exact_post, similar_posts, errors = check_similarity(szuru, post.token)
+    exact_post, similar_posts, errors = check_similarity(szuru, post.token)
 
     if errors:
         return False, False  # Assume the saucenao_limit_reached is False
 
     threshold = 1 - float(config.upload_media['max_similarity'])
 
-    for entry in similar_posts:
-        if entry['distance'] < threshold and not post.exact_post:
-            logger.debug(
-                f'File "{file_path} is too similar to post {entry["post"]["id"]} ({100 - entry["distance"]}%)',
-            )
-            # Append posts based on similarity threshold
-            # If --update-tags-if-exists is enabled, we need to update the tags of the post
-            post.exact_post.append(entry)
+    # Existing posts this file duplicates: a byte-identical post, or posts closer
+    # than max_similarity. Those don't get uploaded again; with
+    # --update-tags-if-exists their tags get updated instead.
+    existing_posts = [exact_post] if exact_post else []
 
-    if isinstance(post.exact_post[0], NoneType):
+    if not exact_post:
+        for entry in similar_posts:
+            if entry['distance'] < threshold:
+                logger.debug(
+                    f'File "{file_path}" is too similar to post {entry["post"]["id"]} ({(1 - entry["distance"]) * 100:.1f}%)',
+                )
+                existing_posts.append(entry)
+
+    if not existing_posts:
         if not metadata:
             post.tags = config.upload_media['tags']
             post.safety = None
@@ -377,7 +371,7 @@ def upload_post(
     else:
         logger.debug('File is already uploaded')
         if config.import_from_url['update_tags_if_exists'] and metadata:
-            for entry in post.exact_post:
+            for entry in existing_posts:
                 saucenao_limit_reached = update_tags(entry, metadata, saucenao_limit_reached, original_md5, post.media)
 
     return True, saucenao_limit_reached
@@ -432,7 +426,7 @@ def main(
                 try:
                     hide_progress = config.globals['hide_progress']
                 except KeyError:
-                    hide_progress = config.tag_posts['hide_progress']
+                    hide_progress = config.upload_media['hide_progress']
 
                 batch = RelationsBatch()
 

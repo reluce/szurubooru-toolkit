@@ -21,6 +21,7 @@ from szurubooru_toolkit.utils import search_boorus
 from szurubooru_toolkit.utils import shrink_img
 from szurubooru_toolkit.utils import statistics
 
+
 wd_tagger = None
 _wd_tagger_lock = threading.Lock()
 
@@ -209,7 +210,8 @@ def process_post(  # noqa C901
         md5_results = search_boorus('all', 'md5:' + (md5 or post.md5), 1, 0, credentials=config.credentials)
 
         if md5_results:
-            tags_by_md5, sources, post.rating = prepare_post(md5_results, config)
+            tags_by_md5, sources, rating = prepare_post(md5_results, config)
+            post.safety = rating or post.safety
             post.source = collect_sources(*sources, *post.source.splitlines())
         else:
             tags_by_md5 = []
@@ -250,7 +252,8 @@ def process_post(  # noqa C901
             limit_event.set()
 
         if sauce_results:
-            tags_by_sauce, sources, post.rating = prepare_post(sauce_results, config)
+            tags_by_sauce, sources, rating = prepare_post(sauce_results, config)
+            post.safety = rating or post.safety
             post.source = collect_sources(*sources, *post.source.splitlines())
         else:
             tags_by_sauce = []
@@ -303,15 +306,14 @@ def process_post(  # noqa C901
     else:
         tags = list(set().union(post.tags, tags_by_md5, tags_by_sauce, tags_by_wd_tagger))
 
-    post.tags = [tag for tag in tags if tag is not None]
-    sanitize_tags(post.tags)
+    post.tags = sanitize_tags([tag for tag in tags if tag is not None])
 
     if remove_tags:
-        [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]
+        post.tags = [tag for tag in post.tags if tag not in remove_tags]
 
     # If any substantive tags were collected, remove the tagme tag
     if tags_by_md5 or tags_by_sauce or substantive_wd_tags:
-        [post.tags.remove(tag) for tag in post.tags if tag == 'tagme']
+        post.tags = [tag for tag in post.tags if tag != 'tagme']
     else:
         post.tags.append('tagme')
 
