@@ -751,6 +751,11 @@ def get_site(url: str) -> str:
         'pixiv',
     }
 
+    # gallery-dl reports category 'exhentai' for both e-hentai.org and
+    # exhentai.org; the toolkit handles both under 'e-hentai'.
+    if 'exhentai' in url:
+        return 'e-hentai'
+
     for site in sites:
         if site in url:
             return site

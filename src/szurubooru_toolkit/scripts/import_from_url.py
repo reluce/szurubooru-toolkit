@@ -46,6 +46,11 @@ def set_tags(metadata: dict) -> list:
     artist = ''
     allow_tags_for_sites = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere', 'fanbox', 'pixiv', 'twitter']
 
+    # e-hentai tags are namespaced ('artist:name', 'male:...') and don't get imported
+    # as post tags, but the artist is extracted from them below — so grab them before
+    # they get cleared.
+    raw_tags = metadata.get('tags') or []
+
     if metadata['site'] in allow_tags_for_sites:
         try:
             if metadata['site'] in ['fanbox', 'pixiv']:
@@ -65,7 +70,7 @@ def set_tags(metadata: dict) -> list:
 
     if metadata['site'] in ['fanbox', 'pixiv', 'e-hentai']:
         if metadata['site'] == 'e-hentai':
-            for tag in metadata['tags']:
+            for tag in raw_tags:
                 if tag.startswith('artist'):
                     index = tag.find(':')
                     if index != -1:

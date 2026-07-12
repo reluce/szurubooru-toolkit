@@ -155,3 +155,23 @@ def test_download_media_retries_once_on_md5_mismatch(monkeypatch):
 
     assert file == b'intact'
     assert responses == []
+
+
+@pytest.mark.parametrize(
+    'url,expected',
+    [
+        ('exhentai', 'e-hentai'),  # gallery-dl category, both domains
+        ('https://exhentai.org/g/1234/abcdef1234/', 'e-hentai'),
+        ('https://e-hentai.org/g/1234/abcdef1234/', 'e-hentai'),
+        ('danbooru', 'danbooru'),
+        ('https://some.unknown.site/post/1', None),
+    ],
+)
+def test_get_site(url, expected):
+    assert utils.get_site(url) == expected
+
+
+def test_generate_src_e_hentai():
+    metadata = {'site': 'e-hentai', 'gid': 4046994, 'token': 'd23b006a6f'}
+
+    assert utils.generate_src(metadata) == 'https://e-hentai.org/g/4046994/d23b006a6f'
