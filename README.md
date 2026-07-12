@@ -18,8 +18,10 @@ Usage: szuru-toolkit [OPTIONS] COMMAND [ARGS]...
 Options:
   --url TEXT                      Base URL to your szurubooru instance.
   --username TEXT                 Username which will be used to authenticate with the szurubooru API.
-  --api-token TEXT                API token for the user which will be used to authenticate with the szurubooru API.
-  --public                        If your szurubooru instance is reachable from the internet (default: False).
+  --api-token TEXT                API token for the user which will be used to authenticate with the
+                                  szurubooru API.
+  --public                        If your szurubooru instance is reachable from the internet (default:
+                                  False).
   --log-enabled                   Create a log file (default: False).
   --log-colorized                 Colorize the log output (default: True).
   --log-file TEXT                 Output file for the log (default: szurubooru_toolkit.log)
@@ -33,9 +35,11 @@ Commands:
   create-relations   Create relations between character and parody tag categories
   create-tags        Create tags based on a tag file or query
   delete-posts       Delete posts
+  find-duplicates    Find visually duplicate posts via perceptual hashing
   fix-relations      Complete post relation sets via transitive closure
   import-from-booru  Download and tag posts from various Boorus
   import-from-url    Download images from URLS or file containing URLs
+  preview-tags       Show WD tagger scores near the thresholds without tagging anything
   reset-posts        Remove tags and sources
   tag-posts          Tag posts manually
   upload-media       Upload media files
@@ -147,9 +151,9 @@ Following commands are currently available:
 * `delete-posts`: Delete posts
 * `find-duplicates`: Find visually duplicate posts via perceptual hashing
 * `fix-relations`: Complete post relation sets so every member of a set references all other members
-* `preview-tags`: Show WD tagger scores near the thresholds for a file or post without tagging anything
 * `import-from-booru`: Download and tag posts from various Boorus
 * `import-from-url`: Batch importing of URLs based on [gallery-dl](https://github.com/mikf/gallery-dl)
+* `preview-tags`: Show WD tagger scores near the thresholds for a file or post without tagging anything
 * `reset-posts`: Remove tags and sources
 * `tag-posts`: Tag posts manually
 * `upload-media`: Upload media files
@@ -157,7 +161,7 @@ Following commands are currently available:
 
 Check `szuru-toolkit -h` or `szuru-toolkit COMMAND -h` for a detailed description of supported options.
 
-If you cloned the repo from GitHub, prefix the above scripts with `uv run`, e.g. `uv run szuru-toolkit auto-tagger "date:today"`. Note that your current working directory has to be the the root of the GitHub project.
+If you cloned the repo from GitHub, prefix the above scripts with `uv run`, e.g. `uv run szuru-toolkit auto-tagger "date:today"`. Note that your current working directory has to be the root of the GitHub project.
 
 If your query starts with a dash (`-`), for example to negate a tag, you have to separate the query from the command with two dashes (This doesn't work with uv run):
 
@@ -170,7 +174,7 @@ __Examples__
 * `szuru-toolkit create-relations hitori_bocchi`
   * Will create the implication _bocchi_the_rock_ for tag _hitori_bocchi_ if other posts are found with query _hitori_bocchi_ containing _bocchi_the_rock_ as the parody (tag has to be of category _series_ or _parody_)
   * Will also add _hitori_bocchi_ as a suggestion to the parody tag _bocchi_the_rock_
-  * These relations will only get generated if at least X posts are found containing the tags _bocchi_the_rock_ and _hitori_bocchi_. Control X with `threshold` under `[create-relations]` in `config.toml`.
+  * These relations will only get generated if at least X posts are found containing the tags _bocchi_the_rock_ and _hitori_bocchi_. Control X with `threshold` under `[create_relations]` in `config.toml`.
 
 ### :label: create-tags
 If no `tag_file` is specified, the script will download the most recent 100 tags from Danbooru which have been used at least ten times.
@@ -197,14 +201,16 @@ This scripts imports posts with their tags from the URL passed to this script.
 In the background, it simply calls the [gallery-dl](https://github.com/mikf/gallery-dl) script and parses its output.
 Alternatively, an input file with multiple URLs can be specified.
 
-It's recommended to use the `--cookie` flag for authentication, check https://github.com/mikf/gallery-dl#cookies for details.
+It's recommended to use the `--cookies` flag for authentication, check https://github.com/mikf/gallery-dl#cookies for details.
 
-__Usage__
+Posts imported from e-hentai/exhentai get the gallery URL set as their source and the `artist:` tag from the gallery applied; the namespaced e-hentai tags themselves are not imported.
+
 __Examples__
 * `szuru-toolkit import-from-url "https://danbooru.donmai.us/posts?tags=foo"`
 * `szuru-toolkit import-from-url "https://chan.sankakucomplex.com/?tags=foo"`
 * `szuru-toolkit import-from-url "https://beta.sankakucomplex.com/post/show/<id>"`
-* `szuru-toolkit import-from-url --cookies "~/cookies.txt" --range ":100" ""https://twitter.com/<USERNAME>/likes"`
+* `szuru-toolkit import-from-url "https://e-hentai.org/g/<gid>/<token>/"`
+* `szuru-toolkit import-from-url --cookies "~/cookies.txt" --range ":100" "https://twitter.com/<USERNAME>/likes"`
 * `szuru-toolkit import-from-url --input-file urls.txt "https://danbooru.donmai.us/posts?tags=foo" "https://beta.sankakucomplex.com/post/show/<id>"`
 
 ## :information_source:	Image credit
