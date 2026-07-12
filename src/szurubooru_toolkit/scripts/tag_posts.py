@@ -1,9 +1,11 @@
 from loguru import logger
-from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
+from szurubooru_toolkit.szurubooru import SzurubooruError
 from szurubooru_toolkit.utils import collect_sources
+from szurubooru_toolkit.utils import get_cached_implications
+from szurubooru_toolkit.utils import run_concurrently
 
 
 @logger.catch
@@ -43,14 +45,7 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
         if not config.tag_posts['silence_info']:
             logger.info(f'Found {total_posts} posts. Start tagging...')
 
-        for post in tqdm(
-            posts,
-            ncols=80,
-            position=0,
-            leave=False,
-            total=int(total_posts),
-            disable=hide_progress,
-        ):
+        def worker(post) -> None:
             if mode == 'append':
                 if add_tags:
                     post.tags = list(set().union(post.tags, add_tags))
@@ -67,16 +62,20 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
 
             if update_implications:
                 for tag in post.tags:
-                    szuru_tag = szuru.api.getTag(tag)
-                    for implication in szuru_tag.implications:
-                        szuru_implication = szuru.api.getTag(implication)
-                        if szuru_implication not in post.tags:
-                            post.tags.append(szuru_implication.primary_name)
+                    for implication in get_cached_implications(tag):
+                        if implication not in post.tags:
+                            post.tags.append(implication)
 
             szuru.update_post(post)
 
+        workers = max(1, int(config.tag_posts['workers']))
+        run_concurrently(posts, worker, workers, int(total_posts), hide_progress)
+
         if not config.tag_posts['silence_info']:
             logger.success('Finished tagging!')
+    except SzurubooruError as e:
+        logger.critical(f'Could not process your query: {e}')
+        exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
         exit(1)

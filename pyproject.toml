@@ -20,23 +20,14 @@ authors = [
     {name = "reluce", email = "reluce@fkosquad.moe"},
 ]
 license = "GPL-3.0-only"
-requires-python = "<3.12,>=3.11"
+requires-python = ">=3.11"
 dependencies = [
-    "Pillow<10.0.0,>=9.5.0",
-    "Pybooru<5.0.0,>=4.2.2",
-    "pysaucenao<2.0.0,>=1.6.1",
-    "requests<3.0.0,>=2.25.1",
+    "Pillow<12.0.0,>=9.5.0",
+    "httpx<1.0.0,>=0.24.0",
+    "click<9.0.0,>=8.0.0",
     "tqdm<5.0.0,>=4.65.0",
-    "numpy<2.0.0,>=1.23.5",
-    "pyszuru<1.0.0,>=0.3.1",
     "loguru<1.0.0,>=0.7.0",
-    "validators>=0.20.0,<1.0.0",
     "gallery-dl<2.0.0,>=1.26.5",
-    "cunnypy<3.0.0,>=2.0.0",
-    "tldextract<4.0.0,>=3.4.4",
-    "flask<4.0.0,>=3.0.0",
-    "pixivpy3<4.0.0,>=3.7.4",
-    "tensorflow~=2.15.0",
 ]
 name = "szurubooru-toolkit"
 version = "1.2.2"
@@ -47,7 +38,17 @@ keywords = [
     "szuru",
     "booru",
     "saucenao",
-    "deepbooru",
+    "wd-tagger",
+]
+
+[project.optional-dependencies]
+wd-tagger = [
+    "onnxruntime<2.0.0,>=1.19.0",
+    "numpy<3.0.0,>=1.23.5",
+    "huggingface-hub<1.0.0,>=0.23.0",
+]
+pixiv = [
+    "pixivpy3<4.0.0,>=3.7.4",
 ]
 
 [project.urls]
@@ -56,6 +57,7 @@ documentation = "https://github.com/reluce/szurubooru-toolkit"
 
 [project.scripts]
 szuru-toolkit = "szurubooru_toolkit.scripts.szuru_toolkit:cli"
+szuructl = "szurubooru_toolkit.scripts.szuru_toolkit:cli"
 
 [dependency-groups]
 dev = [
@@ -63,4 +65,12 @@ dev = [
     "flake8<7.0.0,>=6.0.0",
     "isort<6.0.0,>=5.10.1",
     "pre-commit<4.0.0,>=3.0.0",
+    "pytest<9.0.0,>=8.0.0",
+    # For the WD tagger tests: run and build small ONNX models
+    "onnxruntime<2.0.0,>=1.19.0",
+    "onnx<2.0.0,>=1.16.0",
+    "numpy<3.0.0,>=1.23.5",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

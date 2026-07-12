@@ -1,51 +1,157 @@
 from __future__ import annotations
 
-import json
-import urllib
+import urllib.parse
 from base64 import b64encode
+from concurrent.futures import ThreadPoolExecutor
 from math import ceil
 from typing import Generator
 
-import pyszuru
-import requests
+import httpx
 from loguru import logger
 
 
-class Szurubooru:
-    """Handles everything related to szurubooru.
+# Only the post fields parse_post consumes; slims down large search responses
+POST_FIELDS = 'id,source,contentUrl,version,relations,checksumMD5,type,safety,tags'
 
-    Where speed is of concern, use the `requests` module to interact with the API directly,
-    otherwise use the `pyszuru` module where it's more convenient.
+# Oxibooru spells the MD5 checksum *selector* checksumMd5 (the response key stays
+# checksumMD5); the client falls back to this automatically when the server
+# rejects the upstream spelling.
+POST_FIELDS_OXIBOORU = POST_FIELDS.replace('checksumMD5', 'checksumMd5')
+
+# How many result pages to fetch concurrently on large queries
+PAGE_FETCH_WORKERS = 8
+
+
+_TAG_EXISTS_DESCRIPTIONS = (
+    'used by another tag',
+    'duplicate key value',
+    'tag_name already exists',
+)
+
+
+def _is_invalid_fields_error(error: 'SzurubooruApiError') -> bool:
+    return error.name == 'FailedToDeserializeQueryString' or 'invalid field' in error.description
+
+
+def _is_tag_exists_error(response_json: dict) -> bool:
+    if response_json.get('name') == 'TagAlreadyExistsError':
+        return True
+    description = response_json.get('description', '')
+    return any(phrase in description for phrase in _TAG_EXISTS_DESCRIPTIONS)
+
+
+class SzurubooruError(Exception):
+    """Base error class which inherits from Exception."""
+
+    pass
+
+
+class SzurubooruApiError(SzurubooruError):
+    """Raise if the szurubooru API returned an error response."""
+
+    def __init__(self, name: str, description: str) -> None:
+        self.name = name
+        self.description = description
+        super().__init__(f'{name}: {description}')
+
+
+class TagNotFoundError(SzurubooruApiError):
+    """Raise if the requested tag does not exist."""
+
+    pass
+
+
+class TagExistsError(SzurubooruError):
+    """Raise if the tag already exists."""
+
+    pass
+
+
+class UnknownTokenError(SzurubooruError):
+    """Raise if the search token is not valid."""
+
+    pass
+
+
+class Tag:
+    """Represents a szurubooru tag resource.
+
+    Tags embedded in other resources (posts, implications, suggestions) are "micro tags"
+    which only carry names and category. Full tags additionally carry version,
+    implications and suggestions and can be pushed back with `Szurubooru.update_tag`.
     """
 
-    def __init__(self, szuru_url: str, szuru_user: str, szuru_token: str) -> None:
-        """
-        Initializes the `szurubooru` and `pyszuru` object with our credentials.
+    def __init__(
+        self,
+        names: list[str],
+        category: str = 'default',
+        version: int = None,
+        implications: list[Tag] = None,
+        suggestions: list[Tag] = None,
+    ) -> None:
+        self.names = names
+        self.category = category
+        self.version = version
+        self.implications = implications if implications is not None else []
+        self.suggestions = suggestions if suggestions is not None else []
 
-        This method initializes a szurubooru object and sets up the client. It uses the provided szuru_url, szuru_user,
-        and szuru_token to authenticate with the Szurubooru API. It also sets up the headers for the requests and
-        initializes the pyszuru API object.
+    @classmethod
+    def from_json(cls, data: dict) -> Tag:
+        return cls(
+            names=data['names'],
+            category=data.get('category', 'default'),
+            version=data.get('version'),
+            implications=[cls.from_json(tag) for tag in data.get('implications', [])],
+            suggestions=[cls.from_json(tag) for tag in data.get('suggestions', [])],
+        )
+
+    @property
+    def primary_name(self) -> str:
+        return self.names[0]
+
+    def __str__(self) -> str:
+        return self.primary_name
+
+    def __repr__(self) -> str:
+        return f'Tag(names: {self.names}, category: {self.category})'
+
+
+class Szurubooru:
+    """Handles everything related to the szurubooru API.
+
+    Single consolidated client on top of one pooled httpx.Client. Compatible with
+    upstream szurubooru and the oxibooru fork.
+    """
+
+    def __init__(self, szuru_url: str, szuru_user: str, szuru_token: str, transport: httpx.BaseTransport = None) -> None:
+        """
+        Initializes the szurubooru client with our credentials.
 
         Args:
             szuru_url (str): The base URL of the szurubooru instance.
             szuru_user (str): The szurubooru user which interacts with the API.
             szuru_token (str): The API token from `szuru_user`.
-
-        Returns:
-            None
+            transport (httpx.BaseTransport, optional): Custom transport, used for testing.
         """
 
         logger.debug(f'szuru_user = {szuru_user}')
-        self.szuru_url = szuru_url
+        self.szuru_url = szuru_url.rstrip('/')
         logger.debug(f'szuru_url = {self.szuru_url}')
-        self.szuru_api_url = szuru_url + '/api'
+        self.szuru_api_url = self.szuru_url + '/api'
         logger.debug(f'szuru_api_url = {self.szuru_api_url}')
 
         token = self.encode_auth_headers(szuru_user, szuru_token)
-        self.headers = {'Accept': 'application/json', 'Authorization': 'Token ' + token, 'Content-Type': 'application/json'}
+        self.headers = {'Accept': 'application/json', 'Authorization': 'Token ' + token}
 
-        # Use the api object to interact with pyszuru module
-        self.api = pyszuru.API(base_url=szuru_url, username=szuru_user, token=szuru_token)
+        self.client = httpx.Client(
+            base_url=self.szuru_api_url,
+            headers=self.headers,
+            timeout=None,
+            transport=transport,
+        )
+
+        # Field selection the server accepts; negotiated on first use (None = full resources)
+        self._post_fields = POST_FIELDS
 
         self.allowed_tokens = [
             'ar',
@@ -100,11 +206,68 @@ class Szurubooru:
             'uploader',
             'width',
             'sort',
-            'liked',
-            'disliked',
-            'fav',
             'tumbleweed',
         ]
+
+    def _request(self, method: str, path: str, **kwargs) -> dict:
+        """
+        Sends a request to the szurubooru API and returns the parsed JSON response.
+
+        Raises a typed SzurubooruError subclass if the API responded with an error
+        resource ({name, title, description}) or a non-2xx status.
+        """
+
+        response = self.client.request(method, path, **kwargs)
+
+        try:
+            data = response.json()
+        except ValueError:
+            data = None
+
+        if isinstance(data, dict) and isinstance(data.get('name'), str) and 'description' in data and data['name'].endswith('Error'):
+            name = data['name']
+            description = data['description']
+            if name == 'TagNotFoundError':
+                raise TagNotFoundError(name, description)
+            if name == 'SearchError' or 'Unknown named token' in description:
+                raise UnknownTokenError(description)
+            raise SzurubooruApiError(name, description)
+
+        if response.is_error:
+            raise SzurubooruApiError(f'HTTP{response.status_code}', response.text)
+
+        return data
+
+    def _fetch_post_resource(self, path: str, params: dict = None) -> dict:
+        """
+        Sends a GET request for post resources with the slimmest field selection the
+        server supports.
+
+        Upstream szurubooru and oxibooru spell the MD5 checksum field selector
+        differently; if the server rejects the field list, the oxibooru spelling is
+        tried, then the field selection is dropped entirely. The working variant is
+        remembered for all subsequent requests.
+        """
+
+        params = params or {}
+
+        while True:
+            fields = self._post_fields
+
+            try:
+                if fields:
+                    return self._request('GET', path, params=params | {'fields': fields})
+                return self._request('GET', path, params=params)
+            except SzurubooruApiError as e:
+                if fields is None or not _is_invalid_fields_error(e):
+                    raise
+
+                if fields == POST_FIELDS:
+                    logger.debug('Server rejected the field selection, retrying with oxibooru field names...')
+                    self._post_fields = POST_FIELDS_OXIBOORU
+                else:
+                    logger.debug('Server rejected the field selection, requesting full post resources...')
+                    self._post_fields = None
 
     def get_posts(
         self,
@@ -115,10 +278,9 @@ class Szurubooru:
         """
         Retrieves posts from szurubooru based on a query.
 
-        This method retrieves posts from szurubooru based on a query. If the query is numeric, it modifies the query to
-        search by ID. If the query contains a token that is not allowed, it sanitizes the token. It then retrieves the
-        posts and yields them one by one. If pagination is enabled, it retrieves all pages of results. If videos are
-        enabled, it includes video posts in the results.
+        If the query is numeric, it is modified to search by ID. Tokens which szurubooru
+        does not know are escaped. The total amount of posts is yielded first as a str,
+        followed by the matching Post objects.
 
         Args:
             query (str): The query to use to retrieve the posts.
@@ -126,10 +288,11 @@ class Szurubooru:
             videos (bool, optional): Whether to include video posts in the results. Defaults to False.
 
         Yields:
-            Union[str, Post]: The retrieved posts.
+            str | Post: The total count first, then the retrieved posts.
 
         Raises:
-            Exception: If an error occurs while retrieving the posts.
+            UnknownTokenError: If the query contains a search token szurubooru rejects.
+            SzurubooruApiError: If the API returns any other error.
         """
 
         if query.isnumeric():
@@ -145,62 +308,43 @@ class Szurubooru:
                         sanitized_tag = tag.replace(':', '\\:')  # noqa W605
                         query = query.replace(tag, sanitized_tag)
 
-        try:
-            if videos:
-                query_params = {'query': query, 'limit': 100}
-            else:
-                query_params = {'query': f'type:image,animation {query}', 'limit': 100}
-            query_url = self.szuru_api_url + '/posts/?' + urllib.parse.urlencode(query_params)
-            logger.debug(f'Getting post from query_url: {query_url}')
+        if not videos:
+            query = f'type:image,animation {query}'
 
-            response_json = requests.get(query_url, headers=self.headers)
-            response = response_json.json()
-            # logger.debug(f'Got following response: {response}')
+        params = {'query': query, 'limit': 100}
+        logger.debug(f'Getting posts with query params: {params}')
 
-            if 'name' in response and 'Error' in response['name']:
-                logger.critical(f'{response["name"]}: {response["description"]}')
-                raise UnknownTokenError(response['description'])
+        response = self._fetch_post_resource('/posts/', params)
 
-            total = str(response['total'])
-            logger.debug(f'Got a total of {total} results')
+        total = str(response['total'])
+        logger.debug(f'Got a total of {total} results')
 
-            results = response['results']
-            # logger.debug(f'Got following results: {results}')
-            pages = ceil(int(total) / 100)  # Max posts per pages is 100
-            logger.debug(f'Searching across {pages} pages')
+        results = response['results']
+        pages = ceil(int(total) / 100)  # Max posts per page is 100
+        logger.debug(f'Searching across {pages} pages')
 
-            if results:
-                yield total
+        if results:
+            yield total
 
-                for result in results:
-                    yield self.parse_post(result)
+            for result in results:
+                yield self.parse_post(result)
 
-                if pages > 1:
-                    for page in range(1, pages + 1):
-                        if pagination:
-                            if videos:
-                                query_params = {'offset': f'{str(page)}00', 'query': query, 'limit': 100}
-                            else:
-                                query_params = {'offset': f'{str(page)}00', 'query': f'type:image,animation {query}', 'limit': 100}
-                            query_url = self.szuru_api_url + '/posts/?' + urllib.parse.urlencode(query_params)
-                        results = requests.get(query_url, headers=self.headers).json()['results']
+            if pagination and pages > 1:
+                # Fetch the remaining pages concurrently, but yield them in order
+                def fetch_page(page: int) -> list:
+                    return self._fetch_post_resource('/posts/', params | {'offset': page * 100})['results']
 
-                        for result in results:
+                with ThreadPoolExecutor(max_workers=min(PAGE_FETCH_WORKERS, pages - 1)) as executor:
+                    for future in [executor.submit(fetch_page, page) for page in range(1, pages)]:
+                        for result in future.result():
                             yield self.parse_post(result)
-        except Exception as e:
-            logger.critical(f'Could not process your query: {e}')
-            exit()
 
     def parse_post(self, response: dict) -> Post:
         """
-        Parses a post from a Szurubooru API response.
-
-        This method parses a post from a szurubooru API response. It creates a new Post object and sets its attributes
-        based on the response. It sets the ID, source, content URL, version, relations, MD5 checksum, type, and safety of
-        the post. It also parses the tags of the post and adds them to the Post object.
+        Parses a post from a szurubooru API response.
 
         Args:
-            response (dict): The Szurubooru API response to parse.
+            response (dict): The szurubooru API post resource to parse.
 
         Returns:
             Post: The parsed Post object.
@@ -218,151 +362,263 @@ class Szurubooru:
         post.type = response['type']
         post.safety = response['safety']
 
-        tags = response['tags']
-        post.tags = []
-
-        for tag in tags:
-            post.tags.append(tag['names'][0])
-        # logger.debug(f'Returning Post object: {post}')
+        post.micro_tags = [Tag.from_json(tag) for tag in response['tags']]
+        post.tags = [tag.primary_name for tag in post.micro_tags]
 
         return post
+
+    def get_post(self, post_id: str) -> Post:
+        """
+        Retrieves a single post from szurubooru by its ID.
+
+        Args:
+            post_id (str): The ID of the post to retrieve.
+
+        Returns:
+            Post: The parsed Post object.
+        """
+
+        response = self._fetch_post_resource(f'/post/{post_id}')
+
+        return self.parse_post(response)
 
     def update_post(self, post: Post) -> None:
         """
         Update the input Post object in szurubooru with its updated metadata values.
 
-        This method updates a post in Szurubooru with its updated metadata values. It constructs a URL to the post in the
-        Szurubooru API and a payload with the updated metadata. It then sends a PUT request to the URL with the payload. If
-        the request is successful, it logs that the post was updated. If an error occurs, it logs the error and raises an
-        exception.
-
         Args:
             post (Post): The Post object with relevant metadata to update.
-
-        Raises:
-            Exception: If an error occurs while updating the post.
         """
 
         logger.debug(f'Updating following post: {post}')
 
-        query_url = self.szuru_api_url + '/post/' + post.id
-        logger.debug(f'Using query_url: {query_url}')
-
-        payload = json.dumps({'version': post.version, 'tags': post.tags, 'source': post.source, 'safety': post.safety})
+        payload = {'version': post.version, 'tags': post.tags, 'source': post.source, 'safety': post.safety}
         logger.debug(f'Using payload: {payload}')
 
         try:
-            response = requests.put(query_url, headers=self.headers, data=payload)
-            if response.status_code != 200:
-                raise Exception(response.text)
-        except Exception as e:
+            self._request('PUT', f'/post/{post.id}', json=payload)
+        except (SzurubooruError, httpx.HTTPError) as e:
             logger.warning(f'Could not edit your post: {e}')
+
+    def update_post_relations(self, post_id: int | str, relation_ids: set[int], retries: int = 3) -> bool:
+        """
+        Adds the given relations to a post, keeping any existing ones.
+
+        Fetches the post fresh to get the current version and relations, merges in the
+        requested relation IDs and pushes the change. Retries on version conflicts
+        (someone else modified the post in the meantime).
+
+        Args:
+            post_id (int | str): The ID of the post to update.
+            relation_ids (set[int]): Post IDs to relate to `post_id`.
+            retries (int, optional): How often to retry on a version conflict. Defaults to 3.
+
+        Returns:
+            bool: True if the post was updated, False if the relations were already complete.
+
+        Raises:
+            SzurubooruApiError: If the update keeps failing.
+        """
+
+        last_error = None
+
+        for _ in range(retries):
+            response = self._request('GET', f'/post/{post_id}', params={'fields': 'version,relations'})
+
+            existing = {relation['id'] for relation in response['relations']}
+            desired = existing | {int(relation_id) for relation_id in relation_ids}
+
+            if desired == existing:
+                return False
+
+            try:
+                self._request('PUT', f'/post/{post_id}', json={'version': response['version'], 'relations': sorted(desired)})
+                logger.debug(f'Updated relations of post {post_id} to {sorted(desired)}')
+                return True
+            except SzurubooruApiError as e:
+                # Retry only on optimistic-locking conflicts
+                if 'version' not in e.description.lower() and 'modified' not in e.name.lower():
+                    raise
+                last_error = e
+                logger.debug(f'Version conflict while updating post {post_id}, retrying...')
+
+        raise last_error
+
+    def delete_post(self, post: Post) -> None:
+        """
+        Deletes a post in szurubooru.
+
+        Args:
+            post (Post): The Post object to delete.
+        """
+
+        logger.debug(f'Deleting following post: {post}')
+
+        try:
+            self._request('DELETE', f'/post/{post.id}', json={'version': post.version})
+        except (SzurubooruError, httpx.HTTPError) as e:
+            logger.warning(f'Could not delete your post: {e}')
+
+    def get_tag(self, tag_name: str) -> Tag:
+        """
+        Retrieves a tag from szurubooru by name.
+
+        Args:
+            tag_name (str): The name of the tag to retrieve.
+
+        Returns:
+            Tag: The parsed Tag object.
+
+        Raises:
+            TagNotFoundError: If no tag with that name exists.
+        """
+
+        response = self._request('GET', '/tag/' + urllib.parse.quote(str(tag_name), safe=''))
+
+        return Tag.from_json(response)
+
+    def create_tag(self, tag_name: str, category: str = 'default', overwrite: bool = False) -> Tag:
+        """
+        Creates a new tag in szurubooru.
+
+        If the tag already exists and overwrite is True, the category of the existing tag
+        is updated. If the tag already exists and overwrite is False, a TagExistsError is
+        raised.
+
+        Args:
+            tag_name (str): The name of the tag to create.
+            category (str): The category of the tag to create. Defaults to 'default'.
+            overwrite (bool, optional): Whether to overwrite the category of the tag if it already exists.
+
+        Returns:
+            Tag: The created (or already existing) tag.
+
+        Raises:
+            TagExistsError: If the tag already exists and overwrite is False.
+        """
+
+        try:
+            response = self._request('POST', '/tags', json={'names': [tag_name], 'category': category})
+            return Tag.from_json(response)
+        except SzurubooruApiError as e:
+            if not _is_tag_exists_error({'name': e.name, 'description': e.description}):
+                raise
+
+            if overwrite:
+                tag = self.get_tag(tag_name)
+                if tag.category != category:
+                    tag.category = category
+                    return self.update_tag(tag)
+                return tag
+
+            raise TagExistsError(e.description) from e
+
+    def update_tag(self, tag: Tag) -> Tag:
+        """
+        Update the input Tag object in szurubooru with its updated values.
+
+        Args:
+            tag (Tag): The Tag object to push, must carry a version (i.e. come from get_tag/create_tag).
+
+        Returns:
+            Tag: The updated tag as returned by szurubooru.
+        """
+
+        payload = {
+            'version': tag.version,
+            'names': tag.names,
+            'category': tag.category,
+            'implications': [implication.primary_name for implication in tag.implications],
+            'suggestions': [suggestion.primary_name for suggestion in tag.suggestions],
+        }
+
+        response = self._request('PUT', '/tag/' + urllib.parse.quote(tag.primary_name, safe=''), json=payload)
+
+        return Tag.from_json(response)
+
+    def upload_temporary_file(self, media: bytes, file_ext: str = None) -> str:
+        """
+        Uploads a media file to the temporary upload endpoint.
+
+        Args:
+            media (bytes): The media file to upload as bytes.
+            file_ext (str, optional): The file extension to determine the MIME type.
+
+        Returns:
+            str: A content token from szurubooru.
+        """
+
+        mime_types = {
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'png': 'image/png',
+            'gif': 'image/gif',
+            'webp': 'image/webp',
+            'mp4': 'video/mp4',
+            'webm': 'video/webm',
+        }
+
+        if file_ext and file_ext.lower() in mime_types:
+            mime_type = mime_types[file_ext.lower()]
+            filename = f'file.{file_ext.lower()}'
+        else:
+            mime_type = 'application/octet-stream'
+            filename = 'file'
+
+        response = self._request('POST', '/uploads', files={'content': (filename, media, mime_type)})
+
+        return response['token']
+
+    def reverse_search(self, content_token: str) -> dict:
+        """
+        Performs a reverse image search with a temporarily uploaded file.
+
+        Args:
+            content_token (str): A content token from `upload_temporary_file`.
+
+        Returns:
+            dict: The raw response with 'exactPost' and 'similarPosts' keys.
+        """
+
+        return self._request('POST', '/posts/reverse-search', json={'contentToken': content_token})
+
+    def create_post(self, metadata: dict) -> str:
+        """
+        Creates a post in szurubooru from a previously uploaded temporary file.
+
+        Args:
+            metadata (dict): The post fields, including the 'contentToken'.
+
+        Returns:
+            str: The ID of the created post.
+        """
+
+        response = self._request('POST', '/posts', json=metadata)
+
+        return response['id']
 
     @staticmethod
     def encode_auth_headers(user: str, token: str) -> str:
         """
         Encodes the authentication headers for szurubooru.
 
-        This method encodes the authentication headers for szurubooru. It takes a user and a token, concatenates them with
-        a colon in between, encodes the result in UTF-8, base64 encodes the result, and then decodes the result in ASCII.
-        It returns the final result as a string.
-
         Args:
             user (str): The szurubooru user.
             token (str): The szurubooru token.
 
         Returns:
-            str: The encoded authentication headers.
+            str: The base64 encoded user:token pair.
         """
 
         return b64encode(f'{user}:{token}'.encode()).decode('ascii')
 
-    def create_tag(self, tag_name: str, category: str, overwrite: bool = False) -> None:
-        """
-        Creates a new tag in szurubooru.
-
-        This method creates a new tag in szurubooru. It constructs a URL to the tags endpoint in the szurubooru API and a
-        payload with the tag name and category. It then sends a POST request to the URL with the payload. If the request is
-        successful, it logs that the tag was created. If an error occurs, it logs the error and raises an exception. If the
-        tag already exists and overwrite is True, it updates the category of the existing tag. If the tag already exists
-        and overwrite is False, it raises a TagExistsError.
-
-        Args:
-            tag_name (str): The name of the tag to create.
-            category (str): The category of the tag to create.
-            overwrite (bool, optional): Whether to overwrite the category of the tag if it already exists. Defaults to False.
-
-        Raises:
-            TagExistsError: If the tag already exists and overwrite is False.
-            Exception: If an error occurs while creating the tag.
-        """
-
-        query_url = self.szuru_api_url + '/tags'
-        logger.debug(f'Using query_url: {query_url}')
-
-        payload = json.dumps({'names': [tag_name], 'category': category})
-        logger.debug(f'Using payload: {payload}')
-
-        response = requests.post(query_url, headers=self.headers, data=payload)
-        try:
-            if 'description' in response.json() and len(response.json()['description']) > 0:
-                if 'used by another tag' in response.json()['description']:
-                    if overwrite:
-                        tag = self.api.getTag(tag_name)
-                        if tag.category != category:
-                            tag.category = category
-                            tag.push()
-                    else:
-                        raise TagExistsError(response.json()['description'])
-                elif 'duplicate key value' in response.json()['description']:
-                    raise TagExistsError(response.json()['description'])
-                else:
-                    raise Exception(response.json()['description'])
-        except TypeError:
-            pass
-
-    def delete_post(self, post: Post) -> None:
-        """
-        Deletes a post in szurubooru.
-
-        This method deletes a post in szurubooru. It constructs a URL to the post in the szurubooru API and a payload with
-        the post's version. It then sends a DELETE request to the URL with the payload. If the request is successful, it
-        logs that the post was deleted. If an error occurs, it logs the error and raises an exception.
-
-        Args:
-            post (Post): The Post object to delete.
-
-        Raises:
-            Exception: If an error occurs while deleting the post.
-        """
-
-        logger.debug(f'Deleting following post: {post}')
-
-        query_url = self.szuru_api_url + '/post/' + post.id
-        logger.debug(f'Using query_url: {query_url}')
-
-        payload = json.dumps({'version': post.version})
-
-        try:
-            response = requests.delete(query_url, headers=self.headers, data=payload)
-            if 'description' in response.json():
-                raise Exception(response.json()['description'])
-        except Exception as e:
-            logger.warning(f'Could not delete your post: {e}')
-
 
 class Post:
-    """Boilerlate Post object which contains relevant metadata for a szurubooru post."""
+    """Boilerplate Post object which contains relevant metadata for a szurubooru post."""
 
     def __init__(self) -> None:
         """
         Initializes a Post object with default attributes.
-
-        This method initializes a Post object with default attributes. It sets the ID, source, content URL, version,
-        relations, tags, safety, MD5 checksum, and type of the post to their default values.
-
-        Returns:
-            None
         """
 
         self.id: str = None
@@ -371,6 +627,7 @@ class Post:
         self.version = None
         self.relations: list = []
         self.tags: list = []
+        self.micro_tags: list[Tag] = []
         self.safety = 'safe'
         self.md5 = None
         self.type = None
@@ -378,13 +635,6 @@ class Post:
     def __repr__(self) -> str:
         """
         Returns a string representation of the Post object.
-
-        This method returns a string representation of the Post object. It includes the ID, source, content URL, version,
-        relations, tags, and safety of the post in the string. The source is sanitized to replace newline characters with
-        '\\n'. The string is formatted and returned.
-
-        Returns:
-            str: A string representation of the Post object.
         """
 
         source = str(self.source).replace('\n', '\\n')
@@ -399,21 +649,3 @@ class Post:
         """Calls the repr method on object call."""
 
         return repr(self)
-
-
-class SzurubooruError(Exception):
-    """Base error class which inherits from Exception."""
-
-    pass
-
-
-class TagExistsError(SzurubooruError):
-    """Raise if the tag already exists."""
-
-    pass
-
-
-class UnknownTokenError(SzurubooruError):
-    """Raise if the search token does not valid."""
-
-    pass

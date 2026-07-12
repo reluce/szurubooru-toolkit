@@ -26,20 +26,36 @@ log_colorized = true
 saucenao_api_token = "my_saucenao_api_token"
 saucenao = true
 md5_search = true
-deepbooru = false
-deepbooru_model = "./misc/deepbooru/model-resnet_custom_v3.h5"
-deepbooru_threshold = 0.7
-deepbooru_forced = false
-deepbooru_set_tag = true
+# wd_tagger_model accepts a Hugging Face repo id (downloaded automatically on first use)
+# or a local directory containing model.onnx and selected_tags.csv.
+wd_tagger = false
+wd_tagger_model = "SmilingWolf/wd-eva02-large-tagger-v3"
+# Optional hardware acceleration, e.g. ["CoreMLExecutionProvider"] on Apple Silicon
+# or ["CUDAExecutionProvider"] on NVIDIA GPUs. CPU is always kept as fallback.
+wd_tagger_providers = []
+wd_tagger_threshold = 0.35
+wd_tagger_character_threshold = 0.75
+wd_tagger_forced = false
+wd_tagger_set_tag = true
+# Tag videos from frames sampled across their duration (requires ffmpeg on the PATH)
+wd_tagger_videos = true
+# Tag posts with "needs_review" if a character score lands between
+# wd_tagger_review_threshold and wd_tagger_character_threshold
+wd_tagger_review = false
+wd_tagger_review_threshold = 0.5
 default_safety = "safe"
 use_pixiv_artist = false
 use_pixiv_tags = false
 update_relations = true
 hide_progress = false
 limit = 0
+workers = 4
 
 [create_relations]
 threshold = 3
+hide_progress = false
+
+[fix_relations]
 hide_progress = false
 
 [create_tags]
@@ -51,9 +67,21 @@ hide_progress = false
 
 [delete_posts]
 hide_progress = false
+workers = 4
+
+[find_duplicates]
+# Maximum Hamming distance between perceptual hashes to consider posts duplicates
+threshold = 4
+set_relations = false
+workers = 4
+hide_progress = false
+
+[preview_tags]
+# Hide scores below this value in the report
+min_score = 0.1
 
 [import_from_booru]
-deepbooru = false
+wd_tagger = false
 max_similarity = "0.95"
 convert_to_jpg = false
 convert_threshold = "3MB"
@@ -65,7 +93,7 @@ default_safety = "safe"
 hide_progress = false
 
 [import_from_url]
-deepbooru = false
+wd_tagger = false
 tmp_path = './tmp/gallery_dl'
 use_twitter_artist = false
 max_similarity = "0.95"
@@ -78,18 +106,22 @@ shrink_dimensions = "2500x2500"
 default_safety = "safe"
 update_tags_if_exists = false
 hide_progress = false
+workers = 4
 
 [reset_posts]
 hide_progress = false
+workers = 4
 
 [tag_posts]
 update_implications = false
 mode = 'append'
 hide_progress = false
+workers = 4
 
 [upload_media]
 src_path = "/local/path/to/upload/dir"
 cleanup = false
+workers = 4
 tags = ["tagme"]
 auto_tag = true
 max_similarity = "0.95"

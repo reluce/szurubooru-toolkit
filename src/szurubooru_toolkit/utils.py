@@ -3,36 +3,40 @@ from __future__ import annotations
 import hashlib
 import re
 import subprocess
+import threading
 import warnings
-from asyncio import sleep
-from asyncio.exceptions import CancelledError
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
 from datetime import datetime
 from functools import total_ordering
 from io import BytesIO
 from pathlib import Path
+from time import sleep
 from urllib.error import ContentTooShortError
 
-import cunnypy
-import requests
+import httpx
 from httpx import HTTPStatusError
 from httpx import ReadTimeout
 from loguru import logger
 from PIL import Image
-from pixivpy3.utils import PixivError
 
+from szurubooru_toolkit import boorus
 from szurubooru_toolkit.config import Config
 from szurubooru_toolkit.pixiv import Pixiv
+from szurubooru_toolkit.pixiv import PixivError
 
 
 # Keep track of total tagged posts
 total_tagged = 0
-total_deepbooru = 0
+total_wd_tagger = 0
 total_untagged = 0
 total_skipped = 0
+_statistics_lock = threading.Lock()
 
 
 # Save the original showwarning function
 _original_showwarning = warnings.showwarning
+
 
 # Define a filter function to ignore the DecompressionBombWarning
 def ignore_decompression_bomb_warning(message, category, filename, lineno, file=None, line=None):
@@ -40,6 +44,7 @@ def ignore_decompression_bomb_warning(message, category, filename, lineno, file=
         return
     else:
         return _original_showwarning(message, category, filename, lineno, file, line)
+
 
 # Set the filter to ignore the warning
 warnings.filterwarnings('ignore', category=Image.DecompressionBombWarning)
@@ -101,6 +106,40 @@ def shrink_img(
     return image
 
 
+def resolve_onnx_providers(providers: list[str] | None) -> list[str]:
+    """
+    Validates the requested ONNX Runtime execution providers against the available ones.
+
+    Unavailable providers are dropped with a warning; the CPU provider is always
+    appended as fallback.
+
+    Args:
+        providers (list[str], optional): Execution providers in order of preference,
+            e.g. ['CoreMLExecutionProvider'] on Apple Silicon or ['CUDAExecutionProvider']
+            on NVIDIA GPUs.
+
+    Returns:
+        list[str]: The available providers, ending with the CPU provider.
+    """
+
+    import onnxruntime
+
+    available = onnxruntime.get_available_providers()
+    resolved = []
+
+    for provider in providers or []:
+        if provider == 'CPUExecutionProvider':
+            continue
+        if provider in available:
+            resolved.append(provider)
+        else:
+            logger.warning(f'Requested ONNX execution provider "{provider}" is not available in this onnxruntime build.')
+
+    resolved.append('CPUExecutionProvider')
+
+    return resolved
+
+
 def convert_rating(rating: str) -> str:
     """Map different ratings to szurubooru compatible rating.
 
@@ -118,9 +157,11 @@ def convert_rating(rating: str) -> str:
         'safe': 'safe',
         's': 'safe',
         'g': 'safe',
+        'general': 'safe',
         'Questionable': 'sketchy',
         'questionable': 'sketchy',
         'q': 'sketchy',
+        'sensitive': 'sketchy',
         'Explicit': 'unsafe',
         'explicit': 'unsafe',
         'e': 'unsafe',
@@ -135,31 +176,118 @@ def convert_rating(rating: str) -> str:
     return new_rating
 
 
-def statistics(tagged=0, deepbooru=0, untagged=0, skipped=0) -> tuple:
+def statistics(tagged=0, wd_tagger=0, untagged=0, skipped=0) -> tuple:
     """Keep track of how posts were tagged.
 
     Input values will get added to previously set value.
 
     Args:
         tagged (int, optional): If a post got its tags from SauceNAO. Defaults to 0.
-        deepbooru (int, optional): If a post was tagged with Deepbooru. Defaults to 0.
-        untagged (int, optional): If a post was tagged neither with SauceNAO, nor Deepbooru. Defaults to 0.
+        wd_tagger (int, optional): If a post was tagged with the WD tagger. Defaults to 0.
+        untagged (int, optional): If a post was tagged neither with SauceNAO, nor the WD tagger. Defaults to 0.
 
     Returns:
-        tuple: Returns the tracked progress (total_tagged, total_deepbooru, total_untagged)
+        tuple: Returns the tracked progress (total_tagged, total_wd_tagger, total_untagged)
     """
 
     global total_tagged
-    global total_deepbooru
+    global total_wd_tagger
     global total_untagged
     global total_skipped
 
-    total_tagged += tagged
-    total_deepbooru += deepbooru
-    total_untagged += untagged
-    total_skipped += skipped
+    with _statistics_lock:
+        total_tagged += tagged
+        total_wd_tagger += wd_tagger
+        total_untagged += untagged
+        total_skipped += skipped
 
-    return total_tagged, total_deepbooru, total_untagged, total_skipped
+        return total_tagged, total_wd_tagger, total_untagged, total_skipped
+
+
+_implications_cache: dict[str, list[str]] = {}
+_implications_lock = threading.Lock()
+
+
+def get_cached_implications(tag_name: str, create_missing: bool = False) -> list[str]:
+    """
+    Returns the implication names of a tag, cached across posts.
+
+    Tag implications rarely change during a run, so fetching them once per tag
+    instead of once per post removes an N+1 query pattern.
+
+    Args:
+        tag_name (str): The tag whose implications to fetch.
+        create_missing (bool, optional): Create the tag if it doesn't exist. Defaults to False.
+
+    Returns:
+        list[str]: The primary names of the tag's implications.
+
+    Raises:
+        TagNotFoundError: If the tag doesn't exist and create_missing is False.
+    """
+
+    from szurubooru_toolkit import szuru
+    from szurubooru_toolkit.szurubooru import TagNotFoundError
+
+    with _implications_lock:
+        if tag_name in _implications_cache:
+            return _implications_cache[tag_name]
+
+    try:
+        szuru_tag = szuru.get_tag(tag_name)
+    except TagNotFoundError:
+        if not create_missing:
+            raise
+        szuru_tag = szuru.create_tag(tag_name)
+
+    implications = [implication.primary_name for implication in szuru_tag.implications]
+
+    with _implications_lock:
+        _implications_cache[tag_name] = implications
+
+    return implications
+
+
+def run_concurrently(items, worker, workers: int, total: int, hide_progress: bool) -> None:
+    """
+    Runs the worker over all items on a thread pool, showing progress.
+
+    Worker errors are logged per item and don't abort the remaining items. With
+    workers <= 1 the items are processed sequentially without a pool.
+
+    Args:
+        items: Iterable of items to process (may be a generator).
+        worker: Callable invoked with a single item.
+        workers (int): Number of concurrent workers.
+        total (int): Total number of items, for the progress bar.
+        hide_progress (bool): Whether to hide the progress bar.
+
+    Returns:
+        None
+    """
+
+    from tqdm import tqdm
+
+    def safe_worker(item) -> None:
+        try:
+            worker(item)
+        except Exception as e:
+            logger.error(f'Could not process {item}: {e}')
+
+    if workers <= 1:
+        for item in tqdm(items, ncols=80, position=0, leave=False, total=total, disable=hide_progress):
+            safe_worker(item)
+        return
+
+    executor = ThreadPoolExecutor(max_workers=workers)
+    try:
+        futures = [executor.submit(safe_worker, item) for item in items]
+        for _ in tqdm(as_completed(futures), ncols=80, position=0, leave=False, total=total, disable=hide_progress):
+            pass
+    except KeyboardInterrupt:
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise
+    executor.shutdown()
 
 
 def audit_rating(*ratings: str) -> str:
@@ -288,7 +416,7 @@ def download_media(content_url: str, md5: str = None) -> bytes:
 
     for _ in range(1, 3):
         try:
-            file: bytes = requests.get(content_url).content
+            file: bytes = httpx.get(content_url, follow_redirects=True, timeout=30).content
         except ContentTooShortError:
             download_media(content_url, md5)
         except Exception as e:
@@ -362,75 +490,88 @@ def generate_src(metadata: dict) -> str:
     return src
 
 
-async def search_boorus(booru: str, query: str, limit: int, page: int = 1, credentials: dict[str, dict] = {}) -> dict:
+def _search_single_booru(booru: str, query: str, limit: int, page: int, credentials: dict[str, dict]) -> list | None:
+    """
+    Searches one booru with retries; returns the results or None.
+    """
 
+    max_attempts = 11
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            if booru == 'sankaku':
+                from szurubooru_toolkit import sankaku
+
+                return sankaku.search(query, limit, page)
+            elif booru in credentials:
+                return boorus.search(booru, query, limit, page, credentials=credentials[booru])
+            # Search Gelbooru only if credentials are provided
+            # Otherwise the rate limits are too harsh
+            elif booru == 'gelbooru':
+                logger.debug('Skipping Gelbooru as no credentials were provided.')
+                return None
+            else:
+                return boorus.search(booru, query, limit, page)
+        except KeyError:
+            logger.debug(f'No result found in {booru} with "{query}"')
+            return None
+        except HTTPStatusError as e:
+            logger.debug(e)
+            if e.response.status_code in [401, 403]:
+                logger.warning(f'Invalid credentials or unauthorized for {booru}.')
+                return None
+            logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
+            if attempt < max_attempts:  # no need to sleep on the last attempt
+                sleep(5)
+        except ReadTimeout:
+            logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
+            if attempt < max_attempts:  # no need to sleep on the last attempt
+                sleep(5)
+        except Exception as e:
+            logger.debug(f'Could not get result from {booru} with "{query}": {e}. Trying again. in 5s...')
+            if attempt < max_attempts:  # no need to sleep on the last attempt
+                sleep(5)
+
+    logger.debug(f'Could not establish connection to {booru}, trying with next post...')
+    statistics(skipped=1)
+    return None
+
+
+def search_boorus(booru: str, query: str, limit: int, page: int = 1, credentials: dict[str, dict] = {}) -> dict:
     """
     Searches the specified Boorus for the given query.
 
-    This function searches the specified Boorus for the given query. It first determines which Boorus to search based
-    on the provided `booru` parameter. It then iterates over the Boorus to search and tries to get the search results
-    from each Booru. If it gets a result, it adds the result to the results dictionary with the Booru as the key. If
-    it encounters an error, it logs the error and tries again after 5 seconds. If it cannot establish a connection to
-    the Booru after 11 attempts, it moves on to the next Booru. It returns the results dictionary.
+    All requested boorus are queried concurrently, so the call takes as long as the
+    slowest booru instead of the sum of all of them. Each booru is retried on
+    connection errors before giving up on it.
 
     Args:
-        Booru (str): The Booru or Boorus to search. If 'all', it searches all Boorus.
+        booru (str): The Booru or Boorus to search. If 'all', it searches all Boorus.
         query (str): The query to search for.
         limit (int): The maximum number of results to return.
         page (int, optional): The page of results to return. Defaults to 1.
-        credentials (dict[str, dict[str, str | None]], optional): HTTP Parameters for Authentication. Defaults to empty dict. 
+        credentials (dict[str, dict[str, str | None]], optional): HTTP Parameters for Authentication. Defaults to empty dict.
 
     Returns:
         dict: The search results, with the Booru as the key and the results as the value.
     """
 
-    results = {}
-
     boorus_to_search = ['sankaku', 'danbooru', 'gelbooru', 'konachan', 'yandere'] if booru == 'all' else [booru]
-    if 'sankaku' in boorus_to_search:
-        from szurubooru_toolkit import sankaku
 
-    for booru in boorus_to_search:
-        max_attempts = 11
-        for attempt in range(1, max_attempts + 1):
-            try:
-                if booru == 'sankaku':
-                    result = sankaku.search(query, limit, page)
-                elif booru in credentials:
-                    result = await cunnypy.search(booru, query, limit, page, credentials=credentials[booru])
-                # Search Gelbooru only if credentials are provided
-                # Otherwise the rate limits are too harsh
-                elif booru == 'gelbooru':
-                    logger.debug('Skipping Gelbooru as no credentials were provided.')
-                    break
-                else:
-                    result = await cunnypy.search(booru, query, limit, page)
+    if len(boorus_to_search) == 1:
+        name = boorus_to_search[0]
+        result = _search_single_booru(name, query, limit, page, credentials)
+        return {name: result} if result else {}
 
-                if result:
-                    results[booru] = result
-                break
-            except (KeyError, ExceptionGroup, CancelledError):
-                logger.debug(f'No result found in {booru} with "{query}"')
-                break
-            except HTTPStatusError as e:
-                logger.debug(e)
-                if e.response.status_code in [401, 403]:
-                    logger.warning(f'Invalid credentials or unauthorized for {booru}.')
-                    return results
-                logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
-                if attempt < max_attempts:  # no need to sleep on the last attempt
-                    await sleep(5)
-            except ReadTimeout:
-                logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
-                if attempt < max_attempts:  # no need to sleep on the last attempt
-                    await sleep(5)
-            except Exception as e:
-                logger.debug(f'Could not get result from {booru} with "{query}": {e}. Trying again. in 5s...')
-                if attempt < max_attempts:  # no need to sleep on the last attempt
-                    await sleep(5)
-        else:
-            logger.debug(f'Could not establish connection to {booru}, trying with next post...')
-            statistics(skipped=1)
+    results = {}
+    with ThreadPoolExecutor(max_workers=len(boorus_to_search)) as executor:
+        futures = {
+            executor.submit(_search_single_booru, name, query, limit, page, credentials): name for name in boorus_to_search
+        }
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                results[futures[future]] = result
 
     return results
 
@@ -505,6 +646,9 @@ def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], s
                         pixiv_rating = pixiv.get_rating(pixiv_result)
                     else:
                         pixiv_rating = None
+                except ImportError as e:
+                    logger.warning(f'{e} Skipping Pixiv metadata...')
+                    pixiv_rating = None
                 except PixivError as e:
                     logger.warning(f'Could not get result from pixiv: {e}')
                     pixiv_rating = None
@@ -528,19 +672,21 @@ def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], s
     return final_tags, sources, rating
 
 
-def invoke_gallery_dl(urls: list, tmp_path: str, params: list = []) -> str:
+def invoke_gallery_dl(urls: list, tmp_path: str, params: list = [], workers: int = 1) -> str:
     """
-    Invokes the gallery-dl command with the provided URLs and parameters.
+    Invokes gallery-dl for the provided URLs and parameters.
 
-    This function invokes the gallery-dl command with the provided URLs and parameters. It first creates a timestamp
-    and a download directory based on the timestamp. It then constructs the base command with the gallery-dl command
-    and the download directory. It adds the provided parameters and URLs to the command and runs the command using
-    subprocess. It returns the download directory.
+    All downloads end up in a shared timestamped directory below `tmp_path`. When
+    multiple URLs are given, one gallery-dl process is started per URL and up to
+    `workers` of them run concurrently, since gallery-dl itself downloads
+    sequentially. A single URL (or an input file passed via params) runs as one
+    process.
 
     Args:
         urls (list): The URLs to download.
         tmp_path (str): The temporary path where the downloads should be stored.
         params (list, optional): The parameters to pass to the gallery-dl command. Defaults to [].
+        workers (int, optional): How many gallery-dl processes to run concurrently. Defaults to 1.
 
     Returns:
         str: The download directory.
@@ -549,16 +695,15 @@ def invoke_gallery_dl(urls: list, tmp_path: str, params: list = []) -> str:
     current_time = datetime.now()
     timestamp = current_time.timestamp()
     download_dir = f'{tmp_path}/{timestamp}'
-    base_command = [
-        'gallery-dl',
-        f'-D={download_dir}',
-    ]
+    base_command = ['gallery-dl', f'-D={download_dir}'] + params
 
-    command = base_command
-    command += params
-    command += urls
-
-    subprocess.run(command)
+    if len(urls) > 1 and workers > 1:
+        with ThreadPoolExecutor(max_workers=min(workers, len(urls))) as executor:
+            futures = [executor.submit(subprocess.run, base_command + [url]) for url in urls]
+            for future in futures:
+                future.result()
+    else:
+        subprocess.run(base_command + urls)
 
     return download_dir
 

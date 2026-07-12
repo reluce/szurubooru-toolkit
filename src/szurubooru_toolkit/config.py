@@ -4,9 +4,7 @@ import tomllib
 import urllib
 from pathlib import Path
 
-import validators
 from loguru import logger
-from validators import ValidationError
 
 
 GLOBALS_DEFAULTS = {
@@ -33,21 +31,32 @@ AUTO_TAGGER_DEFAULTS = {
     'saucenao_api_token': None,
     'saucenao': True,
     'md5_search': True,
-    'deepbooru': False,
-    'deepbooru_model': None,
-    'deepbooru_threshold': 0.7,
-    'deepbooru_forced': False,
-    'deepbooru_set_tag': False,
+    'wd_tagger': False,
+    'wd_tagger_model': 'SmilingWolf/wd-eva02-large-tagger-v3',
+    'wd_tagger_providers': [],
+    'wd_tagger_threshold': 0.35,
+    'wd_tagger_character_threshold': 0.75,
+    'wd_tagger_forced': False,
+    'wd_tagger_set_tag': False,
+    'wd_tagger_videos': True,
+    'wd_tagger_review': False,
+    'wd_tagger_review_threshold': 0.5,
+    'dry_run': False,
     'default_safety': 'safe',
     'hide_progress': False,
     'use_pixiv_artist': False,
     'use_pixiv_tags': False,
     'update_relations': False,
     'limit': None,
+    'workers': 4,
 }
 
 CREATE_RELATIONS_DEFAULTS = {
     'threshold': 3,
+    'hide_progress': False,
+}
+
+FIX_RELATIONS_DEFAULTS = {
     'hide_progress': False,
 }
 
@@ -59,10 +68,22 @@ CREATE_TAGS_DEFAULTS = {
     'overwrite': False,
 }
 
-DELETE_POSTS_DEFAULTS = {'hide_progress': False}
+DELETE_POSTS_DEFAULTS = {'hide_progress': False, 'workers': 4}
+
+FIND_DUPLICATES_DEFAULTS = {
+    'threshold': 4,
+    'workers': 4,
+    'limit': None,
+    'set_relations': False,
+    'hide_progress': False,
+}
+
+PREVIEW_TAGS_DEFAULTS = {
+    'min_score': 0.1,
+}
 
 IMPORT_FROM_BOORU_DEFAULTS = {
-    'deepbooru': False,
+    'wd_tagger': False,
     'limit': 100,
     'hide_progress': False,
     'tmp_path': './tmp/gallery-dl',
@@ -72,7 +93,7 @@ IMPORT_FROM_URL_DEFAULTS = {
     'cookies': None,
     'saucenao': False,
     'md5_search': False,
-    'deepbooru': False,
+    'wd_tagger': False,
     'hide_progress': False,
     'md5_search': False,
     'range': ':100',
@@ -80,15 +101,17 @@ IMPORT_FROM_URL_DEFAULTS = {
     'tmp_path': './tmp/gallery-dl',
     'use_twitter_artist': False,
     'update_tags_if_exists': False,
+    'workers': 4,
 }
 
-RESET_POSTS_DEFAULTS = {'hide_progress': False}
+RESET_POSTS_DEFAULTS = {'hide_progress': False, 'workers': 4}
 
 TAG_POSTS_DEFAULTS = {
     'hide_progress': False,
     'update_implications': False,
     'mode': 'append',
     'silence_info': False,
+    'workers': 4,
 }
 
 UPLOAD_MEDIA_DEFAULTS = {
@@ -105,6 +128,7 @@ UPLOAD_MEDIA_DEFAULTS = {
     'shrink_threshold': 6000000,
     'shrink_dimensions': '2500x2500',
     'default_safety': 'safe',
+    'workers': 4,
 }
 
 
@@ -133,7 +157,10 @@ class Config:
         self.auto_tagger = AUTO_TAGGER_DEFAULTS
         self.create_tags = CREATE_TAGS_DEFAULTS
         self.create_relations = CREATE_RELATIONS_DEFAULTS
+        self.fix_relations = FIX_RELATIONS_DEFAULTS
         self.delete_posts = DELETE_POSTS_DEFAULTS
+        self.find_duplicates = FIND_DUPLICATES_DEFAULTS
+        self.preview_tags = PREVIEW_TAGS_DEFAULTS
         self.import_from_booru = IMPORT_FROM_BOORU_DEFAULTS
         self.import_from_url = IMPORT_FROM_URL_DEFAULTS
         self.reset_posts = RESET_POSTS_DEFAULTS
@@ -218,36 +245,38 @@ class Config:
         """
 
         self.globals['url'] = self.globals['url'].strip()
-        result = validators.url(self.globals['url'])
-
-        if isinstance(result, ValidationError):
-            logger.critical(f'Your szurubooru URL "{self.globals["url"]}" is not valid!')
-            exit(1)
 
         parsed_url = urllib.parse.urlsplit(self.globals['url'])
 
-        api_scheme = parsed_url.scheme
-        if api_scheme not in ('http', 'https'):
+        if not parsed_url.netloc:
+            logger.critical(f'Your szurubooru URL "{self.globals["url"]}" is not valid!')
+            exit(1)
+
+        if parsed_url.scheme not in ('http', 'https'):
             logger.critical('API URL must be of HTTP or HTTPS scheme!')
             exit(1)
 
         if parsed_url.path.startswith('/'):
             self.globals['url'] = self.globals['url'].rstrip('/')
 
-    def validate_deepbooru(self) -> None:
-        """Check if deepbooru_model is an existing file."""
+    def validate_wd_tagger(self) -> None:
+        """Check if wd_tagger_model is set to a Hugging Face repo id or an existing local model directory."""
 
-        if not Path(self.auto_tagger['deepbooru_model']).exists():
-            logger.critical(
-                f'Your Deepbooru model "{self.auto_tagger["deepbooru_model"]}" does not exist!',
-            )
+        model = self.auto_tagger['wd_tagger_model']
+
+        if not model:
+            logger.critical('You have to specify a wd_tagger_model (Hugging Face repo id or local directory)!')
             exit(1)
 
-        deepbooru_path = Path(self.auto_tagger['deepbooru_model']).parent
-        tags_file = deepbooru_path / 'tags.txt'
-        if not tags_file.exists():
+        model_dir = Path(model)
+        if model_dir.is_dir():
+            for file in ['model.onnx', 'selected_tags.csv']:
+                if not (model_dir / file).is_file():
+                    logger.critical(f'Your WD tagger model directory "{model}" is missing {file}!')
+                    exit(1)
+        elif not re.match(r'^[\w.-]+/[\w.-]+$', model):
             logger.critical(
-                f'File tags.txt not found. Place it in {deepbooru_path}.',
+                f'Your wd_tagger_model "{model}" is neither an existing local directory nor a valid Hugging Face repo id!',
             )
             exit(1)
 
@@ -333,10 +362,10 @@ class Config:
         self.validate_convert_attrs()
         self.validate_shrink_attrs()
 
-        if self.auto_tagger['deepbooru']:
-            self.validate_deepbooru()
+        if self.auto_tagger['wd_tagger']:
+            self.validate_wd_tagger()
         else:
-            self.auto_tagger['deepbooru_forced'] = False
+            self.auto_tagger['wd_tagger_forced'] = False
 
     def update_upload_media_config(self, section: str) -> None:
         """

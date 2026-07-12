@@ -131,31 +131,67 @@ def cli(
     help=f'Set the limit for the number of tagged elements (default: {config.AUTO_TAGGER_DEFAULTS["limit"]}).',
 )
 @click.option(
-    '--deepbooru/--no-deepbooru',
+    '--wd-tagger/--no-wd-tagger',
     is_flag=True,
-    help=f'Tag posts with Deepbooru if file could not be found (default: {config.AUTO_TAGGER_DEFAULTS["deepbooru"]}).',
-)
-@click.option('--deepbooru-model', help='Path to the Deepbooru model.')
-@click.option(
-    '--deepbooru-threshold',
-    help=f'Define how accurate the matched tag from Deepbooru has to be (default: {config.AUTO_TAGGER_DEFAULTS["deepbooru_threshold"]}).',
+    help=f'Tag posts with the WD tagger if file could not be found (default: {config.AUTO_TAGGER_DEFAULTS["wd_tagger"]}).',
 )
 @click.option(
-    '--deepbooru-forced/--no-deepbooru-forced',
+    '--wd-tagger-model',
+    help=f'Hugging Face repo id or local directory of the WD tagger model (default: {config.AUTO_TAGGER_DEFAULTS["wd_tagger_model"]}).',
+)
+@click.option(
+    '--wd-tagger-threshold',
     help=(
-        'Always tag with SauceNAO and Deepbooru. Overwrites deepbooru-enabled (default:'
-        f' {config.AUTO_TAGGER_DEFAULTS["deepbooru_forced"]}).'
+        'Define how accurate the matched general tag from the WD tagger has to be (default:'
+        f' {config.AUTO_TAGGER_DEFAULTS["wd_tagger_threshold"]}).'
     ),
 )
 @click.option(
-    '--deepbooru-set-tag/--no-deepbooru-set-tag',
+    '--wd-tagger-character-threshold',
+    help=(
+        'Define how accurate the matched character tag from the WD tagger has to be (default:'
+        f' {config.AUTO_TAGGER_DEFAULTS["wd_tagger_character_threshold"]}).'
+    ),
+)
+@click.option(
+    '--wd-tagger-forced/--no-wd-tagger-forced',
+    help=(
+        'Always tag with SauceNAO and the WD tagger. Overwrites wd-tagger-enabled (default:'
+        f' {config.AUTO_TAGGER_DEFAULTS["wd_tagger_forced"]}).'
+    ),
+)
+@click.option(
+    '--wd-tagger-set-tag/--no-wd-tagger-set-tag',
     is_flag=True,
-    help=f'Tag Deepbooru posts with tag "deepbooru" (default: {config.AUTO_TAGGER_DEFAULTS["deepbooru_set_tag"]}).',
+    help=f'Tag WD tagger posts with tag "wd_tagger" (default: {config.AUTO_TAGGER_DEFAULTS["wd_tagger_set_tag"]}).',
+)
+@click.option(
+    '--wd-tagger-videos/--no-wd-tagger-videos',
+    help=(
+        'Tag videos from frames sampled across their duration, requires ffmpeg (default:'
+        f' {config.AUTO_TAGGER_DEFAULTS["wd_tagger_videos"]}).'
+    ),
+)
+@click.option(
+    '--wd-tagger-review/--no-wd-tagger-review',
+    help=(
+        'Tag posts with "needs_review" if a character score lands between review-threshold and character-threshold'
+        f' (default: {config.AUTO_TAGGER_DEFAULTS["wd_tagger_review"]}).'
+    ),
+)
+@click.option(
+    '--wd-tagger-review-threshold',
+    help=f'Lower bound of the character review band (default: {config.AUTO_TAGGER_DEFAULTS["wd_tagger_review_threshold"]}).',
+)
+@click.option(
+    '--dry-run',
+    is_flag=True,
+    help='Show which tags would be added or removed without updating any post.',
 )
 @click.option(
     '--update-relations/--dont-update-relations',
     help=(
-        'Set character <> parody relation if SauceNAO is disabled (or limit reached) and Deepbooru enabled (default:'
+        'Set character <> parody relation if SauceNAO is disabled (or limit reached) and the WD tagger enabled (default:'
         f' {config.AUTO_TAGGER_DEFAULTS["update_relations"]}).'
     ),
 )
@@ -175,6 +211,11 @@ def cli(
         f' {config.AUTO_TAGGER_DEFAULTS["use_pixiv_tags"]}).'
     ),
 )
+@click.option(
+    '--workers',
+    type=int,
+    help=f'How many posts to process concurrently (default: {config.AUTO_TAGGER_DEFAULTS["workers"]}).',
+)
 @click.pass_context
 def click_auto_tagger(
     ctx,
@@ -185,19 +226,25 @@ def click_auto_tagger(
     saucenao_api_token,
     md5_search,
     limit,
-    deepbooru,
-    deepbooru_model,
-    deepbooru_threshold,
-    deepbooru_forced,
-    deepbooru_set_tag,
+    wd_tagger,
+    wd_tagger_model,
+    wd_tagger_threshold,
+    wd_tagger_character_threshold,
+    wd_tagger_forced,
+    wd_tagger_set_tag,
+    wd_tagger_videos,
+    wd_tagger_review,
+    wd_tagger_review_threshold,
+    dry_run,
     update_relations,
     use_pixiv_artist,
     use_pixiv_tags,
+    workers,
 ):
     """
     Tag posts automatically
 
-    Tags can be searched through SauceNAO, the MD5 hash on popular boorus or Deepbooru.
+    Tags can be searched through SauceNAO, the MD5 hash on popular boorus or the WD tagger.
 
     QUERY is a szurubooru query for posts to tag.
     """
@@ -219,6 +266,71 @@ def click_auto_tagger(
         logger.debug(f'remove_tags = {remove_tags}')
 
     module.main(query, add_tags, remove_tags)
+
+
+@cli.command('preview-tags', epilog='Example: szuru-toolkit preview-tags 1234')
+@click.argument('target')
+@click.option(
+    '--min-score',
+    type=float,
+    help=f'Hide scores below this value (default: {config.PREVIEW_TAGS_DEFAULTS["min_score"]}).',
+)
+@click.pass_context
+def click_preview_tags(ctx, target, min_score):
+    """
+    Show WD tagger scores near the thresholds without tagging anything
+
+    TARGET is a path to a local media file or a szurubooru post id.
+    """
+
+    for param in ctx.command.params:
+        parameter_source = click.get_current_context().get_parameter_source(param.name)
+        if parameter_source == ParameterSource.COMMANDLINE:
+            ctx.obj.setdefault('preview_tags', {}).update({param.name: ctx.params[param.name]})
+
+    module = setup_module('preview_tags', ctx)
+    module.main(target)
+
+
+@cli.command('find-duplicates', epilog='Example: szuru-toolkit find-duplicates --threshold 4 "date:2026"')
+@click.argument('query', required=False, default='*')
+@click.option(
+    '--threshold',
+    type=int,
+    help=(
+        'Maximum Hamming distance between perceptual hashes to consider posts duplicates (default:'
+        f' {config.FIND_DUPLICATES_DEFAULTS["threshold"]}).'
+    ),
+)
+@click.option(
+    '--limit',
+    type=int,
+    help=f'Limit the number of posts to scan (default: {config.FIND_DUPLICATES_DEFAULTS["limit"]}).',
+)
+@click.option(
+    '--set-relations/--no-set-relations',
+    help=f'Relate the posts of each duplicate set to each other (default: {config.FIND_DUPLICATES_DEFAULTS["set_relations"]}).',
+)
+@click.option(
+    '--workers',
+    type=int,
+    help=f'How many posts to download and hash concurrently (default: {config.FIND_DUPLICATES_DEFAULTS["workers"]}).',
+)
+@click.pass_context
+def click_find_duplicates(ctx, query, threshold, limit, set_relations, workers):
+    """
+    Find visually duplicate posts via perceptual hashing
+
+    QUERY is a szurubooru query for posts to scan (default: all image posts).
+    """
+
+    for param in ctx.command.params:
+        parameter_source = click.get_current_context().get_parameter_source(param.name)
+        if parameter_source == ParameterSource.COMMANDLINE:
+            ctx.obj.setdefault('find_duplicates', {}).update({param.name: ctx.params[param.name]})
+
+    module = setup_module('find_duplicates', ctx)
+    module.main(query)
 
 
 @cli.command('create-relations', epilog='Example: szuru-toolkit create-relations hitori_bocchi')
@@ -245,6 +357,24 @@ def click_create_relations(ctx, query, threshold):
             ctx.obj['create_relations'] = {param.name: ctx.params[param.name]}
 
     module = setup_module('create_relations', ctx)
+    module.main(query)
+
+
+@cli.command('fix-relations', epilog='Example: szuru-toolkit fix-relations "date:today"')
+@click.argument('query')
+@click.pass_context
+def click_fix_relations(ctx, query):
+    """
+    Complete post relation sets via transitive closure
+
+    Posts uploaded one by one only reference the posts that existed at their
+    upload time. This command groups related posts into sets and makes sure
+    every member references all other members.
+
+    QUERY is a szurubooru query for the posts whose relations should be fixed.
+    """
+
+    module = setup_module('fix_relations', ctx)
     module.main(query)
 
 
@@ -323,8 +453,8 @@ def click_delete_posts(ctx, query, except_ids):
     help=f'The amount of posts that should be imported (default: {config.IMPORT_FROM_BOORU_DEFAULTS["limit"]}).',
 )
 @click.option(
-    '--deepbooru/--no-deepbooru',
-    help=f'Tag posts additionally with Deepbooru (default: {config.IMPORT_FROM_BOORU_DEFAULTS["deepbooru"]}).',
+    '--wd-tagger/--no-wd-tagger',
+    help=f'Tag posts additionally with the WD tagger (default: {config.IMPORT_FROM_BOORU_DEFAULTS["wd_tagger"]}).',
 )
 @click.option(
     '--convert-to-jpg/--no-convert-to-jpg',
@@ -367,7 +497,7 @@ def click_import_from_booru(
     query,
     booru,
     limit,
-    deepbooru,
+    wd_tagger,
     convert_to_jpg,
     convert_threshold,
     default_safety,
@@ -406,8 +536,8 @@ def click_import_from_booru(
 )
 @click.option('--cookies', help='Path to a cookies file for gallery-dl to consume. Used for authentication.')
 @click.option(
-    '--deepbooru/--no-deepbooru',
-    help=f'Tag posts additionally with Deepbooru (default: {config.IMPORT_FROM_URL_DEFAULTS["deepbooru"]}).',
+    '--wd-tagger/--no-wd-tagger',
+    help=f'Tag posts additionally with the WD tagger (default: {config.IMPORT_FROM_URL_DEFAULTS["wd_tagger"]}).',
 )
 @click.option(
     '--md5-search/--no-md5-search',
@@ -459,6 +589,11 @@ def click_import_from_booru(
     help=f'Append new tags, if any, to already uploaded posts (default: {config.IMPORT_FROM_URL_DEFAULTS["update_tags_if_exists"]}).',
 )
 @click.option('--verbose', is_flag=True, help='Show download progress of gallery-dl script.')
+@click.option(
+    '--workers',
+    type=int,
+    help=f'How many files to upload concurrently (default: {config.IMPORT_FROM_URL_DEFAULTS["workers"]}).',
+)
 @click.pass_context
 def click_import_from_url(
     ctx,
@@ -466,7 +601,7 @@ def click_import_from_url(
     input_file,
     range,
     cookies,
-    deepbooru,
+    wd_tagger,
     md5_search,
     saucenao,
     use_twitter_artist,
@@ -480,6 +615,7 @@ def click_import_from_url(
     add_tags,
     update_tags_if_exists,
     verbose,
+    workers,
 ):
     """
     Download images from URLS or file containing URLs
@@ -561,8 +697,13 @@ def click_reset_posts(ctx, query, except_ids, add_tags):
         f' {config.TAG_POSTS_DEFAULTS["update_implications"]}).'
     ),
 )
+@click.option(
+    '--workers',
+    type=int,
+    help=f'How many posts to process concurrently (default: {config.TAG_POSTS_DEFAULTS["workers"]}).',
+)
 @click.pass_context
-def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_implications):
+def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_implications, workers):
     """
     Tag posts manually
 
@@ -574,14 +715,14 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_impl
         click.echo('\nYou need to specify either --add-tags, --remove-tags, --source or --update-implications as an argument!')
         exit(1)
 
-    module = setup_module('tag_posts', ctx)
-
-    from loguru import logger
-
     for param in ctx.command.params:
         parameter_source = click.get_current_context().get_parameter_source(param.name)
         if parameter_source == ParameterSource.COMMANDLINE:
             ctx.obj.setdefault('tag_posts', {}).update({param.name: ctx.params[param.name]})
+
+    module = setup_module('tag_posts', ctx)
+
+    from loguru import logger
 
     if add_tags:
         add_tags = add_tags.replace(' ', '').split(',')
@@ -638,6 +779,11 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_impl
     '--shrink-dimensions',
     help=f'Maximum width and height of the shrunken image (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_dimensions"]}).',
 )
+@click.option(
+    '--workers',
+    type=int,
+    help=f'How many files to upload concurrently (default: {config.UPLOAD_MEDIA_DEFAULTS["workers"]}).',
+)
 @click.pass_context
 def click_upload_media(
     ctx,
@@ -652,6 +798,7 @@ def click_upload_media(
     shrink,
     shrink_threshold,
     shrink_dimensions,
+    workers,
 ):
     """
     Upload media files
@@ -666,6 +813,22 @@ def click_upload_media(
 
     module = setup_module('upload_media', ctx)
     module.main()
+
+
+@cli.command('webserver', epilog='Example: szuru-toolkit webserver --port 5000')
+@click.option('--host', default='127.0.0.1', help='Address to bind to (default: 127.0.0.1).')
+@click.option('--port', type=int, default=5000, help='Port to listen on (default: 5000).')
+@click.pass_context
+def click_webserver(ctx, host, port):
+    """
+    Run the webserver for the browser extensions
+
+    Serves /import-from-url and /import-from-all-tabs on localhost:5000,
+    which the Chrome extension and Firefox addon connect to.
+    """
+
+    module = setup_module('webserver', ctx)
+    module.main(host, port)
 
 
 if __name__ == '__main__':

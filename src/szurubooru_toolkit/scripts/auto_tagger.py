@@ -1,29 +1,36 @@
 from __future__ import annotations
 
-import asyncio
-from time import sleep
+import threading
 
 from loguru import logger
 from PIL import UnidentifiedImageError
-from pyszuru import SzurubooruHTTPError
-from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.saucenao import SauceNao
+from szurubooru_toolkit.saucenao import SauceNaoCooldown
 from szurubooru_toolkit.szurubooru import Post
+from szurubooru_toolkit.szurubooru import SzurubooruError
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import download_media
+from szurubooru_toolkit.utils import get_cached_implications
 from szurubooru_toolkit.utils import prepare_post
+from szurubooru_toolkit.utils import run_concurrently
 from szurubooru_toolkit.utils import sanitize_tags
 from szurubooru_toolkit.utils import search_boorus
 from szurubooru_toolkit.utils import shrink_img
 from szurubooru_toolkit.utils import statistics
 
-deepbooru = None
+wd_tagger = None
+_wd_tagger_lock = threading.Lock()
+
+# Shared across all main() invocations in this process, so concurrent upload
+# workers which each call auto_tagger.main() share the SauceNAO rate limit state.
+_cooldown = SauceNaoCooldown()
+_limit_event = threading.Event()
 
 
-def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes) -> tuple[list, str, str, bool]:
+def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes, cooldown: SauceNaoCooldown) -> tuple[dict, bool]:
     """
     Retrieves the SauceNAO results for a given image.
 
@@ -34,35 +41,36 @@ def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes) -> tuple[lis
         sauce (SauceNao): A SauceNao object to use for the SauceNAO API.
         post (Post): A szurubooru Post object representing the post to be uploaded.
         image (bytes): The image to be uploaded to SauceNAO.
+        cooldown (SauceNaoCooldown): Shared cooldown gate for the SauceNAO short limit.
 
     Returns:
-        tuple[list, str, str, bool]: A tuple containing a list of tags, the source, rating, and a boolean indicating
-                                      whether the SauceNAO limit has been reached.
+        tuple[dict, bool]: A tuple containing the results and a boolean indicating whether the SauceNAO limit has
+                           been reached.
     """
 
     results = {}
     limit_reached = False
-    matches, limit_short, limit_long = asyncio.run(sauce.get_metadata(post.content_url, image))
+    matches, limit_short, limit_long = sauce.get_metadata(post.content_url, image)
 
     for index, data in matches.items():
         if data and index != 'pixiv':
-            results.update(asyncio.run(search_boorus(data['site'], f'id:{str(data["post_id"])}', 1, 0, credentials=config.credentials)))
+            results.update(search_boorus(data['site'], f'id:{str(data["post_id"])}', 1, 0, credentials=config.credentials))
 
         if data and index == 'pixiv':
             results[index] = data
 
     if not limit_long == 0:
-        # Sleep 35 seconds after short limit has been reached
+        # Pause SauceNAO requests for all workers after the short limit has been reached
         if limit_short == 0:
-            logger.debug('Short limit reached for SauceNAO, trying again in 35s...')
-            sleep(35)
+            logger.debug('Short limit reached for SauceNAO, cooling down for 35s...')
+            cooldown.trigger(35)
     else:
         limit_reached = True
         logger.info('Your daily SauceNAO limit has been reached. Consider upgrading your account.')
 
-    if limit_reached and config.auto_tagger['deepbooru']:
+    if limit_reached and config.auto_tagger['wd_tagger']:
         config.auto_tagger['saucenao'] = False
-        logger.info('Continuing tagging with Deepbooru only...')
+        logger.info('Continuing tagging with the WD tagger only...')
 
     return results, limit_reached
 
@@ -83,10 +91,10 @@ def set_tags_from_relations(post: Post) -> None:
     """
 
     for relation in post.relations:
-        result = szuru.api.getPost(relation['id'])
+        result = szuru.get_post(relation['id'])
 
-        for relation_tag in result.tags:
-            if not relation_tag.category == 'default' or not relation_tag.category == 'meta':
+        for relation_tag in result.micro_tags:
+            if relation_tag.category not in ('default', 'meta'):
                 post.tags.append(relation_tag.primary_name)
 
 
@@ -96,7 +104,7 @@ def print_statistics(total_posts):
 
     This function retrieves the statistics of the tagging process by calling the `statistics` function. It then logs
     these statistics, including the total number of posts, the number of tagged posts, the number of posts tagged by
-    Deepbooru, the number of untagged posts, and the number of skipped posts.
+    the WD tagger, the number of untagged posts, and the number of skipped posts.
 
     Args:
         total_posts (int): The total number of posts processed.
@@ -105,14 +113,224 @@ def print_statistics(total_posts):
         None
     """
 
-    total_tagged, total_deepbooru, total_untagged, total_skipped = statistics()
+    total_tagged, total_wd_tagger, total_untagged, total_skipped = statistics()
 
     logger.success('Script has finished tagging.')
     logger.info(f'Total:     {total_posts}')
     logger.info(f'Tagged:    {str(total_tagged)}')
-    logger.info(f'Deepbooru: {str(total_deepbooru)}')
+    logger.info(f'WD tagger: {str(total_wd_tagger)}')
     logger.info(f'Untagged:  {str(total_untagged)}')
     logger.info(f'Skipped:   {str(total_skipped)}')
+
+
+def image_required(
+    saucenao_enabled: bool,
+    wd_tagger_enabled: bool,
+    wd_tagger_forced: bool,
+    public: bool,
+    is_video: bool,
+    limit_reached: bool,
+    wd_tagger_videos: bool = False,
+) -> bool:
+    """
+    Decides whether the post content has to be downloaded.
+
+    The image is only needed by SauceNAO (unless the instance is public, in which
+    case SauceNAO fetches the URL itself) and by the WD tagger. An MD5-only run
+    never needs the content since the checksum is part of the post data. Videos
+    are only downloaded when the WD tagger is enabled and video tagging is on.
+
+    Args:
+        saucenao_enabled (bool): Whether SauceNAO tagging is enabled.
+        wd_tagger_enabled (bool): Whether WD tagger tagging is enabled.
+        wd_tagger_forced (bool): Whether the WD tagger is forced for every post.
+        public (bool): Whether the szurubooru instance is publicly reachable.
+        is_video (bool): Whether the post is a video.
+        limit_reached (bool): Whether the SauceNAO daily limit has been reached.
+        wd_tagger_videos (bool, optional): Whether videos get tagged via frame sampling. Defaults to False.
+
+    Returns:
+        bool: True if the content should be downloaded.
+    """
+
+    needed_for_wd_tagger = wd_tagger_enabled or wd_tagger_forced
+
+    if is_video:
+        return wd_tagger_videos and needed_for_wd_tagger
+
+    needed_for_saucenao = saucenao_enabled and not public and not limit_reached
+
+    return needed_for_saucenao or needed_for_wd_tagger
+
+
+def process_post(  # noqa C901
+    post: Post,
+    sauce: SauceNao,
+    cooldown: SauceNaoCooldown,
+    limit_event: threading.Event,
+    add_tags: list,
+    remove_tags: list,
+    md5: str = '',
+    file_to_upload: bytes = None,
+) -> None:
+    """
+    Tags a single post with tags from the MD5 search, SauceNAO and/or the WD tagger.
+
+    This is the per-post unit of work; multiple posts are processed concurrently by
+    `main`. The shared `limit_event` signals that the SauceNAO daily limit has been
+    reached, the shared `cooldown` paces requests after the short limit.
+
+    Args:
+        post (Post): The szurubooru post to tag.
+        sauce (SauceNao): Shared SauceNAO client (None if SauceNAO is disabled).
+        cooldown (SauceNaoCooldown): Shared cooldown gate for SauceNAO requests.
+        limit_event (threading.Event): Set once the SauceNAO daily limit is reached.
+        add_tags (list): Tags to add to the post.
+        remove_tags (list): Tags to remove from the post.
+        md5 (str, optional): Overrides the MD5 hash to search boorus with. Defaults to ''.
+        file_to_upload (bytes, optional): Locally available file content, skips the download. Defaults to None.
+
+    Returns:
+        None
+    """
+
+    # Once the daily SauceNAO limit is reached and the WD tagger is disabled,
+    # the remaining posts are counted as untagged (same as the sequential break before)
+    if limit_event.is_set() and not config.auto_tagger['wd_tagger']:
+        statistics(untagged=1)
+        return
+
+    dry_run = config.auto_tagger['dry_run']
+    original_tags = set(post.tags)
+    original_safety = post.safety
+
+    # Search boorus by md5 hash of the file
+    if config.auto_tagger['md5_search']:
+        md5_results = search_boorus('all', 'md5:' + (md5 or post.md5), 1, 0, credentials=config.credentials)
+
+        if md5_results:
+            tags_by_md5, sources, post.rating = prepare_post(md5_results, config)
+            post.source = collect_sources(*sources, *post.source.splitlines())
+        else:
+            tags_by_md5 = []
+    else:
+        tags_by_md5 = []
+
+    # Download the file from szurubooru if its not already locally present.
+    # This might be the case if this function was called from upload_media.
+    # MD5-only runs never need the content, so nothing gets downloaded there.
+    if not file_to_upload:
+        if image_required(
+            saucenao_enabled=config.auto_tagger['saucenao'],
+            wd_tagger_enabled=config.auto_tagger['wd_tagger'],
+            wd_tagger_forced=config.auto_tagger['wd_tagger_forced'],
+            public=config.globals['public'],
+            is_video=post.type == 'video',
+            limit_reached=limit_event.is_set(),
+            wd_tagger_videos=config.auto_tagger['wd_tagger_videos'],
+        ):
+            image = download_media(post.content_url, post.md5)
+            # Shrink files >2MB
+            try:
+                if post.type != 'video' and len(image) > 2000000:
+                    image = shrink_img(image, resize=True, convert=True)
+            except UnidentifiedImageError:
+                logger.debug('Could not shrink image')
+        else:
+            image = None  # Let SauceNAO download the image from public szurubooru URL
+    else:
+        image = file_to_upload
+
+    # Search SauceNAO with file
+    if config.auto_tagger['saucenao'] and post.type != 'video' and not limit_event.is_set():
+        cooldown.wait()
+        sauce_results, limit_reached = get_saucenao_results(sauce, post, image, cooldown)
+
+        if limit_reached:
+            limit_event.set()
+
+        if sauce_results:
+            tags_by_sauce, sources, post.rating = prepare_post(sauce_results, config)
+            post.source = collect_sources(*sources, *post.source.splitlines())
+        else:
+            tags_by_sauce = []
+    else:
+        tags_by_sauce = []
+
+    # Tag with the WD tagger. Videos are tagged from sampled frames if enabled.
+    is_video = post.type == 'video'
+    can_tag_media = not is_video or (config.auto_tagger['wd_tagger_videos'] and image)
+    pixiv_result_only = True if len(tags_by_sauce) < 2 else False
+    if (
+        (not tags_by_md5 and pixiv_result_only and config.auto_tagger['wd_tagger']) or config.auto_tagger['wd_tagger_forced']
+    ) and can_tag_media:
+        review_threshold = config.auto_tagger['wd_tagger_review_threshold'] if config.auto_tagger['wd_tagger_review'] else None
+        tag_media = wd_tagger.tag_video if is_video else wd_tagger.tag_image
+
+        result = tag_media(
+            image,
+            config.auto_tagger['default_safety'],
+            config.auto_tagger['wd_tagger_threshold'],
+            config.auto_tagger['wd_tagger_character_threshold'],
+            config.auto_tagger['wd_tagger_set_tag'],
+            review_threshold,
+        )
+
+        tags_by_wd_tagger, post.safety = result
+
+        # Marker tags don't count as substantive results for the tagme decision below
+        substantive_wd_tags = [tag for tag in tags_by_wd_tagger if tag not in ('wd_tagger', 'needs_review')]
+
+        if substantive_wd_tags:
+            # The WD tagger detects characters, but not the parody.
+            # Set the parody based on the character if configured.
+            # Only do this if no previous tags where found as this operation takes quite some time
+            if not tags_by_md5 and not tags_by_sauce and config.auto_tagger['update_relations']:
+                for tag in substantive_wd_tags:
+                    for implication in get_cached_implications(tag, create_missing=not dry_run):
+                        if implication not in post.tags:
+                            post.tags.append(implication)
+
+        if post.relations:
+            set_tags_from_relations(post)
+    else:
+        tags_by_wd_tagger = []
+        substantive_wd_tags = []
+
+    # Keep previous tags and add user tags if configured
+    if add_tags:
+        tags = list(set().union(post.tags, tags_by_md5, tags_by_sauce, tags_by_wd_tagger, add_tags))
+    else:
+        tags = list(set().union(post.tags, tags_by_md5, tags_by_sauce, tags_by_wd_tagger))
+
+    post.tags = [tag for tag in tags if tag is not None]
+    sanitize_tags(post.tags)
+
+    if remove_tags:
+        [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]
+
+    # If any substantive tags were collected, remove the tagme tag
+    if tags_by_md5 or tags_by_sauce or substantive_wd_tags:
+        [post.tags.remove(tag) for tag in post.tags if tag == 'tagme']
+    else:
+        post.tags.append('tagme')
+
+    if dry_run:
+        added = sorted(set(post.tags) - original_tags)
+        removed = sorted(original_tags - set(post.tags))
+        safety = f'{original_safety} -> {post.safety}' if post.safety != original_safety else post.safety
+        logger.info(f'Dry run: post {post.id}: tags +{added} -{removed}, safety {safety}')
+    else:
+        szuru.update_post(post)
+
+    if tags_by_md5 or tags_by_sauce:
+        statistics(tagged=1)
+
+    if substantive_wd_tags:
+        statistics(wd_tagger=1)
+
+    if not tags_by_md5 and not tags_by_sauce and not substantive_wd_tags:
+        statistics(untagged=1)
 
 
 @logger.catch
@@ -126,7 +344,10 @@ def main(  # noqa C901
     md5: str = '',
 ) -> None:
     """
-    Automatically tag posts with tags from SauceNAO, Booru posts matching the MD5 hash and/or Deepbooru.
+    Automatically tag posts with tags from SauceNAO, Booru posts matching the MD5 hash and/or the WD tagger.
+
+    Posts are processed concurrently by a configurable number of workers
+    (`workers` under `[auto_tagger]`).
 
     This function can be used to auto tag a specific post by supplying the `post_id` of the szurubooru post. It can also
     accept a `file_to_upload` in case the file is already locally available so it doesn't have to get downloaded.
@@ -156,9 +377,12 @@ def main(  # noqa C901
         else:
             logger.info(f'Retrieving posts from {config.globals["url"]} with query "{query}"...')
 
-        if not config.auto_tagger['saucenao'] and not config.auto_tagger['deepbooru'] and not config.auto_tagger['md5_search']:
-            logger.info('Nothing to do. Enable either SauceNAO or Deepbooru in your config.')
+        if not config.auto_tagger['saucenao'] and not config.auto_tagger['wd_tagger'] and not config.auto_tagger['md5_search']:
+            logger.info('Nothing to do. Enable either SauceNAO or the WD tagger in your config.')
             exit()
+
+        if config.auto_tagger['dry_run']:
+            logger.info('Dry run enabled: no posts will be updated.')
 
         # If posts are being tagged directly from upload-media script
         if not from_upload_media:
@@ -171,12 +395,21 @@ def main(  # noqa C901
 
         if config.auto_tagger['saucenao']:
             sauce = SauceNao(config)
+        else:
+            sauce = None
 
-        if config.auto_tagger['deepbooru']:
-            from szurubooru_toolkit.deepbooru import Deepbooru
-            global deepbooru
-            if deepbooru is None:
-                deepbooru = Deepbooru(config.auto_tagger['deepbooru_model'])
+        if config.auto_tagger['wd_tagger']:
+            try:
+                from szurubooru_toolkit.wdtagger import WDTagger
+            except ImportError:
+                logger.critical(
+                    'WD tagger support requires the "wd-tagger" extra. Install it with: pip install szurubooru-toolkit[wd-tagger]',
+                )
+                exit(1)
+            global wd_tagger
+            with _wd_tagger_lock:
+                if wd_tagger is None:
+                    wd_tagger = WDTagger(config.auto_tagger['wd_tagger_model'], config.auto_tagger['wd_tagger_providers'])
 
         posts = szuru.get_posts(query, videos=True)
 
@@ -193,133 +426,26 @@ def main(  # noqa C901
         if not from_upload_media:
             logger.info(f'Found {total_posts} posts. Start tagging...')
 
-        for index, post in enumerate(
-            tqdm(
-                posts,
-                ncols=80,
-                position=0,
-                leave=False,
-                disable=hide_progress,
-                total=int(total_posts),
-            ),
-        ):
-            # Search boorus by md5 hash of the file
-            if config.auto_tagger['md5_search']:
-                if md5:
-                    md5_results = asyncio.run(search_boorus('all', 'md5:' + md5, 1, 0, credentials=config.credentials))
-                else:
-                    md5_results = asyncio.run(search_boorus('all', 'md5:' + post.md5, 1, 0, credentials=config.credentials))
+        if limit_reached:
+            _limit_event.set()
 
-                if md5_results:
-                    tags_by_md5, sources, post.rating = prepare_post(md5_results, config)
-                    post.source = collect_sources(*sources, *post.source.splitlines())
-                else:
-                    tags_by_md5 = []
-            else:
-                tags_by_md5 = []
+        def worker(post: Post) -> None:
+            process_post(post, sauce, _cooldown, _limit_event, add_tags, remove_tags, md5, file_to_upload)
 
-            # Download the file from szurubooru if its not already locally present.
-            # This might be the case if this function was called from upload_media.
-            if not file_to_upload:
-                if (
-                    (not config.globals['public'] or config.auto_tagger['deepbooru']) or config.auto_tagger['deepbooru_forced']
-                ) and post.type != 'video':
-                    image = download_media(post.content_url, post.md5)
-                    # Shrink files >2MB
-                    try:
-                        if len(image) > 2000000:
-                            image = shrink_img(image, resize=True, convert=True)
-                    except UnidentifiedImageError:
-                        logger.debug('Could not shrink image')
-                else:
-                    image = None  # Let SauceNAO download the image from public szurubooru URL
-            else:
-                image = file_to_upload
+        if from_upload_media:
+            # Single post handed over from upload-media: process directly
+            for post in posts:
+                worker(post)
 
-            # Search SauceNAO with file
-            if config.auto_tagger['saucenao'] and post.type != 'video' and not limit_reached:
-                sauce_results, limit_reached = get_saucenao_results(sauce, post, image)
+            return _limit_event.is_set()
 
-                if sauce_results:
-                    tags_by_sauce, sources, post.rating = prepare_post(sauce_results, config)
-                    post.source = collect_sources(*sources, *post.source.splitlines())
-                else:
-                    tags_by_sauce = []
-            else:
-                tags_by_sauce = []
+        workers = max(1, int(config.auto_tagger['workers']))
+        run_concurrently(posts, worker, workers, int(total_posts), hide_progress)
 
-            # Tag with Deepbooru.
-            pixiv_result_only = True if len(tags_by_sauce) < 2 else False
-            if (
-                (not tags_by_md5 and pixiv_result_only and config.auto_tagger['deepbooru']) or config.auto_tagger['deepbooru_forced']
-            ) and post.type != 'video':
-                result = deepbooru.tag_image(
-                    image,
-                    config.auto_tagger['default_safety'],
-                    config.auto_tagger['deepbooru_threshold'],
-                    config.auto_tagger['deepbooru_set_tag'],
-                )
-
-                tags_by_deepbooru, post.safety = result
-
-                if tags_by_deepbooru:
-                    # Deepbooru detects characters, but not the parody.
-                    # Set the parody based on the character if configured.
-                    # Only do this if no previous tags where found as this operation takes quite some time
-                    if not tags_by_md5 and not tags_by_sauce and config.auto_tagger['update_relations']:
-                        for tag in tags_by_deepbooru:
-                            try:
-                                szuru_tag = szuru.api.getTag(tag)
-                            except SzurubooruHTTPError as msg:
-                                if 'TagNotFoundError' in str(msg):
-                                    szuru_tag = szuru.api.createTag(tag)
-                            for implication in szuru_tag.implications:
-                                szuru_implication = szuru.api.getTag(implication)
-                                if szuru_implication not in post.tags:
-                                    post.tags.append(szuru_implication.primary_name)
-
-                if post.relations:
-                    set_tags_from_relations(post)
-            else:
-                tags_by_deepbooru = []
-
-            # Keep previous tags and add user tags if configured
-            if add_tags:
-                tags = list(set().union(post.tags, tags_by_md5, tags_by_sauce, tags_by_deepbooru, add_tags))
-            else:
-                tags = list(set().union(post.tags, tags_by_md5, tags_by_sauce, tags_by_deepbooru))
-
-            post.tags = [tag for tag in tags if tag is not None]
-            sanitize_tags(post.tags)
-
-            if remove_tags:
-                [post.tags.remove(tag) for tag in remove_tags if tag in post.tags]
-
-            # If any tags were collected, remove tagme and deepbooru tag
-            if tags_by_md5 or tags_by_sauce or tags_by_deepbooru:
-                [post.tags.remove(tag) for tag in post.tags if tag == 'tagme']
-            else:
-                post.tags.append('tagme')
-
-            szuru.update_post(post)
-
-            if tags_by_md5 or tags_by_sauce:
-                statistics(tagged=1)
-
-            if tags_by_deepbooru:
-                statistics(deepbooru=1)
-
-            if not tags_by_md5 and not tags_by_sauce and not tags_by_deepbooru:
-                statistics(untagged=1)
-
-            if limit_reached and not config.auto_tagger['deepbooru']:
-                statistics(untagged=int(total_posts) - index - 1)  # Index starts at 0
-                break
-
-        if not from_upload_media:
-            print_statistics(total_posts)
-        else:
-            return limit_reached
+        print_statistics(total_posts)
+    except SzurubooruError as e:
+        logger.critical(f'Could not process your query: {e}')
+        exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
         try:
