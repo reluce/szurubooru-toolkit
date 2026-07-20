@@ -367,7 +367,17 @@ def click_fix_relations(ctx, query):
     module.main(query)
 
 
-@cli.command('create-tags', epilog='Example: szuru-toolkit create-tags --query "genshin*" --overwrite')
+@cli.command(
+    'create-tags',
+    epilog="""\b
+Examples:
+  szuru-toolkit create-tags --query "genshin*" --overwrite
+  szuru-toolkit create-tags --query "genshin*" --import-implications
+  szuru-toolkit create-tags --query slime_girl --import-implications
+  szuru-toolkit create-tags --category character --implications "slime,monster_girl" slime_girl
+  szuru-toolkit create-tags --tag-file tags.txt
+""",
+)
 @click.argument('tag-name', required=False)
 @click.option(
     '--tag-file',
