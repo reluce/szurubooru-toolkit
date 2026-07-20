@@ -181,6 +181,15 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
     if config.import_from_url['cookies']:
         params += [f'--cookies={config.import_from_url["cookies"]}']
 
+    # Gelbooru's API requires credentials; pass them through to gallery-dl if configured.
+    gelbooru = config.credentials.get('gelbooru', {})
+    user_id, api_key = gelbooru.get('user_id'), gelbooru.get('api_key')
+    if user_id and api_key and 'None' not in (user_id, api_key):
+        params += [
+            f'--option=extractor.gelbooru.user-id={user_id}',
+            f'--option=extractor.gelbooru.api-key={api_key}',
+        ]
+
     if input_file:
         params += [f'--input-file={input_file}']
 

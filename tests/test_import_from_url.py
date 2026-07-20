@@ -28,3 +28,35 @@ def test_set_tags_unknown_site_yields_no_tags():
     metadata = {'site': None, 'tags': ['artist:someone']}
 
     assert import_from_url.set_tags(metadata) == []
+
+
+def test_gelbooru_credentials_passed_to_gallery_dl(monkeypatch):
+    class Cfg:
+        globals = {'hide_progress': True}
+        import_from_url = {
+            'wd_tagger': False,
+            'md5_search': False,
+            'saucenao': False,
+            'cookies': None,
+            'range': ':1',
+            'tmp_path': '/tmp/import',
+            'workers': 1,
+        }
+        upload_media = {}
+        auto_tagger = {}
+        credentials = {'gelbooru': {'user_id': '123', 'api_key': 'abc'}}
+
+    monkeypatch.setattr(import_from_url, 'config', Cfg)
+
+    captured = {}
+
+    def fake_invoke(urls, tmp_path, params, workers=1):
+        captured['params'] = params
+        raise RuntimeError('stop after building params')  # swallowed by @logger.catch
+
+    monkeypatch.setattr(import_from_url, 'invoke_gallery_dl', fake_invoke)
+
+    import_from_url.main(urls=['https://gelbooru.com/index.php?page=post&s=list&tags=x'])
+
+    assert '--option=extractor.gelbooru.user-id=123' in captured['params']
+    assert '--option=extractor.gelbooru.api-key=abc' in captured['params']
