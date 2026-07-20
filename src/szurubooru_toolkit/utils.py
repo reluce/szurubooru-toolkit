@@ -740,7 +740,6 @@ def get_site(url: str) -> str:
     sites = {
         'sankaku',
         'danbooru',
-        'donmai',
         'gelbooru',
         'konachan',
         'yandere',
@@ -755,6 +754,10 @@ def get_site(url: str) -> str:
     # exhentai.org; the toolkit handles both under 'e-hentai'.
     if 'exhentai' in url:
         return 'e-hentai'
+
+    # Danbooru serves files from cdn.donmai.us; the toolkit handles it as 'danbooru'.
+    if 'donmai' in url:
+        return 'danbooru'
 
     for site in sites:
         if site in url:
