@@ -126,6 +126,11 @@ src_path = "/local/path/to/upload/dir"
 cleanup = false
 workers = 4
 tags = ["tagme"]
+# Read tags from a "<file>.txt" sidecar file, one tag per line,
+# e.g. written by gallery-dl --write-tags
+read_sidecar_tags = false
+# Append sidecar tags to already uploaded posts
+update_tags_if_exists = false
 auto_tag = true
 max_similarity = "0.95"
 convert_to_jpg = false

@@ -215,5 +215,14 @@ __Examples__
 * `szuru-toolkit import-from-url --cookies "~/cookies.txt" --range ":100" "https://twitter.com/<USERNAME>/likes"`
 * `szuru-toolkit import-from-url --input-file urls.txt "https://danbooru.donmai.us/posts?tags=foo" "https://beta.sankakucomplex.com/post/show/<id>"`
 
+### :outbox_tray: upload-media
+This script uploads media files from a local directory (`src_path`).
+
+With `read_sidecar_tags = true`, tags are read from a `<file>.txt` sidecar file next to each media file, one tag per line — both `abc.jpg.txt` (as written by gallery-dl `--write-tags`) and `abc.txt` are picked up. Files without a sidecar get the configured default `tags` as before. If a file is already uploaded, `update_tags_if_exists = true` appends the sidecar tags to the existing post instead. With `cleanup = true`, consumed sidecar files are removed along with their media files.
+
+__Examples__
+* `szuru-toolkit upload-media --cleanup --tags "foo,bar"`
+* `szuru-toolkit upload-media --read-sidecar-tags --update-tags-if-exists`
+
 ## :information_source:	Image credit
 GitHub repo icon: <a href="https://www.flaticon.com/free-icons/code" title="code icons">Code icons created by Smashicons - Flaticon</a>

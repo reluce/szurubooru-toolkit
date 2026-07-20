@@ -121,6 +121,8 @@ UPLOAD_MEDIA_DEFAULTS = {
     'hide_progress': False,
     'cleanup': False,
     'tags': ['tagme'],
+    'read_sidecar_tags': False,
+    'update_tags_if_exists': False,
     'auto_tag': False,
     'max_similarity': 0.95,
     'convert_to_jpg': False,

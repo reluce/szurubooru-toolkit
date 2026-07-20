@@ -45,6 +45,45 @@ def get_files(upload_dir: str) -> list:
     return files
 
 
+def find_sidecar(file_path: str) -> Path | None:
+    """
+    Returns the tag sidecar file for a media file, if one exists.
+
+    Looks for '<file>.<ext>.txt' (the gallery-dl --write-tags convention) first,
+    then '<file>.txt'.
+
+    Args:
+        file_path (str): The path of the media file.
+
+    Returns:
+        Path | None: The path of the sidecar file, or None if there is none.
+    """
+
+    for sidecar in (Path(file_path + '.txt'), Path(file_path).with_suffix('.txt')):
+        if sidecar.is_file():
+            return sidecar
+
+    return None
+
+
+def read_sidecar_tags(file_path: str) -> list:
+    """
+    Reads tags from the media file's sidecar file, one tag per line.
+
+    Args:
+        file_path (str): The path of the media file.
+
+    Returns:
+        list: The tags, or an empty list if no sidecar with content exists.
+    """
+
+    sidecar = find_sidecar(file_path)
+    if not sidecar:
+        return []
+
+    return [line.strip() for line in sidecar.read_text(encoding='utf-8').splitlines() if line.strip()]
+
+
 def get_media_token(szuru: Szurubooru, media: bytes, file_ext: str = None) -> str:
     """
     Upload the media file to the temporary upload endpoint.
@@ -435,12 +474,28 @@ def main(
 
                 batch = RelationsBatch()
 
+                # The duplicate handling in upload_post routes through the
+                # import_from_url flag; honor the upload_media one for this run.
+                config.import_from_url['update_tags_if_exists'] = config.upload_media['update_tags_if_exists']
+
                 def worker(file_path: str) -> None:
                     with open(file_path, 'rb') as f:
                         file = f.read()
+
+                    metadata = None
+                    if config.upload_media['read_sidecar_tags']:
+                        sidecar_tags = read_sidecar_tags(file_path)
+                        if sidecar_tags:
+                            metadata = {
+                                'tags': sidecar_tags,
+                                'safety': config.upload_media['default_safety'],
+                                'source': '',
+                            }
+
                     success, _ = upload_post(
                         file,
                         file_ext=Path(file_path).suffix[1:],
+                        metadata=metadata,
                         file_path=file_path,
                         relations_batch=batch,
                     )
@@ -448,6 +503,10 @@ def main(
                     if config.upload_media['cleanup'] and success:
                         if os.path.exists(file_path):
                             os.remove(file_path)
+                        if config.upload_media['read_sidecar_tags']:
+                            sidecar = find_sidecar(file_path)
+                            if sidecar:
+                                sidecar.unlink()
 
                 workers = max(1, int(config.upload_media['workers']))
                 run_concurrently(files_to_upload, worker, workers, len(files_to_upload), hide_progress)

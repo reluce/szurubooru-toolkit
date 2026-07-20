@@ -68,6 +68,79 @@ def test_upload_post_skips_upload_when_exact_match_exists(monkeypatch):
     assert szuru.created == []
 
 
+def test_read_sidecar_tags_prefers_gallery_dl_convention(tmp_path):
+    file = tmp_path / 'abc.jpg'
+    file.write_bytes(b'file-bytes')
+    (tmp_path / 'abc.jpg.txt').write_text('tag1\ntag2\n')
+    (tmp_path / 'abc.txt').write_text('other_tag\n')
+
+    assert upload_media.read_sidecar_tags(str(file)) == ['tag1', 'tag2']
+
+
+def test_read_sidecar_tags_falls_back_to_stem(tmp_path):
+    file = tmp_path / 'abc.jpg'
+    file.write_bytes(b'file-bytes')
+    (tmp_path / 'abc.txt').write_text('tag1\n\n  tag2  \n')
+
+    assert upload_media.read_sidecar_tags(str(file)) == ['tag1', 'tag2']
+
+
+def test_read_sidecar_tags_without_sidecar(tmp_path):
+    file = tmp_path / 'abc.jpg'
+    file.write_bytes(b'file-bytes')
+
+    assert upload_media.read_sidecar_tags(str(file)) == []
+
+
+def test_upload_media_passes_sidecar_tags_and_cleans_up(monkeypatch, tmp_path):
+    szuru = StubSzuru()
+    wire(monkeypatch, szuru)
+    upload_media.config.upload_media['read_sidecar_tags'] = True
+    upload_media.config.upload_media['cleanup'] = True
+    upload_media.config.upload_media['src_path'] = str(tmp_path)
+
+    file = tmp_path / 'abc.jpg'
+    file.write_bytes(b'file-bytes')
+    sidecar = tmp_path / 'abc.jpg.txt'
+    sidecar.write_text('tag1\ntag2\n')
+
+    captured = {}
+
+    def fake_upload_post(file, file_ext, metadata=None, file_path=None, relations_batch=None, **kwargs):
+        captured['metadata'] = metadata
+        return True, False
+
+    monkeypatch.setattr(upload_media, 'upload_post', fake_upload_post)
+
+    upload_media.main(src_path=[str(file)])
+
+    assert captured['metadata']['tags'] == ['tag1', 'tag2']
+    assert not file.exists()
+    assert not sidecar.exists()
+
+
+def test_upload_media_without_sidecar_keeps_default_tags(monkeypatch, tmp_path):
+    szuru = StubSzuru()
+    wire(monkeypatch, szuru)
+    upload_media.config.upload_media['read_sidecar_tags'] = True
+
+    file = tmp_path / 'abc.jpg'
+    file.write_bytes(b'file-bytes')
+
+    captured = {}
+
+    def fake_upload_post(file, file_ext, metadata=None, file_path=None, relations_batch=None, **kwargs):
+        captured['metadata'] = metadata
+        return True, False
+
+    monkeypatch.setattr(upload_media, 'upload_post', fake_upload_post)
+
+    upload_media.main(src_path=[str(file)])
+
+    # No metadata -> upload_post falls back to the configured default tags
+    assert captured['metadata'] is None
+
+
 def test_upload_post_bails_without_token_and_skips_reverse_search(monkeypatch):
     # A failed token upload must not cascade into a tokenless reverse search (#78)
     szuru = StubSzuru()

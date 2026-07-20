@@ -723,6 +723,17 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_impl
     help=f'Specify tags, separated by a comma, which will be added to all posts (default: {config.UPLOAD_MEDIA_DEFAULTS["tags"]}).',
 )
 @click.option(
+    '--read-sidecar-tags/--no-read-sidecar-tags',
+    help=(
+        'Read tags from a "<file>.txt" sidecar file, one tag per line, e.g. from gallery-dl --write-tags '
+        f'(default: {config.UPLOAD_MEDIA_DEFAULTS["read_sidecar_tags"]}).'
+    ),
+)
+@click.option(
+    '--update-tags-if-exists/--no-update-tags-if-exists',
+    help=f'Append sidecar tags to already uploaded posts (default: {config.UPLOAD_MEDIA_DEFAULTS["update_tags_if_exists"]}).',
+)
+@click.option(
     '--convert-to-jpg/--no-convert-to-jpg',
     help=f'Convert images to JPG if convert-threshold is exceeded (default: {config.UPLOAD_MEDIA_DEFAULTS["convert_to_jpg"]}).',
 )
@@ -767,6 +778,8 @@ def click_upload_media(
     src_path,
     cleanup,
     tags,
+    read_sidecar_tags,
+    update_tags_if_exists,
     auto_tag,
     convert_to_jpg,
     convert_threshold,
