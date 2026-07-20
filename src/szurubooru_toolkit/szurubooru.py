@@ -236,6 +236,14 @@ class Szurubooru:
         if response.is_error:
             raise SzurubooruApiError(f'HTTP{response.status_code}', response.text)
 
+        # A 2xx with a non-JSON body means a proxy answered instead of szurubooru
+        # (e.g. an nginx error page); surface it instead of returning None.
+        if data is None:
+            raise SzurubooruApiError(
+                f'HTTP{response.status_code}',
+                f'expected a JSON response, got: {response.text[:200]!r}',
+            )
+
         return data
 
     def _fetch_post_resource(self, path: str, params: dict = None) -> dict:

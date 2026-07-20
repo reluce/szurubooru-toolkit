@@ -66,3 +66,22 @@ def test_upload_post_skips_upload_when_exact_match_exists(monkeypatch):
 
     assert success
     assert szuru.created == []
+
+
+def test_upload_post_bails_without_token_and_skips_reverse_search(monkeypatch):
+    # A failed token upload must not cascade into a tokenless reverse search (#78)
+    szuru = StubSzuru()
+
+    def failing_upload(media, file_ext=None):
+        raise upload_media.SzurubooruError('expected a JSON response, got: proxy error page')
+
+    searched = []
+    szuru.upload_temporary_file = failing_upload
+    szuru.reverse_search = lambda token: searched.append(token)
+    wire(monkeypatch, szuru)
+
+    success, _ = upload_media.upload_post(b'file-bytes', 'jpg')
+
+    assert not success
+    assert searched == []
+    assert szuru.created == []

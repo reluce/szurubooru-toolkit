@@ -493,3 +493,12 @@ def test_non_json_error_raises_api_error():
         client.szuru.get_post('1')
 
     assert exc_info.value.name == 'HTTP502'
+
+
+def test_non_json_success_raises_api_error():
+    # e.g. a proxy answering with an HTML page instead of szurubooru (#78)
+    client = RecordingClient(lambda request: httpx.Response(200, text='<html>proxy error</html>'))
+    with pytest.raises(SzurubooruApiError) as exc_info:
+        client.szuru.upload_temporary_file(b'fake-image', 'png')
+
+    assert 'proxy error' in str(exc_info.value)

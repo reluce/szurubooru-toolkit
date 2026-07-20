@@ -308,6 +308,11 @@ def upload_post(
         updated_file_ext = file_ext
 
     post.token = get_media_token(szuru, post.media, updated_file_ext)
+    if not post.token:
+        # The upload failed and was already logged; a reverse search without a
+        # token would only add a misleading MissingRequiredFileError (#78).
+        return False, saucenao_limit_reached
+
     exact_post, similar_posts, errors = check_similarity(szuru, post.token)
 
     if errors:
