@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
   python3-dev \
   cron
 RUN pip3 install --upgrade pip && \
-  pip3 install uv
+  pip3 install "uv>=0.11.6"
 
 WORKDIR ${WORKDIR}
 COPY . .
