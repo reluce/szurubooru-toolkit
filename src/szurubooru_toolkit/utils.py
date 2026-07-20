@@ -161,6 +161,35 @@ def convert_rating(rating: str) -> str:
     return new_rating
 
 
+SAFETY_LEVELS = {'safe': 0, 'sketchy': 1, 'unsafe': 2}
+
+
+def apply_safety_overrides(tags: list, safety: str, overrides: dict) -> str:
+    """
+    Escalates a post's safety if any of the configured trigger tags are present.
+
+    `overrides` maps a safety level to its trigger tags, e.g. {'sketchy': ['nude']}.
+    Safety is only ever raised (safe < sketchy < unsafe), never lowered.
+
+    Args:
+        tags (list): The post's tags.
+        safety (str): The post's current safety.
+        overrides (dict): The safety_overrides mapping from the config.
+
+    Returns:
+        str: The (possibly escalated) safety.
+    """
+
+    tags = set(tags)
+
+    for level, trigger_tags in overrides.items():
+        if SAFETY_LEVELS[level] > SAFETY_LEVELS.get(safety, 0) and not tags.isdisjoint(trigger_tags):
+            logger.debug(f'Escalating safety from {safety} to {level} (matched {tags.intersection(trigger_tags)})')
+            safety = level
+
+    return safety
+
+
 def statistics(tagged=0, wd_tagger=0, untagged=0, skipped=0) -> tuple:
     """Keep track of how posts were tagged.
 

@@ -24,6 +24,14 @@ def test_defaults_not_shared_between_instances(make_config):
     assert config_module.UPLOAD_MEDIA_DEFAULTS['tags'] == ['tagme']
 
 
+def test_invalid_safety_overrides_level_rejected(make_config):
+    config = make_config()
+    config.auto_tagger['safety_overrides'] = {'lewd': ['nude']}
+
+    with pytest.raises(SystemExit):
+        config.validate_safety()
+
+
 def test_globals_have_no_hide_progress_default(make_config):
     # Scripts try config.globals['hide_progress'] and fall back to their own
     # section on KeyError; a global default would make that fallback dead code.

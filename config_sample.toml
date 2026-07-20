@@ -44,6 +44,9 @@ wd_tagger_videos = true
 wd_tagger_review = false
 wd_tagger_review_threshold = 0.5
 default_safety = "safe"
+# Force a minimum safety level when certain tags are present.
+# Safety is only ever raised (safe < sketchy < unsafe), never lowered.
+#safety_overrides = { sketchy = ["nude", "see-through"], unsafe = ["sex"] }
 use_pixiv_artist = false
 use_pixiv_tags = false
 update_relations = true

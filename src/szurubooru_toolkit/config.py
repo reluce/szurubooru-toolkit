@@ -46,6 +46,7 @@ AUTO_TAGGER_DEFAULTS = {
     'wd_tagger_review_threshold': 0.5,
     'dry_run': False,
     'default_safety': 'safe',
+    'safety_overrides': {},
     'hide_progress': False,
     'use_pixiv_artist': False,
     'use_pixiv_tags': False,
@@ -340,7 +341,7 @@ class Config:
         self.upload_media['shrink_threshold'] = int(self.upload_media['shrink_threshold'])
 
     def validate_safety(self) -> None:
-        """Check if default_safety is set correctly."""
+        """Check if default_safety and safety_overrides are set correctly."""
 
         if not self.upload_media['default_safety'] in ['safe', 'sketchy', 'unsafe']:
             logger.critical(
@@ -348,6 +349,14 @@ class Config:
             )
             logger.critical('Choose between safe, sketchy and unsafe.')
             exit(1)
+
+        for level, tags in self.auto_tagger['safety_overrides'].items():
+            if level not in ['sketchy', 'unsafe']:
+                logger.critical(f'The safety_overrides level "{level}" is not valid! Choose between sketchy and unsafe.')
+                exit(1)
+            if not isinstance(tags, list):
+                logger.critical(f'safety_overrides.{level} has to be a list of tags!')
+                exit(1)
 
     def validate_szurubooru(self) -> None:
         """Check if szurubooru options are set correctly."""

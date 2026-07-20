@@ -136,6 +136,8 @@ General tags and character tags use separate confidence thresholds (`wd_tagger_t
 
 With `wd_tagger_review = true`, posts whose best character score lands between `wd_tagger_review_threshold` and `wd_tagger_character_threshold` get tagged `needs_review` — a szurubooru query for exactly the ambiguous character matches worth curating manually.
 
+Post safety is detected automatically: booru matches carry over their source rating, and the WD tagger predicts one (safe/sketchy/unsafe) for everything else. On top of that, `safety_overrides` in `[auto_tagger]` forces a minimum safety whenever certain tags are present, e.g. `safety_overrides = { sketchy = ["nude"], unsafe = ["sex"] }`. Safety is only ever raised by this, never lowered — a booru-provided `unsafe` stays `unsafe`.
+
 Videos are tagged as well if ffmpeg is installed (`wd_tagger_videos`): frames are sampled across the duration — longer videos get more frames — and their scores averaged, so tags that only appear in a single frame don't stick.
 
 Inference runs on the CPU by default. For hardware acceleration, set `wd_tagger_providers` in `config.toml`, e.g. `["CoreMLExecutionProvider"]` on Apple Silicon or `["CUDAExecutionProvider"]` on NVIDIA GPUs (requires the `onnxruntime-gpu` package). Unavailable providers fall back to the CPU.

@@ -11,6 +11,7 @@ from szurubooru_toolkit.saucenao import SauceNao
 from szurubooru_toolkit.saucenao import SauceNaoCooldown
 from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.szurubooru import SzurubooruError
+from szurubooru_toolkit.utils import apply_safety_overrides
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import download_media
 from szurubooru_toolkit.utils import get_cached_implications
@@ -316,6 +317,9 @@ def process_post(  # noqa C901
         post.tags = [tag for tag in post.tags if tag != 'tagme']
     else:
         post.tags.append('tagme')
+
+    if config.auto_tagger['safety_overrides']:
+        post.safety = apply_safety_overrides(post.tags, post.safety, config.auto_tagger['safety_overrides'])
 
     if dry_run:
         added = sorted(set(post.tags) - original_tags)

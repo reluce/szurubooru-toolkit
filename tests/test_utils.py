@@ -172,6 +172,27 @@ def test_get_site(url, expected):
     assert utils.get_site(url) == expected
 
 
+@pytest.mark.parametrize(
+    'tags,safety,expected',
+    [
+        (['1girl', 'nude'], 'safe', 'sketchy'),  # escalates on match
+        (['1girl', 'sex'], 'safe', 'unsafe'),
+        (['1girl', 'nude', 'sex'], 'safe', 'unsafe'),  # highest matching level wins
+        (['1girl', 'nude'], 'unsafe', 'unsafe'),  # never lowered
+        (['1girl'], 'safe', 'safe'),  # no match
+        ([], 'safe', 'safe'),
+    ],
+)
+def test_apply_safety_overrides(tags, safety, expected):
+    overrides = {'sketchy': ['nude', 'see-through'], 'unsafe': ['sex']}
+
+    assert utils.apply_safety_overrides(tags, safety, overrides) == expected
+
+
+def test_apply_safety_overrides_empty_config_is_noop():
+    assert utils.apply_safety_overrides(['nude'], 'safe', {}) == 'safe'
+
+
 def test_generate_src_e_hentai():
     metadata = {'site': 'e-hentai', 'gid': 4046994, 'token': 'd23b006a6f'}
 
