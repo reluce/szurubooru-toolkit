@@ -70,6 +70,7 @@ CREATE_TAGS_DEFAULTS = {
     'min_post_count': 10,
     'query': '*',
     'overwrite': False,
+    'import_implications': False,
 }
 
 DELETE_POSTS_DEFAULTS = {'hide_progress': False, 'workers': 4}

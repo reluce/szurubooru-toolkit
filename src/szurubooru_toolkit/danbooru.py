@@ -148,3 +148,68 @@ class Danbooru:
                 yield tags
             except Exception as e:
                 logger.critical(f'Could not fetch tags: {e}')
+
+    # ponytail: 100 names per request keeps URLs well below length limits
+    CHUNK_SIZE = 100
+
+    def get_tag_implications(self, tag_names: List[str]) -> dict:
+        """
+        Returns the active Danbooru tag implications for the given tags.
+
+        Args:
+            tag_names (List[str]): The antecedent tag names to look up.
+
+        Returns:
+            dict: A mapping of antecedent tag name to a list of implied tag names.
+        """
+
+        implications = {}
+
+        for index in range(0, len(tag_names), self.CHUNK_SIZE):
+            chunk = tag_names[index : index + self.CHUNK_SIZE]
+            params = {
+                'search[antecedent_name_comma]': ','.join(chunk),
+                'search[status]': 'active',
+                'limit': 1000,
+            }
+
+            try:
+                results = self.client.get('/tag_implications.json', params=params).json()
+                if not isinstance(results, list):
+                    logger.warning(f'Unexpected Danbooru response: {results!r}')
+                    continue
+                for entry in results:
+                    implications.setdefault(entry['antecedent_name'], []).append(entry['consequent_name'])
+            except Exception as e:
+                logger.critical(f'Could not fetch tag implications: {e}')
+
+        return implications
+
+    def get_tag_categories(self, tag_names: List[str]) -> dict:
+        """
+        Returns the Danbooru categories of the given tags.
+
+        Args:
+            tag_names (List[str]): The tag names to look up.
+
+        Returns:
+            dict: A mapping of tag name to its numerical Danbooru category.
+        """
+
+        categories = {}
+
+        for index in range(0, len(tag_names), self.CHUNK_SIZE):
+            chunk = tag_names[index : index + self.CHUNK_SIZE]
+            params = {'search[name_comma]': ','.join(chunk), 'limit': 1000}
+
+            try:
+                results = self.client.get('/tags.json', params=params).json()
+                if not isinstance(results, list):
+                    logger.warning(f'Unexpected Danbooru response: {results!r}')
+                    continue
+                for entry in results:
+                    categories[entry['name']] = entry['category']
+            except Exception as e:
+                logger.critical(f'Could not fetch tag categories: {e}')
+
+        return categories

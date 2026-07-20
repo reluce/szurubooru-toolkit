@@ -187,16 +187,20 @@ The `tag_file` has to be in following format:
 
 ```
 <tag_a>,<category_name>
-<tag_b>,<category_name>
+<tag_b>,<category_name>,<implied_tag>,<implied_tag>
 <tag_..n>,<category_name>
 ```
 
 The category has to be created beforehand manually (e.g. default, artist, parody/series, character and meta).
 
+Any columns after the category are added as implications; implied tags get created (category `default`) if they don't exist yet. A single tag can also be created directly with implications passed as an argument. With `import_implications = true` (or `--import-implications`), tags created by a Danbooru query additionally get their active Danbooru implications, with implied tags created under their Danbooru category.
+
 __Examples__
 * `szuru-toolkit create-tags`
 * `szuru-toolkit create-tags --query genshin* --overwrite`
+* `szuru-toolkit create-tags --query genshin* --import-implications`
 * `szuru-toolkit create-tags --tag-file tags.txt`
+* `szuru-toolkit create-tags --category character --implications "slime,monster_girl" slime_girl`
 
 ### :link:	import-from-url
 This scripts imports posts with their tags from the URL passed to this script.

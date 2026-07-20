@@ -69,3 +69,50 @@ def test_download_tags_skips_unexpected_response():
         return httpx.Response(200, json={'success': False, 'message': 'error'})
 
     assert list(make_danbooru(handler).download_tags('*', 10, 100)) == []
+
+
+def test_get_tag_implications_maps_antecedents():
+    def handler(request):
+        assert request.url.path == '/tag_implications.json'
+        params = dict(request.url.params)
+        assert params['search[antecedent_name_comma]'] == 'slime_girl,cat_girl'
+        assert params['search[status]'] == 'active'
+        return httpx.Response(
+            200,
+            json=[
+                {'antecedent_name': 'slime_girl', 'consequent_name': 'monster_girl', 'status': 'active'},
+                {'antecedent_name': 'cat_girl', 'consequent_name': 'animal_ears', 'status': 'active'},
+                {'antecedent_name': 'cat_girl', 'consequent_name': 'cat_ears', 'status': 'active'},
+            ],
+        )
+
+    implications = make_danbooru(handler).get_tag_implications(['slime_girl', 'cat_girl'])
+
+    assert implications == {'slime_girl': ['monster_girl'], 'cat_girl': ['animal_ears', 'cat_ears']}
+
+
+def test_get_tag_implications_chunks_requests():
+    requests = []
+
+    def handler(request):
+        requests.append(dict(request.url.params)['search[antecedent_name_comma]'])
+        return httpx.Response(200, json=[])
+
+    names = [f'tag{i}' for i in range(150)]
+    assert make_danbooru(handler).get_tag_implications(names) == {}
+    assert len(requests) == 2
+    assert requests[0].count(',') == 99
+
+
+def test_get_tag_categories():
+    def handler(request):
+        assert request.url.path == '/tags.json'
+        assert dict(request.url.params)['search[name_comma]'] == 'monster_girl,hatsune_miku'
+        return httpx.Response(
+            200,
+            json=[{'name': 'monster_girl', 'category': 0}, {'name': 'hatsune_miku', 'category': 4}],
+        )
+
+    categories = make_danbooru(handler).get_tag_categories(['monster_girl', 'hatsune_miku'])
+
+    assert categories == {'monster_girl': 0, 'hatsune_miku': 4}

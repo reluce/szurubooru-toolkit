@@ -5,7 +5,9 @@ from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
+from szurubooru_toolkit.szurubooru import Tag
 from szurubooru_toolkit.szurubooru import TagExistsError
+from szurubooru_toolkit.szurubooru import TagNotFoundError
 
 
 def convert_tag_category(category: int) -> str:
@@ -35,17 +37,54 @@ def convert_tag_category(category: int) -> str:
     return category
 
 
-@logger.catch
-def main(tag_file: str = '') -> None:
+def add_implications(tag_name: str, implications: list, implied_categories: dict = None) -> None:
     """
-    Read tags from file or based on a Danbooru query and create them in szurubooru.
+    Adds implications to a tag, creating implied tags that don't exist yet.
 
-    This function reads tags from a file and creates them in szurubooru. It also handles configuration settings such as
-    minimum post count, limit, overwrite, and hide progress.
+    Existing implications of the tag are kept; new ones are merged in.
+
+    Args:
+        tag_name (str): The tag which implies the others.
+        implications (list): The names of the implied tags.
+        implied_categories (dict, optional): Categories for implied tags that have to be
+                                             created, as {name: category}. Defaults to 'default'.
+
+    Returns:
+        None
+    """
+
+    for implied in implications:
+        try:
+            szuru.get_tag(implied)
+        except TagNotFoundError:
+            category = (implied_categories or {}).get(implied, 'default')
+            szuru.create_tag(implied, category)
+
+    tag = szuru.get_tag(tag_name)
+    existing = {implication.primary_name for implication in tag.implications}
+    new = [implied for implied in implications if implied not in existing]
+
+    if new:
+        tag.implications += [Tag(names=[implied]) for implied in new]
+        szuru.update_tag(tag)
+        logger.debug(f'Added implications {new} to tag "{tag_name}"')
+
+
+@logger.catch
+def main(tag_file: str = '', tag_name: str = '', category: str = '', implications: list = []) -> None:
+    """
+    Create tags in szurubooru from a file, a single tag given on the command line, or a Danbooru query.
+
+    A tag file contains one 'name,category' pair per line; any further columns are added as
+    implications. A single tag is created from `tag_name`, `category` and `implications`. Without
+    either, tags are downloaded from Danbooru based on the configured query, optionally with
+    their Danbooru implications (import_implications).
 
     Args:
         tag_file (str, optional): The path to the file containing the tags to create. Defaults to ''.
-        query (str, optional): The query to use for retrieving posts. Defaults to '*'.
+        tag_name (str, optional): A single tag to create. Defaults to ''.
+        category (str, optional): The category of `tag_name`. Defaults to 'default'.
+        implications (list, optional): Tags which `tag_name` implies. Defaults to [].
 
     Returns:
         None
@@ -84,22 +123,47 @@ def main(tag_file: str = '') -> None:
                     except TagExistsError as e:  # noqa F841
                         # logger.warning(e)  # Could result in lots of output with larger tag files
                         pass
+
+                    tag_implications = [implied for implied in tag[2:] if implied]
+                    if tag_implications:
+                        add_implications(tag_name, tag_implications)
+        elif tag_name:
+            try:
+                szuru.create_tag(tag_name, category or 'default', overwrite)
+            except TagExistsError as e:  # noqa F841
+                pass
+
+            if implications:
+                add_implications(tag_name, implications)
         else:
             from szurubooru_toolkit import danbooru
 
             results = danbooru.download_tags(config.create_tags['query'], min_post_count, limit)
 
             for result in results:
+                created = []
                 for tag in result:
                     if not isinstance(tag, dict) or 'name' not in tag:
                         continue
-                    category = convert_tag_category(tag.get('category'))
-                    if category is None:
+                    tag_category = convert_tag_category(tag.get('category'))
+                    if tag_category is None:
                         continue
                     try:
-                        szuru.create_tag(tag['name'], category, overwrite)
+                        szuru.create_tag(tag['name'], tag_category, overwrite)
                     except TagExistsError as e:  # noqa F841
                         pass
+                    created.append(tag['name'])
+
+                if created and config.create_tags['import_implications']:
+                    implication_map = danbooru.get_tag_implications(created)
+                    consequents = {implied for values in implication_map.values() for implied in values}
+                    implied_categories = {
+                        name: convert_tag_category(numerical_category) or 'default'
+                        for name, numerical_category in danbooru.get_tag_categories(sorted(consequents)).items()
+                    }
+
+                    for antecedent, implied_tags in implication_map.items():
+                        add_implications(antecedent, implied_tags, implied_categories)
 
         logger.success('Finished creating tags!')
     except KeyboardInterrupt:

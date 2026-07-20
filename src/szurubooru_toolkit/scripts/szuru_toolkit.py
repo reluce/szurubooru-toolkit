@@ -368,9 +368,26 @@ def click_fix_relations(ctx, query):
 
 
 @cli.command('create-tags', epilog='Example: szuru-toolkit create-tags --query "genshin*" --overwrite')
+@click.argument('tag-name', required=False)
 @click.option(
     '--tag-file',
     help='Specify a file containing tags and categories. If specified, ignores other arguments.',
+)
+@click.option(
+    '--category',
+    type=click.Choice(['default', 'artist', 'parody', 'series', 'character', 'meta'], case_sensitive=True),
+    help='The tag category for TAG_NAME (default: default).',
+)
+@click.option(
+    '--implications',
+    help='Tags which TAG_NAME implies, separated by a comma. Implied tags get created if they don\'t exist.',
+)
+@click.option(
+    '--import-implications/--no-import-implications',
+    help=(
+        'Import tag implications from Danbooru for tags created by a query '
+        f'(default: {config.CREATE_TAGS_DEFAULTS["import_implications"]}).'
+    ),
 )
 @click.option('--query', help=f'Search for specific tags (default: {config.CREATE_TAGS_DEFAULTS["query"]}).')
 @click.option(
@@ -390,15 +407,20 @@ def click_fix_relations(ctx, query):
     help=f'Overwrite tag category if the tag already exists (default: {config.CREATE_TAGS_DEFAULTS["overwrite"]}).',
 )
 @click.pass_context
-def click_create_tags(ctx, tag_file, query, limit, min_post_count, overwrite):
+def click_create_tags(ctx, tag_name, tag_file, category, implications, import_implications, query, limit, min_post_count, overwrite):
     """
-    Create tags based on a tag file or query
+    Create tags based on a tag file, a single TAG_NAME or a query
+
+    TAG_NAME is a single tag to create, optionally with --category and --implications.
     """
 
     collect_user_params(ctx, 'create_tags')
 
+    if isinstance(implications, str):
+        implications = implications.replace(' ', '').split(',')
+
     module = setup_module('create_tags', ctx)
-    module.main(tag_file)
+    module.main(tag_file, tag_name, category, implications or [])
 
 
 @cli.command('delete-posts', epilog='Example: szuru-toolkit delete-posts --except-ids "12,23,44" "id:10..50"')

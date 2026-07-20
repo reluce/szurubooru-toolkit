@@ -66,6 +66,8 @@ limit = 100
 min_post_count = 10
 query = '*'
 overwrite = false
+# Import tag implications from Danbooru for tags created by a query
+import_implications = false
 hide_progress = false
 
 [delete_posts]
