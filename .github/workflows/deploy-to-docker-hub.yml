@@ -6,6 +6,21 @@ on:
 jobs:
   buildx:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # Default slim image: no optional extras.
+          - suffix: ''
+            extras: ''
+          # Local ML tagging (ONNX Runtime + ffmpeg).
+          - suffix: '-wd-tagger'
+            extras: '--extra wd-tagger'
+          # Pixiv metadata support.
+          - suffix: '-pixiv'
+            extras: '--extra pixiv'
+          # Everything.
+          - suffix: '-all'
+            extras: '--all-extras'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -27,8 +42,10 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          build-args: |
+            EXTRAS=${{ matrix.extras }}
           push: true
           tags: |
-            ${{ secrets.DOCKER_HUB_USERNAME }}/szurubooru-toolkit:latest
-            ${{ secrets.DOCKER_HUB_USERNAME }}/szurubooru-toolkit:${{ github.ref_name }}
+            ${{ secrets.DOCKER_HUB_USERNAME }}/szurubooru-toolkit:latest${{ matrix.suffix }}
+            ${{ secrets.DOCKER_HUB_USERNAME }}/szurubooru-toolkit:${{ github.ref_name }}${{ matrix.suffix }}
           platforms: linux/amd64
