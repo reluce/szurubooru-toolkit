@@ -79,6 +79,12 @@ Use the matching tag in your `docker-compose.yml` — e.g. `-wd-tagger` if you s
 `wd_tagger = true`. Every tag is also published per version, e.g. `:2.0.0`,
 `:2.0.0-wd-tagger`, `:2.0.0-pixiv` and `:2.0.0-all`.
 
+If the mounted volumes should not be owned by root (e.g. on NFS mounts or with
+rootless containers), set the `PUID` and `PGID` environment variables (see the
+commented block in `docker-compose.yml`): the container then creates a matching
+user on startup, chowns its working directory and runs the cron jobs as that
+user instead of root.
+
 <details>
 1. Copy `docker-compose.yml` to the location where you want to run the toolkit.
 

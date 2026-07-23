@@ -3,6 +3,11 @@ services:
     image: reluce/szurubooru-toolkit
     container_name: szurubooru-toolkit
     restart: on-failure
+    # Run cron jobs as this user instead of root, e.g. for NFS mounts
+    # or rootless containers
+    #environment:
+    #  - PUID=1000
+    #  - PGID=1000
     volumes:
       - ./crontab:/etc/cron.d/crontab
       - ./config.toml:/szurubooru-toolkit/config.toml
