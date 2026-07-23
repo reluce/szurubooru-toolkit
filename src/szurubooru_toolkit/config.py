@@ -2,7 +2,7 @@ import copy
 import os
 import re
 import tomllib
-import urllib
+import urllib.parse
 from pathlib import Path
 
 from loguru import logger
