@@ -143,3 +143,6 @@ dmypy.json
 
 # macOS
 *.DS_Store
+
+# Local-only compose override (e.g. build: . while the published image lacks wd-tagger)
+docker-compose.override.yml

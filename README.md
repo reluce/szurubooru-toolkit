@@ -63,6 +63,22 @@ Alternatively, you can clone the package from GitHub and set everything up with 
 ### Docker Instructions
 If you would like to run the toolkit in a Docker container instead, follow the
 instructions below.
+
+Several image variants are published on each release, matching the optional
+extras. The default image is slim; the others bundle heavier dependencies, so
+pick the smallest one that covers what you enable in `config.toml`:
+
+| Tag | Extras included |
+| --- | --- |
+| `reluce/szurubooru-toolkit:latest` | none (slim, default) |
+| `reluce/szurubooru-toolkit:latest-wd-tagger` | WD tagger (ONNX Runtime + ffmpeg) |
+| `reluce/szurubooru-toolkit:latest-pixiv` | Pixiv metadata support |
+| `reluce/szurubooru-toolkit:latest-all` | everything |
+
+Use the matching tag in your `docker-compose.yml` — e.g. `-wd-tagger` if you set
+`wd_tagger = true`. Every tag is also published per version, e.g. `:2.0.0`,
+`:2.0.0-wd-tagger`, `:2.0.0-pixiv` and `:2.0.0-all`.
+
 <details>
 1. Copy `docker-compose.yml` to the location where you want to run the toolkit.
 
