@@ -25,7 +25,7 @@ PAGE_FETCH_WORKERS = 8
 _TAG_EXISTS_DESCRIPTIONS = (
     'used by another tag',
     'duplicate key value',
-    'tag_name already exists',
+    'already exists',  # covers szurubooru's 'tag_name already exists' and oxibooru's AlreadyExists
 )
 
 
@@ -224,10 +224,19 @@ class Szurubooru:
         except ValueError:
             data = None
 
-        if isinstance(data, dict) and isinstance(data.get('name'), str) and 'description' in data and data['name'].endswith('Error'):
+        # szurubooru error names end with 'Error'; oxibooru ones don't ('TagNotFound'),
+        # but both ship error resources as {name, title, description}.
+        is_error_resource = (
+            isinstance(data, dict)
+            and isinstance(data.get('name'), str)
+            and 'description' in data
+            and (data['name'].endswith('Error') or 'title' in data)
+        )
+
+        if is_error_resource:
             name = data['name']
             description = data['description']
-            if name == 'TagNotFoundError':
+            if name in ('TagNotFoundError', 'TagNotFound'):
                 raise TagNotFoundError(name, description)
             if name == 'SearchError' or 'Unknown named token' in description:
                 raise UnknownTokenError(description)

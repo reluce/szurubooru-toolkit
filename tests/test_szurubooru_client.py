@@ -495,6 +495,33 @@ def test_non_json_error_raises_api_error():
     assert exc_info.value.name == 'HTTP502'
 
 
+def test_oxibooru_error_names_without_suffix_are_mapped():
+    # oxibooru error names lack the 'Error' suffix (#88)
+    def handler(request):
+        return httpx.Response(
+            404,
+            json={'name': 'TagNotFound', 'title': 'Resource Not Found', 'description': 'Tag not found'},
+        )
+
+    client = RecordingClient(handler)
+    with pytest.raises(TagNotFoundError):
+        client.szuru.get_tag('missing')
+
+
+def test_oxibooru_already_exists_raises_tag_exists_error():
+    def handler(request):
+        if request.method == 'POST':
+            return httpx.Response(
+                400,
+                json={'name': 'AlreadyExists', 'title': 'Already Exists', 'description': 'tag name already exists'},
+            )
+        return httpx.Response(200, json={'names': ['foo'], 'category': 'default', 'version': 1})
+
+    client = RecordingClient(handler)
+    with pytest.raises(TagExistsError):
+        client.szuru.create_tag('foo')
+
+
 def test_non_json_success_raises_api_error():
     # e.g. a proxy answering with an HTML page instead of szurubooru (#78)
     client = RecordingClient(lambda request: httpx.Response(200, text='<html>proxy error</html>'))
