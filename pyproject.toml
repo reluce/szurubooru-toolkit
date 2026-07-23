@@ -30,7 +30,7 @@ dependencies = [
     "gallery-dl<2.0.0,>=1.26.5",
 ]
 name = "szurubooru-toolkit"
-version = "2.0.0"
+version = "2.0.1"
 description = "Python package and script collection to manage szurubooru."
 readme = "README.md"
 keywords = [
