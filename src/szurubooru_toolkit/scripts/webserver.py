@@ -38,14 +38,18 @@ def apply_overrides(params: dict) -> None:
 class ToolkitRequestHandler(BaseHTTPRequestHandler):
     def _respond(self, body: str, status: int = 200) -> None:
         data = body.encode()
-        self.send_response(status)
-        self.send_header('Content-Type', 'text/html; charset=utf-8')
-        self.send_header('Content-Length', str(len(data)))
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        self.send_header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        self.end_headers()
-        self.wfile.write(data)
+        try:
+            self.send_response(status)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(data)))
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            self.send_header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+            self.end_headers()
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError):
+            # Client (browser extension) gave up waiting during a long import; the work is done
+            logger.debug('Client closed the connection before the response was sent')
 
     def log_message(self, format: str, *args) -> None:
         logger.debug(f'{self.address_string()} - {format % args}')
