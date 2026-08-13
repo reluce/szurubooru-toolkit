@@ -31,6 +31,9 @@ _wd_tagger_lock = threading.Lock()
 # workers which each call auto_tagger.main() share the SauceNAO rate limit state.
 _cooldown = SauceNaoCooldown()
 _limit_event = threading.Event()
+# Acquired (and never released) by whichever worker announces the daily limit,
+# so the announcement is logged exactly once even when several workers hit it.
+_limit_announced = threading.Lock()
 
 
 def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes, cooldown: SauceNaoCooldown) -> tuple[dict, bool]:
@@ -72,11 +75,9 @@ def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes, cooldown: Sa
             cooldown.trigger(35)
     else:
         limit_reached = True
-        logger.info('Your daily SauceNAO limit has been reached. Consider upgrading your account.')
 
     if limit_reached and config.auto_tagger['wd_tagger']:
         config.auto_tagger['saucenao'] = False
-        logger.info('Continuing tagging with the WD tagger only...')
 
     return results, limit_reached
 
@@ -255,6 +256,10 @@ def process_post(  # noqa C901
 
         if limit_reached:
             limit_event.set()
+            if _limit_announced.acquire(blocking=False):
+                logger.info('Your daily SauceNAO limit has been reached. Consider upgrading your account.')
+                if config.auto_tagger['wd_tagger']:
+                    logger.info('Continuing tagging with the WD tagger only...')
 
         if sauce_results:
             tags_by_sauce, sources, rating = prepare_post(sauce_results, config)
