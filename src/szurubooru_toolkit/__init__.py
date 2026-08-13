@@ -13,6 +13,15 @@ def setup_logger() -> None:
     import sys
 
     from loguru import logger
+    from tqdm import tqdm
+
+    def console_sink(message: str) -> None:
+        # Print through tqdm so log lines don't tear an active progress bar
+        tqdm.write(message, file=sys.stderr, end='')
+        # tqdm.write leaves the bar cleared until its next update tick; with frequent
+        # log messages the bar would stay invisible, so redraw it right away
+        for bar in list(getattr(tqdm, '_instances', ())):
+            bar.refresh()
 
     logger.remove(0)
     logger.add(
@@ -42,7 +51,7 @@ def setup_logger() -> None:
         )
     handlers.extend([
         dict(
-            sink=sys.stderr,
+            sink=console_sink,
             backtrace=False,
             diagnose=False,
             colorize=True,
@@ -51,7 +60,7 @@ def setup_logger() -> None:
             format='<le>[{level}]</le> {message}',
         ),
         dict(
-            sink=sys.stderr,
+            sink=console_sink,
             backtrace=False,
             diagnose=False,
             colorize=True,
@@ -62,7 +71,7 @@ def setup_logger() -> None:
             ),
         ),
         dict(
-            sink=sys.stderr,
+            sink=console_sink,
             backtrace=False,
             diagnose=False,
             colorize=True,
