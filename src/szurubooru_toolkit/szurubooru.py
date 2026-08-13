@@ -209,6 +209,8 @@ class Szurubooru:
             'source',
             'submit',
             'tag',
+            'tag-category',  # oxibooru only
+            'pool-category',  # oxibooru only
             'tag-count',
             'time',
             'type',
