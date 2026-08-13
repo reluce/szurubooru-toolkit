@@ -121,6 +121,25 @@ def test_get_metadata_maps_sites():
     assert long_remaining == 90
 
 
+@pytest.mark.parametrize(
+    'url,post_id',
+    [
+        # chan URLs identify posts by md5 hash, www URLs by the alphanumeric post ID
+        ('https://chan.sankakucomplex.com/post/show/7a9fa422507e43705c2ae48b7cde5997', '7a9fa422507e43705c2ae48b7cde5997'),
+        ('https://www.sankakucomplex.com/posts/9PMw6q1LwRB', '9PMw6q1LwRB'),
+        ('https://chan.sankakucomplex.com/post/show/12345678', '12345678'),
+    ],
+)
+def test_get_metadata_sankaku_ids(url, post_id):
+    def handler(request):
+        return httpx.Response(200, json=saucenao_response(results=[make_result(95.0, [url])]))
+
+    sauce = make_saucenao(handler)
+    matches, _, _ = sauce.get_metadata('http://szuru.local/img.jpg')
+
+    assert matches['sankakucomplex'] == {'site': 'sankaku', 'post_id': post_id}
+
+
 def test_get_metadata_limit_reached():
     def handler(request):
         return httpx.Response(200, json=saucenao_response(long_remaining=-1, message='Daily Search Limit Exceeded'))

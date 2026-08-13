@@ -56,7 +56,10 @@ def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes, cooldown: Sa
 
     for index, data in matches.items():
         if data and index != 'pixiv':
-            results.update(search_boorus(data['site'], f'id:{str(data["post_id"])}', 1, 0, credentials=config.credentials))
+            post_id = str(data['post_id'])
+            # Sankaku chan URLs identify posts by md5 hash instead of a post ID
+            id_tag = 'md5' if data['site'] == 'sankaku' and len(post_id) == 32 else 'id'
+            results.update(search_boorus(data['site'], f'{id_tag}:{post_id}', 1, 0, credentials=config.credentials))
 
         if data and index == 'pixiv':
             results[index] = data

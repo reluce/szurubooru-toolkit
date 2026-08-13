@@ -191,12 +191,18 @@ class SauceNao:
                 if result.urls:
                     for url in result.urls:
                         site = self.get_base_domain(url)
-                        post_id = re.findall(r'\b\d+\b', url)
                         if site in matches and not matches[site]:
                             logger.debug(f'Found result on {site.capitalize()}')
                             if site == 'pixiv':
                                 matches[site] = result
+                            elif site == 'sankakucomplex':
+                                # Sankaku dropped numeric post IDs: chan URLs carry the file's
+                                # md5 hash, www URLs the new alphanumeric post ID. Both are the
+                                # last path segment and must be kept as strings.
+                                post_id = urllib.parse.urlsplit(url).path.rstrip('/').rpartition('/')[-1]
+                                matches[site] = {'site': site_keys[site], 'post_id': post_id} if post_id else None
                             elif site in site_keys:
+                                post_id = re.findall(r'\b\d+\b', url)
                                 matches[site] = {'site': site_keys[site], 'post_id': int(post_id[0])} if post_id else None
                             else:
                                 continue
