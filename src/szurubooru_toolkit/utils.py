@@ -293,14 +293,24 @@ def run_concurrently(items, worker, workers: int, total: int, hide_progress: boo
             safe_worker(item)
         return
 
+    # items may be a lazily-paginated generator that takes minutes to consume, so
+    # create the bar before submitting and count completed work via callbacks —
+    # otherwise no bar exists until every page has been fetched.
+    progress = tqdm(total=total, ncols=80, position=0, leave=False, disable=hide_progress)
     executor = ThreadPoolExecutor(max_workers=workers)
     try:
-        futures = [executor.submit(safe_worker, item) for item in items]
-        for _ in tqdm(as_completed(futures), ncols=80, position=0, leave=False, total=total, disable=hide_progress):
+        futures = []
+        for item in items:
+            future = executor.submit(safe_worker, item)
+            future.add_done_callback(lambda _: progress.update(1))
+            futures.append(future)
+        for _ in as_completed(futures):
             pass
     except KeyboardInterrupt:
         executor.shutdown(wait=False, cancel_futures=True)
         raise
+    finally:
+        progress.close()
     executor.shutdown()
 
 
