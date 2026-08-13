@@ -367,6 +367,27 @@ def click_fix_relations(ctx, query):
     module.main(query)
 
 
+@cli.command('fix-sankaku-sources', epilog='Example: szuru-toolkit fix-sankaku-sources --dry-run "source:*sankaku*"')
+@click.argument('query', required=False, default='source:*sankaku*')
+@click.option('--dry-run', is_flag=True, help='Only log what would change without updating posts.')
+@click.pass_context
+def click_fix_sankaku_sources(ctx, query, dry_run):
+    """
+    Rewrite outdated Sankaku source URLs to their canonical form
+
+    Sankaku dropped numeric post IDs; chan links now carry the file's md5 hash
+    and www links a new alphanumeric ID. This command rewrites Sankaku source
+    URLs of matching posts to https://www.sankakucomplex.com/posts/<id>,
+    resolving md5 hashes and legacy numeric IDs through the Sankaku API.
+
+    QUERY is a szurubooru query for the posts whose sources should be fixed
+    (default: source:*sankaku*).
+    """
+
+    module = setup_module('fix_sankaku_sources', ctx)
+    module.main(query, dry_run)
+
+
 @cli.command(
     'create-tags',
     epilog="""\b

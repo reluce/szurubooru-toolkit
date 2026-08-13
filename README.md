@@ -31,19 +31,20 @@ Options:
   -h, --help                      Show this message and exit.
 
 Commands:
-  auto-tagger        Tag posts automatically
-  create-relations   Create relations between character and parody tag categories
-  create-tags        Create tags based on a tag file or query
-  delete-posts       Delete posts
-  find-duplicates    Find visually duplicate posts via perceptual hashing
-  fix-relations      Complete post relation sets via transitive closure
-  import-from-booru  Download and tag posts from various Boorus
-  import-from-url    Download images from URLS or file containing URLs
-  preview-tags       Show WD tagger scores near the thresholds without tagging anything
-  reset-posts        Remove tags and sources
-  tag-posts          Tag posts manually
-  upload-media       Upload media files
-  webserver          Run the webserver for the browser extensions
+  auto-tagger          Tag posts automatically
+  create-relations     Create relations between character and parody tag categories
+  create-tags          Create tags based on a tag file or query
+  delete-posts         Delete posts
+  find-duplicates      Find visually duplicate posts via perceptual hashing
+  fix-relations        Complete post relation sets via transitive closure
+  fix-sankaku-sources  Rewrite outdated Sankaku source URLs to their canonical form
+  import-from-booru    Download and tag posts from various Boorus
+  import-from-url      Download images from URLS or file containing URLs
+  preview-tags         Show WD tagger scores near the thresholds without tagging anything
+  reset-posts          Remove tags and sources
+  tag-posts            Tag posts manually
+  upload-media         Upload media files
+  webserver            Run the webserver for the browser extensions
 ```
 ## :ballot_box_with_check: Requirements
 In order to run `szuru-toolkit`, Python `3.11` or newer is required.
@@ -183,6 +184,7 @@ Following commands are currently available:
 * `delete-posts`: Delete posts
 * `find-duplicates`: Find visually duplicate posts via perceptual hashing
 * `fix-relations`: Complete post relation sets so every member of a set references all other members
+* `fix-sankaku-sources`: Rewrite outdated Sankaku source URLs (legacy numeric or md5 based links) to their canonical form
 * `import-from-booru`: Download and tag posts from various Boorus
 * `import-from-url`: Batch importing of URLs based on [gallery-dl](https://github.com/mikf/gallery-dl)
 * `preview-tags`: Show WD tagger scores near the thresholds for a file or post without tagging anything
