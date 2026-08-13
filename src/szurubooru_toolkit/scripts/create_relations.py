@@ -6,6 +6,7 @@ from szurubooru_toolkit import szuru
 from szurubooru_toolkit.szurubooru import SzurubooruError
 from szurubooru_toolkit.szurubooru import Tag
 from szurubooru_toolkit.szurubooru import UnknownTokenError
+from szurubooru_toolkit.utils import interrupt_exit
 
 
 def collect_related_tags(tags: list[Tag]) -> list[Tag]:
@@ -191,7 +192,7 @@ def main(query: str) -> None:
         exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
-        exit(1)
+        interrupt_exit()
 
 
 if __name__ == '__main__':

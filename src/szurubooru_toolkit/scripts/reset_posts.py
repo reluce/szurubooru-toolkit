@@ -3,6 +3,7 @@ from loguru import logger
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.szurubooru import SzurubooruError
+from szurubooru_toolkit.utils import interrupt_exit
 from szurubooru_toolkit.utils import run_concurrently
 
 
@@ -53,7 +54,7 @@ def main(query: str, except_ids: list = [], add_tags: list = []) -> None:
         exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
-        exit(1)
+        interrupt_exit()
 
 
 if __name__ == '__main__':

@@ -12,6 +12,7 @@ from szurubooru_toolkit.relations import dhash
 from szurubooru_toolkit.relations import hamming_distance
 from szurubooru_toolkit.szurubooru import SzurubooruError
 from szurubooru_toolkit.utils import download_media
+from szurubooru_toolkit.utils import interrupt_exit
 from szurubooru_toolkit.utils import run_concurrently
 
 
@@ -160,7 +161,7 @@ def main(query: str = '*') -> None:
         exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
-        exit(1)
+        interrupt_exit()
 
 
 if __name__ == '__main__':

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import subprocess
 import threading
@@ -260,6 +261,34 @@ def get_cached_implications(tag_name: str, create_missing: bool = False) -> list
         _implications_cache[tag_name] = implications
 
     return implications
+
+
+def interrupt_exit(code: int = 1) -> None:
+    """
+    Exits the process immediately after a keyboard interrupt.
+
+    A plain exit() makes the interpreter wait for still-running worker threads,
+    which can sit in long retry loops — forcing the user to press Ctrl+C a second
+    time. Flushes and closes all log sinks first, since os._exit skips normal
+    interpreter cleanup.
+
+    Args:
+        code (int, optional): The process exit code. Defaults to 1.
+    """
+
+    logger.remove()
+
+    # os._exit skips the finalizer of tqdm's multiprocessing write lock, which would
+    # make the resource tracker print a leaked-semaphore warning after exiting
+    try:
+        from multiprocessing.synchronize import SemLock
+        from tqdm.std import TqdmDefaultWriteLock
+
+        SemLock._cleanup(TqdmDefaultWriteLock.mp_lock._semlock.name)
+    except Exception:
+        pass
+
+    os._exit(code)
 
 
 def run_concurrently(items, worker, workers: int, total: int, hide_progress: bool) -> None:

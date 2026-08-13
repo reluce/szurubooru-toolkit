@@ -18,6 +18,7 @@ from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.szurubooru import Szurubooru
 from szurubooru_toolkit.szurubooru import SzurubooruError
 from szurubooru_toolkit.utils import get_md5sum
+from szurubooru_toolkit.utils import interrupt_exit
 from szurubooru_toolkit.utils import run_concurrently
 from szurubooru_toolkit.utils import shrink_img
 
@@ -533,7 +534,7 @@ def main(
             logger.info('No files found to upload.')
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
-        exit(1)
+        interrupt_exit()
 
 
 if __name__ == '__main__':

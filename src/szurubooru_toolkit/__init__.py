@@ -29,7 +29,6 @@ def setup_logger() -> None:
         backtrace=False,
         colorize=True,
         level='ERROR',
-        enqueue=True,
         diagnose=False,
         format=''.join(
             '<lr>[{level}]</lr> <ly>[{module}.{function}]</ly>: {message}',

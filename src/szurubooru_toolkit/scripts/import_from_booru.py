@@ -2,6 +2,7 @@ from loguru import logger
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit.scripts import import_from_url
+from szurubooru_toolkit.utils import interrupt_exit
 
 
 @logger.catch
@@ -50,7 +51,7 @@ def main(booru: str, query: str) -> None:
         import_from_url.main(urls)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
-        exit(1)
+        interrupt_exit()
 
 
 if __name__ == '__main__':

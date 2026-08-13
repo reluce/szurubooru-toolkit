@@ -15,6 +15,7 @@ from szurubooru_toolkit.utils import apply_safety_overrides
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import download_media
 from szurubooru_toolkit.utils import get_cached_implications
+from szurubooru_toolkit.utils import interrupt_exit
 from szurubooru_toolkit.utils import prepare_post
 from szurubooru_toolkit.utils import run_concurrently
 from szurubooru_toolkit.utils import sanitize_tags
@@ -461,7 +462,7 @@ def main(  # noqa C901
             print_statistics(total_posts)
         except UnboundLocalError:
             print_statistics(0)
-        exit(1)
+        interrupt_exit()
 
 
 if __name__ == '__main__':

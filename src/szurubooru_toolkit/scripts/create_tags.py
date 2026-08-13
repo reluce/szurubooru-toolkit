@@ -8,6 +8,7 @@ from szurubooru_toolkit import szuru
 from szurubooru_toolkit.szurubooru import Tag
 from szurubooru_toolkit.szurubooru import TagExistsError
 from szurubooru_toolkit.szurubooru import TagNotFoundError
+from szurubooru_toolkit.utils import interrupt_exit
 
 
 def convert_tag_category(category: int) -> str:
@@ -168,7 +169,7 @@ def main(tag_file: str = '', tag_name: str = '', category: str = '', implication
         logger.success('Finished creating tags!')
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
-        exit(1)
+        interrupt_exit()
 
 
 if __name__ == '__main__':

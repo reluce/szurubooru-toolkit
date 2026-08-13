@@ -5,6 +5,7 @@ from szurubooru_toolkit import szuru
 from szurubooru_toolkit.szurubooru import SzurubooruError
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import get_cached_implications
+from szurubooru_toolkit.utils import interrupt_exit
 from szurubooru_toolkit.utils import run_concurrently
 
 
@@ -78,7 +79,7 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
         exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
-        exit(1)
+        interrupt_exit()
 
 
 if __name__ == '__main__':
