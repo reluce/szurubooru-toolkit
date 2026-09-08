@@ -55,6 +55,12 @@ AUTO_TAGGER_DEFAULTS = {
     'workers': 4,
 }
 
+TAG_CATEGORIES_DEFAULTS = {
+    'enabled': False,
+    'lookup_danbooru': False,
+    'category_map': {'general': 'default', 'artist': 'artist', 'copyright': 'series', 'character': 'character', 'meta': 'meta'},
+}
+
 CREATE_RELATIONS_DEFAULTS = {
     'threshold': 3,
     'hide_progress': False,
@@ -162,6 +168,7 @@ class Config:
         self.globals = copy.deepcopy(GLOBALS_DEFAULTS)
         self.logging = copy.deepcopy(LOGGING_DEFAULTS)
         self.auto_tagger = copy.deepcopy(AUTO_TAGGER_DEFAULTS)
+        self.tag_categories = copy.deepcopy(TAG_CATEGORIES_DEFAULTS)
         self.create_tags = copy.deepcopy(CREATE_TAGS_DEFAULTS)
         self.create_relations = copy.deepcopy(CREATE_RELATIONS_DEFAULTS)
         self.fix_relations = copy.deepcopy(FIX_RELATIONS_DEFAULTS)
@@ -207,6 +214,18 @@ class Config:
                     logger.critical(e)
                     exit(1)
 
+            legacy = self.auto_tagger
+            explicit = config.get('tag_categories', {})
+            if 'enabled' not in explicit and 'remap_categories' in legacy:
+                self.tag_categories['enabled'] = legacy['remap_categories']
+            mapping = explicit.get('category_map', legacy.get('category_map', {}))
+            if not isinstance(mapping, dict):
+                logger.critical('tag_categories.category_map must be a table!')
+                exit(1)
+            self.tag_categories['category_map'] = {
+                **TAG_CATEGORIES_DEFAULTS['category_map'],
+                **{key.lower(): value for key, value in mapping.items()},
+            }
             self.validate_config()
 
     def override_config(self, overrides: dict) -> None:
@@ -371,6 +390,20 @@ class Config:
     def validate_config(self) -> None:
         """Validate the config by calling the individual validation methods except the validate_path() method."""
 
+        options = self.tag_categories
+        for key in ('enabled', 'lookup_danbooru'):
+            if not isinstance(options[key], bool):
+                logger.critical(f'tag_categories.{key} must be a boolean!')
+                exit(1)
+        mapping = options['category_map']
+        if not isinstance(mapping, dict) or any(
+            key not in TAG_CATEGORIES_DEFAULTS['category_map'] or not isinstance(value, str) or not value.strip()
+            for key, value in mapping.items()
+        ):
+            logger.critical(
+                'tag_categories.category_map must map general, artist, character, copyright or meta to nonempty category names!'
+            )
+            exit(1)
         self.validate_szurubooru()
         self.validate_url()
         self.validate_safety()

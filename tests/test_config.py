@@ -62,3 +62,26 @@ def test_override_import_section_forwards_upload_options(make_config):
     )
 
     assert config.upload_media['max_similarity'] == 0.8
+
+
+@pytest.mark.parametrize('explicit', [False, True])
+def test_tag_category_legacy_options_and_precedence(monkeypatch, tmp_path, explicit):
+    config_file = tmp_path / 'config.toml'
+    text = '[auto_tagger]\nremap_categories = true\ncategory_map = { Artist = "Artist", character = "Character" }\n'
+    if explicit:
+        text += '[tag_categories]\nenabled = false\ncategory_map = { character = "Custom" }\n'
+    config_file.write_text(text)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(Config, 'validate_config', lambda self: None)
+    config = Config()
+    assert config.tag_categories['enabled'] is (not explicit)
+    assert config.tag_categories['category_map']['character'] == ('Custom' if explicit else 'Character')
+    assert config.tag_categories['category_map']['artist'] == ('artist' if explicit else 'Artist')
+    assert config.tag_categories['category_map']['general'] == 'default'
+
+
+def test_invalid_tag_category_mapping_rejected(make_config):
+    config = make_config()
+    config.tag_categories['category_map'] = {'character': 42}
+    with pytest.raises(SystemExit):
+        config.validate_config()

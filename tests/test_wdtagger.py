@@ -230,3 +230,10 @@ def test_unavailable_provider_falls_back_to_cpu(model_dir):
     assert wd_tagger.session.get_providers() == ['CPUExecutionProvider']
     _, rating = wd_tagger.tag_image(make_image((0, 0, 255)), 'safe', set_tag=False)
     assert rating == 'unsafe'
+
+
+def test_selected_tag_categories_exclude_ratings_and_markers():
+    tagger = WDTagger.__new__(WDTagger)
+    tagger.tags = np.array(['solo', 'miku', 'general'])
+    tagger.categories = np.array([0, 4, 9])
+    assert tagger.tag_categories(['miku', 'general', 'needs_review', 'wd_tagger']) == {'miku': 'character'}

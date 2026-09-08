@@ -12,6 +12,7 @@ from szurubooru_toolkit import szuru
 from szurubooru_toolkit.pixiv import Pixiv
 from szurubooru_toolkit.relations import RelationsBatch
 from szurubooru_toolkit.scripts import upload_media
+from szurubooru_toolkit.tag_categories import extract_categories
 from szurubooru_toolkit.utils import convert_rating
 from szurubooru_toolkit.utils import convert_tags
 from szurubooru_toolkit.utils import extract_twitter_artist
@@ -177,6 +178,9 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
     else:
         logger.info(f'Downloading posts from URLs {urls}...')
     params = [f'--range={config.import_from_url["range"]}', '--write-metadata']
+    if config.tag_categories['enabled']:
+        for booru in ('gelbooru', 'konachan', 'yandere', 'sankaku'):
+            params.append(f'--option=extractor.{booru}.tags=true')
 
     if config.import_from_url['cookies']:
         params += [f'--cookies={config.import_from_url["cookies"]}']
@@ -229,6 +233,7 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
             else:
                 metadata['safety'] = config.upload_media['default_safety']
 
+            metadata['tag_categories'] = extract_categories(metadata)
             if 'tags' in metadata or 'tag_string' in metadata or 'hashtags' in metadata:
                 metadata['tags'] = set_tags(metadata)
             else:

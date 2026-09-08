@@ -11,6 +11,8 @@ from szurubooru_toolkit.saucenao import SauceNao
 from szurubooru_toolkit.saucenao import SauceNaoCooldown
 from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.szurubooru import SzurubooruError
+from szurubooru_toolkit.szurubooru import TagNotFoundError
+from szurubooru_toolkit.tag_categories import ensure_tag_categories
 from szurubooru_toolkit.utils import apply_safety_overrides
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import download_media
@@ -208,6 +210,7 @@ def process_post(  # noqa C901
         return
 
     dry_run = config.auto_tagger['dry_run']
+    categories = {}
     original_tags = set(post.tags)
     original_safety = post.safety
 
@@ -216,7 +219,7 @@ def process_post(  # noqa C901
         md5_results = search_boorus('all', 'md5:' + (md5 or post.md5), 1, 0, credentials=config.credentials)
 
         if md5_results:
-            tags_by_md5, sources, rating = prepare_post(md5_results, config)
+            tags_by_md5, sources, rating = prepare_post(md5_results, config, categories)
             post.safety = rating or post.safety
             post.source = collect_sources(*sources, *post.source.splitlines())
         else:
@@ -262,7 +265,7 @@ def process_post(  # noqa C901
                     logger.info('Continuing tagging with the WD tagger only...')
 
         if sauce_results:
-            tags_by_sauce, sources, rating = prepare_post(sauce_results, config)
+            tags_by_sauce, sources, rating = prepare_post(sauce_results, config, categories)
             post.safety = rating or post.safety
             post.source = collect_sources(*sources, *post.source.splitlines())
         else:
@@ -290,6 +293,9 @@ def process_post(  # noqa C901
         )
 
         tags_by_wd_tagger, post.safety = result
+        if config.tag_categories["enabled"]:
+            for name, category in wd_tagger.tag_categories(tags_by_wd_tagger).items():
+                categories.setdefault(name, category)
 
         # Marker tags don't count as substantive results for the tagme decision below
         substantive_wd_tags = [tag for tag in tags_by_wd_tagger if tag not in ('wd_tagger', 'needs_review')]
@@ -300,7 +306,14 @@ def process_post(  # noqa C901
             # Only do this if no previous tags where found as this operation takes quite some time
             if not tags_by_md5 and not tags_by_sauce and config.auto_tagger['update_relations']:
                 for tag in substantive_wd_tags:
-                    for implication in get_cached_implications(tag, create_missing=not dry_run):
+                    try:
+                        implications = get_cached_implications(
+                            tag,
+                            create_missing=not dry_run and not config.tag_categories['enabled'],
+                        )
+                    except TagNotFoundError:
+                        implications = []
+                    for implication in implications:
                         if implication not in post.tags:
                             post.tags.append(implication)
 
@@ -336,6 +349,7 @@ def process_post(  # noqa C901
         safety = f'{original_safety} -> {post.safety}' if post.safety != original_safety else post.safety
         logger.info(f'Dry run: post {post.id}: tags +{added} -{removed}, safety {safety}')
     else:
+        ensure_tag_categories(szuru, config, post.tags, categories)
         szuru.update_post(post)
 
     if tags_by_md5 or tags_by_sauce:

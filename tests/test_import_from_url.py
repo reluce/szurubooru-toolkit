@@ -1,3 +1,5 @@
+import pytest
+
 import szurubooru_toolkit
 
 
@@ -30,7 +32,8 @@ def test_set_tags_unknown_site_yields_no_tags():
     assert import_from_url.set_tags(metadata) == []
 
 
-def test_gelbooru_credentials_passed_to_gallery_dl(monkeypatch):
+@pytest.mark.parametrize('categorize', [False, True])
+def test_gelbooru_credentials_passed_to_gallery_dl(monkeypatch, categorize):
     class Cfg:
         globals = {'hide_progress': True}
         import_from_url = {
@@ -44,6 +47,7 @@ def test_gelbooru_credentials_passed_to_gallery_dl(monkeypatch):
         }
         upload_media = {}
         auto_tagger = {}
+        tag_categories = {'enabled': categorize}
         credentials = {'gelbooru': {'user_id': '123', 'api_key': 'abc'}}
 
     monkeypatch.setattr(import_from_url, 'config', Cfg)
@@ -60,3 +64,5 @@ def test_gelbooru_credentials_passed_to_gallery_dl(monkeypatch):
 
     assert '--option=extractor.gelbooru.user-id=123' in captured['params']
     assert '--option=extractor.gelbooru.api-key=abc' in captured['params']
+
+    assert ('--option=extractor.gelbooru.tags=true' in captured['params']) is categorize

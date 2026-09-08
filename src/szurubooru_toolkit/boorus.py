@@ -7,9 +7,12 @@ and Yandere. Sankaku has its own module since it needs authentication.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from dataclasses import field
 
 import httpx
 from loguru import logger
+
+from szurubooru_toolkit.tag_categories import extract_categories
 
 
 USER_AGENT = 'szurubooru-toolkit (https://github.com/reluce/szurubooru-toolkit)'
@@ -36,6 +39,7 @@ class BooruPost:
     md5: str = None
     file_url: str = None
     source: str = None
+    tag_categories: dict[str, str] = field(default_factory=dict)
 
 
 def _normalize_rating(rating: str) -> str:
@@ -52,6 +56,7 @@ def _parse_danbooru(data: list) -> list[BooruPost]:
             BooruPost(
                 id=post['id'],
                 tags=post.get('tag_string', ''),
+                tag_categories=extract_categories(post),
                 rating=_normalize_rating(post.get('rating', '')),
                 md5=post.get('md5'),
                 file_url=post.get('file_url'),

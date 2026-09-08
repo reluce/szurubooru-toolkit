@@ -17,6 +17,7 @@ from szurubooru_toolkit.scripts import tag_posts
 from szurubooru_toolkit.szurubooru import Post
 from szurubooru_toolkit.szurubooru import Szurubooru
 from szurubooru_toolkit.szurubooru import SzurubooruError
+from szurubooru_toolkit.tag_categories import ensure_tag_categories
 from szurubooru_toolkit.utils import get_md5sum
 from szurubooru_toolkit.utils import interrupt_exit
 from szurubooru_toolkit.utils import run_concurrently
@@ -162,6 +163,7 @@ def update_tags(post: Post, metadata: dict, saucenao_limit_reached: bool, origin
     except KeyError:
         pass
 
+    ensure_tag_categories(szuru, config, metadata['tags'], metadata.get('tag_categories', {}))
     config.tag_posts['silence_info'] = True
     tag_posts.main(query=id, add_tags=metadata['tags'], source=metadata['source'])
 
@@ -380,6 +382,8 @@ def upload_post(
             post.source = None
         else:
             post.tags = metadata['tags']
+            if config.tag_categories['enabled']:
+                post.tags = [tag.replace(' ', '_') for tag in post.tags]
             post.safety = metadata['safety']
             post.source = metadata['source']
 
@@ -389,6 +393,8 @@ def upload_post(
         for entry in similar_posts:
             post.similar_posts.append(entry['post']['id'])
 
+        if metadata:
+            ensure_tag_categories(szuru, config, post.tags, metadata.get('tag_categories', {}))
         post_id = upload_file(szuru, post)
 
         if not post_id:

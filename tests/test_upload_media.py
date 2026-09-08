@@ -158,3 +158,37 @@ def test_upload_post_bails_without_token_and_skips_reverse_search(monkeypatch):
     assert not success
     assert searched == []
     assert szuru.created == []
+
+
+def test_import_creates_categorized_tags_before_post(monkeypatch):
+    from szurubooru_toolkit.szurubooru import TagNotFoundError
+
+    szuru = StubSzuru()
+    wire(monkeypatch, szuru)
+    upload_media.config.tag_categories['enabled'] = True
+    events = []
+
+    def missing(name):
+        raise TagNotFoundError('TagNotFound', name)
+
+    szuru.get_tag = missing
+    szuru.create_tag = lambda name, category: events.append(('tag', name, category))
+    original = szuru.create_post
+
+    def create_post(metadata):
+        events.append(('post', metadata['tags']))
+        return original(metadata)
+
+    szuru.create_post = create_post
+    success, _ = upload_media.upload_post(
+        b'file-bytes',
+        'jpg',
+        metadata={
+            'tags': ['hatsune_miku'],
+            'tag_categories': {'hatsune_miku': 'character'},
+            'safety': 'safe',
+            'source': 'https://example.com/post/1',
+        },
+    )
+    assert success
+    assert events == [('tag', 'hatsune_miku', 'character'), ('post', ['hatsune_miku'])]

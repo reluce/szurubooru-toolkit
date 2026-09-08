@@ -334,6 +334,14 @@ class WDTagger:
 
         return tags, rating
 
+    def tag_categories(self, tags: list[str]) -> dict[str, str]:
+        """Return model categories for selected tags without changing inference results."""
+        selected = set(tags)
+        names = {CATEGORY_GENERAL: 'general', CATEGORY_CHARACTER: 'character'}
+        return {
+            name: names[int(category)] for name, category in zip(self.tags, self.categories) if name in selected and int(category) in names
+        }
+
     def tag_image(
         self,
         image: bytes,

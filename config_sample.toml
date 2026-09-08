@@ -22,6 +22,14 @@ log_file = "szurubooru_toolkit.log"
 log_level = "INFO"
 log_colorized = true
 
+# Shared by auto-tagger, import-from-booru and import-from-url.
+# Target categories must already exist in your instance. Existing tags are never recategorized.
+[tag_categories]
+enabled = false
+# Optional batched lookup for tags whose source supplies no category.
+lookup_danbooru = false
+category_map = { general = "default", artist = "artist", character = "character", copyright = "series", meta = "meta" }
+
 [auto_tagger]
 saucenao_api_token = "my_saucenao_api_token"
 saucenao = true

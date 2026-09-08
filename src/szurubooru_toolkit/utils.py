@@ -282,6 +282,7 @@ def interrupt_exit(code: int = 1) -> None:
     # make the resource tracker print a leaked-semaphore warning after exiting
     try:
         from multiprocessing.synchronize import SemLock
+
         from tqdm.std import TqdmDefaultWriteLock
 
         SemLock._cleanup(TqdmDefaultWriteLock.mp_lock._semlock.name)
@@ -643,7 +644,7 @@ def convert_tags(tags: list) -> list:
     return filtered_tags
 
 
-def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], str]:
+def prepare_post(results: dict, config: Config, categories: dict | None = None) -> tuple[list[str], list[str], str]:
     """
     Prepares a post for upload to szurubooru.
 
@@ -656,6 +657,7 @@ def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], s
     Args:
         results (dict): The results from which to extract the tags, sources, and rating.
         config (Config): The configuration from which to extract the Pixiv token and whether to use Pixiv tags.
+        categories (dict, optional): Receives source categories by tag name; existing entries take precedence.
 
     Returns:
         Tuple[List[str], List[str], str]: The tags, sources, and rating for the post.
@@ -669,6 +671,12 @@ def prepare_post(results: dict, config: Config) -> tuple[list[str], list[str], s
     pixiv_artist = None
     for booru, result in results.items():
         if booru != 'pixiv':
+            if categories is not None:
+                from szurubooru_toolkit.tag_categories import extract_categories
+
+                hints = extract_categories(result[0]) if isinstance(result[0], dict) else result[0].tag_categories
+                for name, category in hints.items():
+                    categories.setdefault(name, category)
             if booru == 'sankaku':
                 tags.append([tag['tagName'] for tag in result[0]['tags']])
                 sources.append(generate_src({'site': booru, 'id': result[0]['id']}))
