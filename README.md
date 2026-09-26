@@ -193,6 +193,42 @@ Videos are tagged as well if ffmpeg is installed (`wd_tagger_videos`): frames ar
 
 Inference runs on the CPU by default. For hardware acceleration, set `wd_tagger_providers` in `config.toml`, e.g. `["CoreMLExecutionProvider"]` on Apple Silicon or `["CUDAExecutionProvider"]` on NVIDIA GPUs (install the `wd-tagger-cuda` extra instead of `wd-tagger`, or use the `-wd-tagger-cuda` Docker image). Unavailable providers fall back to the CPU.
 
+### Automatic tag categories
+
+New in 2.1.0. See the [release notes and upgrade checklist](RELEASE_NOTES.md).
+
+Enable `[tag_categories]` to categorize new tags from `auto-tagger`, `import-from-booru`,
+and `import-from-url`. For an instance with custom category names:
+
+```toml
+[tag_categories]
+enabled = true
+lookup_danbooru = false
+category_map = { general = "General", artist = "Artist", character = "Character", copyright = "Copyright", meta = "Metadata" }
+```
+
+Create the target categories in your instance first. Existing tags (including aliases)
+keep their categories. With the feature disabled, tagging behaves as before.
+The built-in mapping uses `default`, `artist`, `character`, `series`, and `meta`;
+omitted mapping entries retain these defaults. Category names on the right are case-sensitive.
+
+Danbooru metadata provides source categories; the WD model provides general and
+character categories without extra network requests. Imports ask gallery-dl for
+categorized tags on Gelbooru, Konachan, Yandere and Sankaku, which can require
+additional requests. When multiple tagging sources classify the same tag, the first
+available category wins (MD5 matches, then SauceNAO, then the WD model).
+
+Set `lookup_danbooru = true` to look up missing tags without source categories in
+batches on Danbooru. This is optional: unknown or unmapped tags are left to your
+instance's default category when the post is saved. New classified tags are created
+before the post is saved, and reused across workers. An auto-tagger dry run creates
+no tags and updates no posts. Incorrect target categories or insufficient permissions
+are reported as errors rather than silently assigning the wrong category.
+
+For compatibility, `[auto_tagger] remap_categories` and `category_map` are also
+accepted and apply to imports as well. Explicit `[tag_categories]` settings take
+precedence. This feature applies to newly created tags; it does not migrate existing tags.
+
 ## :page_with_curl: Commands
 The CLI is installed as `szuru-toolkit` and under the shorter alias `szuructl` — both are identical.
 
@@ -282,37 +318,3 @@ __Examples__
 
 ## :information_source:	Image credit
 GitHub repo icon: <a href="https://www.flaticon.com/free-icons/code" title="code icons">Code icons created by Smashicons - Flaticon</a>
-
-### Automatic tag categories
-
-Enable `[tag_categories]` to categorize new tags from `auto-tagger`, `import-from-booru`,
-and `import-from-url`. For an instance with custom category names:
-
-```toml
-[tag_categories]
-enabled = true
-lookup_danbooru = false
-category_map = { general = "General", artist = "Artist", character = "Character", copyright = "Copyright", meta = "Metadata" }
-```
-
-Create the target categories in your instance first. Existing tags (including aliases)
-keep their categories. With the feature disabled, tagging behaves as before.
-The built-in mapping uses `default`, `artist`, `character`, `series`, and `meta`;
-omitted mapping entries retain these defaults. Category names on the right are case-sensitive.
-
-Danbooru metadata provides source categories; the WD model provides general and
-character categories without extra network requests. Imports ask gallery-dl for
-categorized tags on Gelbooru, Konachan, Yandere and Sankaku, which can require
-additional requests. When multiple tagging sources classify the same tag, the first
-available category wins (MD5 matches, then SauceNAO, then the WD model).
-
-Set `lookup_danbooru = true` to look up missing tags without source categories in
-batches on Danbooru. This is optional: unknown or unmapped tags are left to your
-instance's default category when the post is saved. New classified tags are created
-before the post is saved, and reused across workers. An auto-tagger dry run creates
-no tags and updates no posts. Incorrect target categories or insufficient permissions
-are reported as errors rather than silently assigning the wrong category.
-
-For compatibility, `[auto_tagger] remap_categories` and `category_map` are also
-accepted and apply to imports as well. Explicit `[tag_categories]` settings take
-precedence. This feature applies to newly created tags; it does not migrate existing tags.
