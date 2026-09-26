@@ -77,10 +77,30 @@ pick the smallest one that covers what you enable in `config.toml`:
 | `reluce/szurubooru-toolkit:latest-pixiv` | Pixiv metadata support |
 | `reluce/szurubooru-toolkit:latest-all` | WD tagger (CPU) + Pixiv |
 
-The `-wd-tagger-cuda` image needs an NVIDIA GPU exposed to the container: install
+The `-wd-tagger-cuda` image needs an NVIDIA GPU exposed to the container. Install
 the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
-on the host (driver 580+ / CUDA 13), uncomment `gpus: all` in `docker-compose.yml`
-and set `wd_tagger_providers = ["CUDAExecutionProvider"]` in `config.toml`.
+on the host (driver 580+ / CUDA 13), use the `latest-wd-tagger-cuda` image, and
+uncomment the `deploy.resources.reservations.devices` block in `docker-compose.yml`.
+Set `wd_tagger = true` and `wd_tagger_providers = ["CUDAExecutionProvider"]` under
+`[auto_tagger]` in `config.toml`.
+
+The device reservation follows Docker's [GPU access example](https://docs.docker.com/compose/how-tos/gpu-support/).
+Alternatively, `gpus: all` is valid with **Docker Compose 2.30.0 or newer**;
+see the [Compose reference](https://docs.docker.com/reference/compose-file/services/#gpus).
+Use one GPU configuration, not both. The device reservation does not require an
+additional `runtime: nvidia` entry in Docker's documented setup.
+
+Check your Compose version and validate the configuration before starting:
+
+```sh
+docker compose version
+docker compose config --quiet
+docker compose run --rm --entrypoint nvidia-smi szurubooru-toolkit
+```
+
+`nvidia-smi` should list the host GPU inside the container. This confirms device
+access; it does not prove that model inference uses CUDA. Check the WD tagger's
+startup logs for the selected provider, since unavailable providers fall back to CPU.
 
 Use the matching tag in your `docker-compose.yml` — e.g. `-wd-tagger` if you set
 `wd_tagger = true`. Every tag is also published per version, e.g. `:2.0.0`,

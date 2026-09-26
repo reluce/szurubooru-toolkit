@@ -9,7 +9,17 @@ services:
     #  - PUID=1000
     #  - PGID=1000
     # Expose the GPU for the -wd-tagger-cuda image (requires the NVIDIA
-    # Container Toolkit on the host)
+    # Container Toolkit on the host). Use the latest-wd-tagger-cuda image above.
+    # Uncomment this block for NVIDIA GPU access:
+    #deploy:
+    #  resources:
+    #    reservations:
+    #      devices:
+    #        - driver: nvidia
+    #          count: all
+    #          capabilities: [gpu]
+    # Alternatively, Docker Compose >= 2.30.0 supports the shorthand below.
+    # Enable only one of these GPU configurations.
     #gpus: all
     volumes:
       - ./crontab:/etc/cron.d/crontab
