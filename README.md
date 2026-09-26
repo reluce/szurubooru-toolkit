@@ -195,7 +195,7 @@ Inference runs on the CPU by default. For hardware acceleration, set `wd_tagger_
 
 ### Automatic tag categories
 
-New in 2.1.0. See the [release notes and upgrade checklist](RELEASE_NOTES.md).
+New in 2.1.0.
 
 Enable `[tag_categories]` to categorize new tags from `auto-tagger`, `import-from-booru`,
 and `import-from-url`. For an instance with custom category names:
