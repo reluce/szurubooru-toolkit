@@ -173,3 +173,10 @@ def test_batch_reconcile_merges_hash_and_server_edges():
         2: {1, 10},
         10: {1, 2},
     }
+
+
+def test_cluster_long_chain_does_not_hit_recursion_limit():
+    # Sequential frames where each post's reverse search only finds its predecessor
+    edges = [(post_id, post_id - 1) for post_id in range(1, 5000)]
+
+    assert cluster(edges) == [set(range(5000))]
