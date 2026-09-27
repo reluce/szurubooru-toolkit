@@ -55,7 +55,7 @@ def test_download_tags_yields_pages():
     def handler(request):
         params = dict(request.url.params)
         assert request.url.path == '/tags.json'
-        assert params['search[post_count]'] == '>10'
+        assert params['search[post_count]'] == '>=10'
         assert params['search[name_matches]'] == '*'
         return httpx.Response(200, json=[{'name': 'tag1', 'category': 4}])
 
@@ -116,3 +116,37 @@ def test_get_tag_categories():
     categories = make_danbooru(handler).get_tag_categories(['monster_girl', 'hatsune_miku'])
 
     assert categories == {'monster_girl': 0, 'hatsune_miku': 4}
+
+
+def test_download_tags_pages_up_to_the_limit():
+    requested = []
+
+    def handler(request):
+        params = dict(request.url.params)
+        requested.append((int(params['page']), int(params['limit'])))
+        return httpx.Response(200, json=[{'name': f'tag{i}'} for i in range(int(params['limit']))])
+
+    pages = list(make_danbooru(handler).download_tags('*', 10, 2500))
+
+    # Danbooru caps a page at 1000 tags; the last page only fills up to the limit
+    assert requested == [(1, 1000), (2, 1000), (3, 500)]
+    assert sum(len(page) for page in pages) == 2500
+
+
+def test_throttled_lookups_are_retried_not_treated_as_missing(monkeypatch):
+    from szurubooru_toolkit import danbooru as danbooru_module
+
+    monkeypatch.setattr(danbooru_module, 'sleep', lambda seconds: None)
+    responses = {
+        '/wiki_pages.json': [httpx.Response(429, json={}), httpx.Response(200, json=[{'title': 'original'}])],
+        '/artists.json': [
+            httpx.Response(200, json=[]),
+            httpx.Response(429, json={}),
+            httpx.Response(200, json=[]),
+            httpx.Response(200, json=[{'name': 'main_name'}]),
+        ],
+    }
+    danbooru = make_danbooru(lambda request: responses[request.url.path].pop(0))
+
+    assert danbooru.get_other_names_tag('オリジナル') == 'original'
+    assert danbooru.search_artist('alias') == 'main_name'

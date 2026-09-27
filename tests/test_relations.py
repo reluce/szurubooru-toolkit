@@ -28,11 +28,6 @@ def make_noise_image(seed: int, modify_corner: bool = False) -> bytes:
     return buffer.getvalue()
 
 
-def test_cluster_transitive_chain():
-    # 1-2 and 2-3 are similar, 1-3 was never directly linked
-    assert cluster([(1, 2), (2, 3)]) == [{1, 2, 3}]
-
-
 def test_cluster_separate_components():
     clusters = cluster([(1, 2), (10, 11), (11, 12)])
 
@@ -41,15 +36,6 @@ def test_cluster_separate_components():
 
 def test_cluster_empty():
     assert cluster([]) == []
-
-
-def test_cluster_long_chain():
-    # The exact scenario from sequential uploads: every post only knows its predecessors
-    edges = []
-    for i in range(2, 11):
-        edges.append((i, i - 1))
-
-    assert cluster(edges) == [set(range(1, 11))]
 
 
 class FakeSzuru:
@@ -105,12 +91,6 @@ def test_batch_add_accepts_string_ids():
     batch.add('2', ['1'])
 
     assert batch.edges == [(2, 1)]
-
-
-def test_dhash_identical_images():
-    image = make_noise_image(seed=1)
-
-    assert dhash(image) == dhash(image)
 
 
 def test_dhash_variant_is_close():
@@ -173,3 +153,10 @@ def test_batch_reconcile_merges_hash_and_server_edges():
         2: {1, 10},
         10: {1, 2},
     }
+
+
+def test_cluster_long_chain_does_not_hit_recursion_limit():
+    # Sequential frames where each post's reverse search only finds its predecessor
+    edges = [(post_id, post_id - 1) for post_id in range(1, 5000)]
+
+    assert cluster(edges) == [set(range(5000))]

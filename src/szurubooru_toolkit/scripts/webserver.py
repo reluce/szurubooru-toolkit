@@ -11,28 +11,41 @@ from http.server import HTTPServer
 from loguru import logger
 
 from szurubooru_toolkit import config
-from szurubooru_toolkit.scripts.import_from_url import main as import_from_url
+from szurubooru_toolkit.scripts import import_from_url as import_from_url_script
+
+
+# Skip main's @logger.catch, which swallows errors: the response has to report failed imports
+import_from_url = import_from_url_script.main.__wrapped__
+
+
+# The configured cookies/range, captured before the first request overrides them
+_configured = {}
 
 
 def apply_overrides(params: dict) -> None:
-    """Apply the cookies/range query params as config overrides."""
+    """Apply the cookies/range query params as config overrides; empty params restore the configured values."""
+
+    if not _configured:
+        _configured.update(cookies=config.import_from_url['cookies'], range=config.import_from_url['range'])
 
     overrides = {
         'globals': {'hide_progress': True},
         'import_from_url': {},
     }
 
-    cookie_location = params.get('cookies')
-    if cookie_location:
-        overrides['import_from_url']['cookies'] = cookie_location
-        logger.info(f'Cookie file location: "{cookie_location}"')
-
-    range_ = params.get('range')
-    if range_:
-        overrides['import_from_url']['range'] = range_
-        logger.info(f'Limit range: "{range_}"')
+    for key in ('cookies', 'range'):
+        value = params.get(key) or _configured[key]
+        overrides['import_from_url'][key] = value
+        if params.get(key):
+            logger.info(f'Using {key} "{value}"')
 
     config.override_config(overrides)
+
+
+def is_allowed_origin(origin: str | None) -> bool:
+    """Allows the browser extensions and non-browser clients (no Origin), but no web pages."""
+
+    return origin is None or origin.startswith(('chrome-extension://', 'moz-extension://'))
 
 
 class ToolkitRequestHandler(BaseHTTPRequestHandler):
@@ -68,15 +81,18 @@ class ToolkitRequestHandler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlsplit(self.path)
         params = {key: values[0] for key, values in urllib.parse.parse_qs(parsed.query).items()}
 
-        if parsed.path == '/import-from-url':
-            self._handle_import_from_url(params)
-        elif parsed.path == '/import-from-all-tabs':
-            if self.command != 'POST':
-                self._respond('Method not allowed', 405)
-            else:
-                self._handle_import_from_all_tabs(params)
-        else:
+        if parsed.path not in ('/import-from-url', '/import-from-all-tabs'):
             self._respond('Not found', 404)
+        elif self.command != 'POST':
+            # A GET could be triggered by any web page, e.g. via <img src>
+            self._respond('Method not allowed', 405)
+        elif not is_allowed_origin(self.headers.get('Origin')):
+            # Browsers always send Origin on cross-origin POSTs; only the extensions may import
+            self._respond('Forbidden', 403)
+        elif parsed.path == '/import-from-url':
+            self._handle_import_from_url(params)
+        else:
+            self._handle_import_from_all_tabs(params)
 
     def _handle_import_from_url(self, params: dict) -> None:
         current_url = params.get('url')
@@ -85,7 +101,12 @@ class ToolkitRequestHandler(BaseHTTPRequestHandler):
             return
 
         apply_overrides(params)
-        import_from_url(urls=[current_url])
+        try:
+            import_from_url(urls=[current_url])
+        except Exception as e:
+            logger.exception(f'Failed to import from {current_url}: {e}')
+            self._respond(f'Import failed for URL {current_url}: {e}', 500)
+            return
 
         self._respond('Script executed for URL: ' + current_url)
 
@@ -114,7 +135,7 @@ class ToolkitRequestHandler(BaseHTTPRequestHandler):
                 import_from_url(urls=[url])
                 successful_imports += 1
             except Exception as e:
-                logger.error(f'Failed to import from {url}: {str(e)}')
+                logger.exception(f'Failed to import from {url}: {e}')
                 failed_imports += 1
 
         self._respond(f'Script executed for {len(urls)} URLs. Successful: {successful_imports}, Failed: {failed_imports}')

@@ -99,6 +99,26 @@ def test_main_tag_file_with_implication_columns(szuru, tmp_path):
     assert implication_names(szuru.tags['cat_girl']) == []
 
 
+def test_main_tag_file_skips_blank_lines_and_defaults_category(szuru, tmp_path):
+    tag_file = tmp_path / 'tags.txt'
+    tag_file.write_text('slime_girl,character\n\nno_category\n')
+
+    create_tags.main(tag_file=str(tag_file))
+
+    assert {name: tag.category for name, tag in szuru.tags.items()} == {'slime_girl': 'character', 'no_category': 'default'}
+
+
+def test_main_tag_file_honors_overwrite(szuru, tmp_path):
+    szuru.tags['slime_girl'] = Tag(names=['slime_girl'], category='default', version=1)
+    create_tags.config.create_tags['overwrite'] = True
+    tag_file = tmp_path / 'tags.txt'
+    tag_file.write_text('slime_girl,character\n')
+
+    create_tags.main(tag_file=str(tag_file))
+
+    assert szuru.tags['slime_girl'].category == 'character'
+
+
 class StubDanbooru:
     def download_tags(self, query, min_post_count, limit):
         yield [{'name': 'slime_girl', 'category': 4}]

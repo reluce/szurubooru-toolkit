@@ -117,10 +117,13 @@ def main(tag_file: str = '', tag_name: str = '', category: str = '', implication
                 ):
                     tag: list = line.strip().replace(' ', '').split(',')
                     tag_name = tag[0]
-                    tag_category = tag[1]
+                    if not tag_name:
+                        continue  # blank line
+                    # A line without a category gets the default one
+                    tag_category = tag[1] if len(tag) > 1 and tag[1] else 'default'
 
                     try:
-                        szuru.create_tag(tag_name, tag_category)
+                        szuru.create_tag(tag_name, tag_category, overwrite)
                     except TagExistsError as e:  # noqa F841
                         # logger.warning(e)  # Could result in lots of output with larger tag files
                         pass

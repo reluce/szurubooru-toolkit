@@ -16,6 +16,10 @@ except ImportError:
         pass
 
 
+# Pixiv's age restriction tags; R-18G is guro and at least as unsafe as R-18
+RESTRICTED_TAGS = ('R-18', 'R-18G')
+
+
 class Pixiv:
     def __init__(self, token: str) -> None:
         """
@@ -89,7 +93,7 @@ class Pixiv:
         Extracts tags from the result.
 
         This method extracts the tags from the result object. If the result object has an `illust` attribute and this
-        attribute has a `tags` attribute, it iterates over the tags and adds them to a list. It ignores the 'R-18' tag.
+        attribute has a `tags` attribute, it iterates over the tags and adds them to a list. It ignores the 'R-18' and 'R-18G' tags.
 
         Args:
             result (Any): The result object from which to extract the tags.
@@ -104,7 +108,7 @@ class Pixiv:
             for tag in result.illust.tags:
                 temp = tag['name']
                 if temp is not None:
-                    if not temp == 'R-18':
+                    if temp not in RESTRICTED_TAGS:
                         tags.append(temp)
 
         logger.debug(f'Returning tags {tags}')
@@ -116,7 +120,7 @@ class Pixiv:
         Determines the rating of the result.
 
         This method determines the rating of the result object. If the result object has an `illust` attribute and this
-        attribute has a `tags` attribute, it iterates over the tags. If it finds the 'R-18' tag, it returns 'unsafe'.
+        attribute has a `tags` attribute, it iterates over the tags. If it finds the 'R-18' or 'R-18G' tag, it returns 'unsafe'.
         Otherwise, it returns 'safe'.
 
         Args:
@@ -128,7 +132,7 @@ class Pixiv:
 
         if result.illust and result.illust.tags:
             for tag in result.illust.tags:
-                if tag['name'] == 'R-18':
+                if tag['name'] in RESTRICTED_TAGS:
                     return 'unsafe'
         return 'safe'
 

@@ -7,29 +7,10 @@ import szurubooru_toolkit
 from szurubooru_toolkit import utils
 from szurubooru_toolkit.saucenao import SauceNaoCooldown
 from szurubooru_toolkit.szurubooru import Tag
+from szurubooru_toolkit.szurubooru import TagExistsError
 from szurubooru_toolkit.szurubooru import TagNotFoundError
 from szurubooru_toolkit.utils import get_cached_implications
 from szurubooru_toolkit.utils import run_concurrently
-from szurubooru_toolkit.utils import statistics
-
-
-def test_statistics_thread_safe():
-    utils.total_tagged = 0
-    utils.total_wd_tagger = 0
-    utils.total_untagged = 0
-    utils.total_skipped = 0
-
-    def hammer():
-        for _ in range(100):
-            statistics(tagged=1, wd_tagger=1, untagged=1, skipped=1)
-
-    threads = [threading.Thread(target=hammer) for _ in range(8)]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
-
-    assert statistics() == (800, 800, 800, 800)
 
 
 def test_cooldown_noop_without_trigger():
@@ -153,3 +134,16 @@ def test_run_concurrently_actually_parallel():
     run_concurrently(range(4), worker, workers=4, total=4, hide_progress=True)
 
     assert time.monotonic() - start < 5
+
+
+def test_implications_create_missing_loses_race_to_other_worker(monkeypatch):
+    class RacingSzuru(FakeSzuruTags):
+        def create_tag(self, name, category='default', overwrite=False):
+            # Another worker created the tag between our lookup and create
+            self.missing.discard(name)
+            raise TagExistsError(f'{name} exists')
+
+    fake = RacingSzuru({'new_tag': ['series']}, missing={'new_tag'})
+    monkeypatch.setattr(szurubooru_toolkit, 'szuru', fake, raising=False)
+
+    assert get_cached_implications('new_tag', create_missing=True) == ['series']

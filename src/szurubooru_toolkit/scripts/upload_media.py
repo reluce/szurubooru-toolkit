@@ -39,10 +39,12 @@ def get_files(upload_dir: str) -> list:
     """
 
     allowed_extensions = ['jpg', 'jpeg', 'png', 'mp4', 'webm', 'gif', 'swf', 'webp']
-    files_raw = list(
-        filter(None, [glob(upload_dir + '/**/*.' + extension, recursive=True) for extension in allowed_extensions]),
-    )
-    files = [y for x in files_raw for y in x]
+    files = []
+
+    # Extensions match case-insensitively (IMG_0001.JPG); hidden files like macOS' ._IMG.jpg are skipped, as glob did
+    for extension in allowed_extensions:
+        pattern = ''.join(f'[{char}{char.upper()}]' for char in extension)
+        files += glob(upload_dir + '/**/*.' + pattern, recursive=True)
 
     return files
 
@@ -152,9 +154,10 @@ def update_tags(post: Post, metadata: dict, saucenao_limit_reached: bool, origin
         bool: If the SauceNAO limit has been reached.
     """
 
-    logger.debug(f'Trying to update tags for post {post["id"]}...')
-
+    # An exact match is a post resource, a similar match is a reverse-search entry {'distance', 'post'}
     id = str(post['id']) if 'id' in post else str(post['post']['id'])
+    logger.debug(f'Trying to update tags for post {id}...')
+
     config.tag_posts['mode'] = 'append'
 
     try:
@@ -168,7 +171,7 @@ def update_tags(post: Post, metadata: dict, saucenao_limit_reached: bool, origin
     tag_posts.main(query=id, add_tags=metadata['tags'], source=metadata['source'])
 
     saucenao_limit_reached = auto_tagger.main(
-        post_id=str(post['id']),
+        post_id=id,
         file_to_upload=file_to_upload,
         limit_reached=saucenao_limit_reached,
         md5=original_md5,
@@ -342,6 +345,7 @@ def upload_post(
 
     post = Post()
     original_md5 = ''
+    file_ext = file_ext.lower()
 
     if file_ext not in ['mp4', 'webm', 'gif']:
         post.media, original_md5, updated_file_ext = eval_convert_image(file, file_ext, file_path)

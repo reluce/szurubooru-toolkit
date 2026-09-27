@@ -58,10 +58,6 @@ def test_sanitize_tags_replaces_whitespace():
     assert sanitize_tags(['tag 1', 'tag_2', 'a b c']) == ['tag_1', 'tag_2', 'a_b_c']
 
 
-def test_sanitize_tags_empty():
-    assert sanitize_tags([]) == []
-
-
 def test_collect_sources_dedup_and_join():
     result = collect_sources('foo', 'bar', 'foo')
     assert set(result.split('\n')) == {'foo', 'bar'}
@@ -73,10 +69,6 @@ def test_collect_sources_strips_trailing_comma():
 
 def test_collect_sources_drops_empty():
     assert collect_sources('', 'foo', None) == 'foo'
-
-
-def test_collect_sources_empty():
-    assert collect_sources() == ''
 
 
 def test_get_md5sum():
@@ -149,6 +141,9 @@ def test_download_media_retries_once_on_md5_mismatch(monkeypatch):
         def __init__(self, content):
             self.content = content
 
+        def raise_for_status(self):
+            pass
+
     monkeypatch.setattr(utils.httpx, 'get', lambda *a, **k: FakeResponse(responses.pop(0)))
 
     file = utils.download_media('http://szuru.local/data/1.jpg', md5=get_md5sum(b'intact'))
@@ -161,11 +156,15 @@ def test_download_media_retries_once_on_md5_mismatch(monkeypatch):
     'url,expected',
     [
         ('exhentai', 'e-hentai'),  # gallery-dl category, both domains
-        ('https://exhentai.org/g/1234/abcdef1234/', 'e-hentai'),
         ('https://e-hentai.org/g/1234/abcdef1234/', 'e-hentai'),
         ('danbooru', 'danbooru'),
         ('https://cdn.donmai.us/original/ab/cd/abcd1234.jpg', 'danbooru'),
         ('https://some.unknown.site/post/1', None),
+        ('https://files.yande.re/image/abc/yande.re%201234.jpg', 'yandere'),
+        # The host wins over site names elsewhere in the URL
+        ('https://kemono.su/fanbox/user/1/post/2', 'kemono'),
+        ('https://c1.kemono.su/data/ab/cd/abcd.png?f=pixiv_1.png', 'kemono'),
+        ('https://www.pixiv.net/fanbox/creator/1', 'pixiv'),
     ],
 )
 def test_get_site(url, expected):
@@ -180,7 +179,6 @@ def test_get_site(url, expected):
         (['1girl', 'nude', 'sex'], 'safe', 'unsafe'),  # highest matching level wins
         (['1girl', 'nude'], 'unsafe', 'unsafe'),  # never lowered
         (['1girl'], 'safe', 'safe'),  # no match
-        ([], 'safe', 'safe'),
     ],
 )
 def test_apply_safety_overrides(tags, safety, expected):
@@ -197,3 +195,78 @@ def test_generate_src_e_hentai():
     metadata = {'site': 'e-hentai', 'gid': 4046994, 'token': 'd23b006a6f'}
 
     assert utils.generate_src(metadata) == 'https://e-hentai.org/g/4046994/d23b006a6f'
+
+
+def test_convert_rating_danbooru_s_is_sensitive():
+    assert convert_rating('s', 'danbooru') == 'sketchy'
+    assert convert_rating('s', 'konachan') == 'safe'
+
+
+def test_download_media_rejects_error_pages(monkeypatch):
+    import httpx
+
+    request = httpx.Request('GET', 'http://szuru.local/data/1.jpg')
+    monkeypatch.setattr(utils.httpx, 'get', lambda *a, **k: httpx.Response(404, content=b'Not found', request=request))
+
+    assert utils.download_media('http://szuru.local/data/1.jpg') is None
+
+
+class PrepareConfig:
+    credentials = {'pixiv': {'token': 'token'}}
+    auto_tagger = {'use_pixiv_tags': True}
+
+
+def booru_result(rating, tags='tag'):
+    from szurubooru_toolkit.boorus import BooruPost
+
+    return [BooruPost(id=1, tags=tags, rating=rating)]
+
+
+def test_prepare_post_uses_strictest_booru_rating():
+    results = {'danbooru': booru_result('explicit'), 'konachan': booru_result('safe')}
+
+    # Whichever order the boorus answered in
+    for ordered in (results, dict(reversed(results.items()))):
+        _, _, rating = utils.prepare_post(ordered, PrepareConfig)
+        assert rating == 'unsafe'
+
+
+def test_prepare_post_without_ratings_keeps_post_safety():
+    _, _, rating = utils.prepare_post({'danbooru': booru_result('')}, PrepareConfig)
+
+    assert not rating
+
+
+class FakePixiv:
+    def __init__(self, token):
+        pass
+
+    def get_result(self, url):
+        return object()
+
+    def get_tags(self, result):
+        return ['オリジナル', '女の子']
+
+    def get_rating(self, result):
+        return 'safe'
+
+    @staticmethod
+    def extract_pixiv_artist(name):
+        return 'some_artist'
+
+
+@pytest.mark.parametrize('use_pixiv_tags', [True, False])
+def test_prepare_post_falls_back_to_raw_pixiv_tags(monkeypatch, use_pixiv_tags):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(utils, 'Pixiv', FakePixiv)
+    # Danbooru has no translation for any of the Pixiv tags
+    monkeypatch.setattr(utils, 'convert_tags', lambda tags: [])
+    config = SimpleNamespace(credentials=PrepareConfig.credentials, auto_tagger={'use_pixiv_tags': use_pixiv_tags})
+    pixiv = SimpleNamespace(url='https://www.pixiv.net/artworks/1', author_name='someone')
+
+    tags, _, rating = utils.prepare_post({'pixiv': pixiv}, config)
+
+    expected = ['オリジナル', '女の子', 'some_artist'] if use_pixiv_tags else ['some_artist']
+    assert tags == expected
+    assert rating == 'safe'

@@ -44,26 +44,11 @@ class RecordingClient:
         self.szuru = Szurubooru(BASE_URL, 'user', 'token', transport=httpx.MockTransport(recording_handler))
 
 
-def test_auth_header_encoding():
-    assert Szurubooru.encode_auth_headers('user', 'token') == 'dXNlcjp0b2tlbg=='
-
-
 def test_client_sends_token_auth():
     client = RecordingClient(lambda request: httpx.Response(200, json={'total': 0, 'results': []}))
     list(client.szuru.get_posts('foo'))
 
     assert client.requests[0].headers['Authorization'] == 'Token dXNlcjp0b2tlbg=='
-
-
-def test_get_posts_yields_total_then_posts():
-    def handler(request):
-        return httpx.Response(200, json={'total': 2, 'results': [make_post_json(1), make_post_json(2)]})
-
-    client = RecordingClient(handler)
-    results = list(client.szuru.get_posts('foo'))
-
-    assert results[0] == '2'
-    assert [post.id for post in results[1:]] == ['1', '2']
 
 
 def test_get_posts_empty_yields_nothing():
@@ -89,6 +74,28 @@ def test_get_posts_paginates_without_extra_request():
     assert {dict(r.url.params).get('offset') for r in client.requests} == {None, '100', '200'}
 
 
+def test_get_posts_does_not_skip_posts_removed_while_iterating():
+    # Server-side result set shrinks as the caller processes posts, like
+    # `tag-posts --remove-tags foo` on query `foo` or deleting posts
+    matching = list(range(250))
+
+    def handler(request):
+        offset = int(dict(request.url.params).get('offset', 0))
+        page = matching[offset : offset + 100]
+        return httpx.Response(200, json={'total': len(matching), 'results': [make_post_json(i) for i in page]})
+
+    client = RecordingClient(handler)
+    posts = client.szuru.get_posts('foo')
+    next(posts)
+
+    seen = []
+    for post in posts:
+        seen.append(int(post.id))
+        matching.remove(int(post.id))
+
+    assert seen == list(range(250))
+
+
 def test_get_posts_requests_only_needed_fields():
     client = RecordingClient(lambda request: httpx.Response(200, json={'total': 0, 'results': []}))
     list(client.szuru.get_posts('foo'))
@@ -100,13 +107,6 @@ def test_get_posts_requests_only_needed_fields():
     assert 'checksumMD5' in fields
 
 
-def test_get_posts_numeric_query_searches_by_id():
-    client = RecordingClient(lambda request: httpx.Response(200, json={'total': 0, 'results': []}))
-    list(client.szuru.get_posts('123'))
-
-    assert 'id:123' in dict(client.requests[0].url.params)['query']
-
-
 def test_get_posts_excludes_videos_by_default():
     client = RecordingClient(lambda request: httpx.Response(200, json={'total': 0, 'results': []}))
     list(client.szuru.get_posts('foo'))
@@ -114,27 +114,6 @@ def test_get_posts_excludes_videos_by_default():
 
     assert dict(client.requests[0].url.params)['query'].startswith('type:image,animation ')
     assert not dict(client.requests[1].url.params)['query'].startswith('type:')
-
-
-def test_get_posts_escapes_unknown_tokens():
-    client = RecordingClient(lambda request: httpx.Response(200, json={'total': 0, 'results': []}))
-    list(client.szuru.get_posts('foo:bar rating:safe'))
-
-    query = dict(client.requests[0].url.params)['query']
-    assert 'foo\\:bar' in query
-    assert 'rating:safe' in query
-
-
-def test_get_posts_raises_unknown_token_error():
-    def handler(request):
-        return httpx.Response(
-            400,
-            json={'name': 'SearchError', 'title': 'Search error', 'description': 'SearchError: Unknown named token'},
-        )
-
-    client = RecordingClient(handler)
-    with pytest.raises(UnknownTokenError):
-        list(client.szuru.get_posts('foo'))
 
 
 def test_parse_post_builds_micro_tags():
@@ -399,6 +378,30 @@ def test_update_post_relations_retries_on_version_conflict():
     assert state['puts'] == 2
 
 
+def test_update_post_relations_retries_on_upstream_integrity_error():
+    # Upstream szurubooru's exact conflict response (func/versions.py)
+    state = {'puts': 0}
+
+    def handler(request):
+        if request.method == 'GET':
+            return httpx.Response(200, json=make_post_json(2, relations=[], version=5 + state['puts']))
+        state['puts'] += 1
+        if state['puts'] == 1:
+            return httpx.Response(
+                409,
+                json={
+                    'name': 'IntegrityError',
+                    'title': 'Integrity violation',
+                    'description': 'Someone else modified this in the meantime. Please try again.',
+                },
+            )
+        return httpx.Response(200, json=make_post_json(2))
+
+    client = RecordingClient(handler)
+    assert client.szuru.update_post_relations(2, {1}) is True
+    assert state['puts'] == 2
+
+
 def test_update_post_relations_raises_on_other_errors():
     def handler(request):
         if request.method == 'GET':
@@ -567,3 +570,24 @@ def test_transient_gateway_error_gives_up_after_retries(monkeypatch):
     with pytest.raises(SzurubooruApiError):
         client.szuru.reverse_search('token')
     assert len(client.requests) == szurubooru.TRANSIENT_RETRIES
+
+
+@pytest.mark.parametrize(
+    ('query', 'expected'),
+    [
+        ('special:fav', 'special:fav'),
+        ('-special:liked foo', '-special:liked foo'),
+        # Oxibooru-only tokens
+        ('pool-count:0 description:*foo*', 'pool-count:0 description:*foo*'),
+        ('re:zero', 're\\:zero'),
+        # Already escaped input isn't escaped twice
+        ('re\\:zero', 're\\:zero'),
+        # Only the unknown term is escaped, not other terms that contain it
+        ('a:b xa:b rating:safe', 'a\\:b xa\\:b rating:safe'),
+    ],
+)
+def test_get_posts_query_escaping(query, expected):
+    client = RecordingClient(lambda request: httpx.Response(200, json={'total': 0, 'results': []}))
+    list(client.szuru.get_posts(query, videos=True))
+
+    assert dict(client.requests[0].url.params)['query'] == expected

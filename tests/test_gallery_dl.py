@@ -27,7 +27,8 @@ def test_single_url_runs_one_process(monkeypatch, tmp_path):
     assert fake.commands[0][0] == 'gallery-dl'
     assert f'-D={download_dir}' in fake.commands[0]
     assert '-q' in fake.commands[0]
-    assert fake.commands[0][-1] == 'https://example.com/a'
+    # URLs come after `--`, so a URL like `--exec=...` can't be parsed as an option
+    assert fake.commands[0][-2:] == ['--', 'https://example.com/a']
 
 
 def test_multiple_urls_fan_out_concurrently(monkeypatch, tmp_path):

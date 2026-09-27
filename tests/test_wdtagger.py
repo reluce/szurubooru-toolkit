@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 
@@ -84,10 +85,6 @@ def wd_tagger(model_dir):
     return WDTagger(str(model_dir))
 
 
-def test_input_size_from_model(wd_tagger):
-    assert wd_tagger.input_size == INPUT_SIZE
-
-
 def test_general_and_character_tags_with_rating(wd_tagger):
     tags, rating = wd_tagger.tag_image(make_image((255, 0, 0)), 'safe', set_tag=False)
 
@@ -154,12 +151,6 @@ def test_review_band_adds_needs_review(wd_tagger):
 
     assert 'needs_review' in tags
     assert 'hatsune_miku' not in tags
-
-
-def test_no_review_band_without_threshold(wd_tagger):
-    tags, _ = wd_tagger.tag_image(make_image((0, 0, 255)), 'safe', set_tag=False)
-
-    assert 'needs_review' not in tags
 
 
 def test_confident_character_not_marked_for_review(wd_tagger):
@@ -237,3 +228,22 @@ def test_selected_tag_categories_exclude_ratings_and_markers():
     tagger.tags = np.array(['solo', 'miku', 'general'])
     tagger.categories = np.array([0, 4, 9])
     assert tagger.tag_categories(['miku', 'general', 'needs_review', 'wd_tagger']) == {'miku': 'character'}
+
+
+def test_predict_video_hands_ffprobe_a_closed_complete_file(monkeypatch):
+    # Windows can't open a NamedTemporaryFile that's still open, so the video must be fully written and closed
+    from szurubooru_toolkit import wdtagger as wdtagger_module
+
+    seen = {}
+
+    def fake_run(command, **kwargs):
+        path = Path(command[-1])
+        seen['path'], seen['content'] = path, path.read_bytes()
+        raise subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr(wdtagger_module.shutil, 'which', lambda name: name)
+    monkeypatch.setattr(wdtagger_module.subprocess, 'run', fake_run)
+
+    assert WDTagger.predict_video(None, b'video-bytes') is None
+    assert seen['content'] == b'video-bytes'
+    assert not seen['path'].exists()

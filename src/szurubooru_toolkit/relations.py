@@ -69,11 +69,15 @@ class UnionFind:
         self.parent = {}
 
     def find(self, item: int) -> int:
+        # Iterative, since long chains of related posts would exceed the recursion limit
         root = self.parent.setdefault(item, item)
+        while self.parent[root] != root:
+            root = self.parent[root]
 
-        if root != item:
-            root = self.find(root)
+        while item != root:
+            next_item = self.parent[item]
             self.parent[item] = root
+            item = next_item
 
         return root
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import time
 import urllib.parse
 from base64 import b64encode
@@ -211,6 +212,8 @@ class Szurubooru:
             'tag',
             'tag-category',  # oxibooru only
             'pool-category',  # oxibooru only
+            'pool-count',  # oxibooru only
+            'description',  # oxibooru only
             'tag-count',
             'time',
             'type',
@@ -218,8 +221,18 @@ class Szurubooru:
             'uploader',
             'width',
             'sort',
-            'tumbleweed',
+            'special',
         ]
+
+    def _escape_term(self, term: str) -> str:
+        """Escapes the colons of a search term unless it starts with a known token, e.g. `re:zero` -> `re\\:zero`."""
+
+        # Colons the user already escaped stay as they are
+        token = re.split(r'(?<!\\):', term, maxsplit=1)[0]
+        if token == term or token.lstrip('-') in self.allowed_tokens:
+            return term
+
+        return re.sub(r'(?<!\\):', r'\\:', term)
 
     def _request(self, method: str, path: str, **kwargs) -> dict:
         """
@@ -343,13 +356,7 @@ class Szurubooru:
             logger.debug(f'Modified input query to "{query}"')
 
         if ':' in query:
-            query_list = query.split()
-            for tag in query_list:
-                if ':' in tag:
-                    token = tag.split(':')[0]
-                    if token not in self.allowed_tokens and token not in ['-' + t for t in self.allowed_tokens]:
-                        sanitized_tag = tag.replace(':', '\\:')  # noqa W605
-                        query = query.replace(tag, sanitized_tag)
+            query = ' '.join(self._escape_term(term) for term in query.split())
 
         if not videos:
             query = f'type:image,animation {query}'
@@ -369,18 +376,19 @@ class Szurubooru:
         if results:
             yield total
 
-            for result in results:
-                yield self.parse_post(result)
-
             if pagination and pages > 1:
-                # Fetch the remaining pages concurrently, but yield them in order
+                # Fetch every page before yielding anything: callers modify or delete the posts
+                # they get, which drops them from the query and would shift later offset pages.
+                # ponytail: holds the whole result set in memory, switch to id-keyset paging if that hurts
                 def fetch_page(page: int) -> list:
                     return self._fetch_post_resource('/posts/', params | {'offset': page * 100})['results']
 
                 with ThreadPoolExecutor(max_workers=min(PAGE_FETCH_WORKERS, pages - 1)) as executor:
-                    for future in [executor.submit(fetch_page, page) for page in range(1, pages)]:
-                        for result in future.result():
-                            yield self.parse_post(result)
+                    for page_results in executor.map(fetch_page, range(1, pages)):
+                        results += page_results
+
+            for result in results:
+                yield self.parse_post(result)
 
     def parse_post(self, response: dict) -> Post:
         """
@@ -479,8 +487,10 @@ class Szurubooru:
                 logger.debug(f'Updated relations of post {post_id} to {sorted(desired)}')
                 return True
             except SzurubooruApiError as e:
-                # Retry only on optimistic-locking conflicts
-                if 'version' not in e.description.lower() and 'modified' not in e.name.lower():
+                # Retry only on optimistic-locking conflicts. Upstream szurubooru sends
+                # IntegrityError "Someone else modified this in the meantime."
+                message = f'{e.name} {e.description}'.lower()
+                if 'version' not in message and 'modified' not in message:
                     raise
                 last_error = e
                 logger.debug(f'Version conflict while updating post {post_id}, retrying...')

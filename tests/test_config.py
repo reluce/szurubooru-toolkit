@@ -1,7 +1,13 @@
+import importlib
+
 import pytest
 
-from szurubooru_toolkit import config as config_module
 from szurubooru_toolkit.config import Config
+
+
+# Other test modules replace the package attribute `szurubooru_toolkit.config` with a
+# stand-in at import time, so fetch the module itself instead of the attribute
+config_module = importlib.import_module('szurubooru_toolkit.config')
 
 
 @pytest.fixture

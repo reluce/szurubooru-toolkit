@@ -67,72 +67,65 @@ def update_tag(tag: Tag, relation: Tag) -> None:
         szuru.update_tag(full_tag)
 
 
-def evaluate_relations(tag: Tag, relation: Tag, found_relations: dict) -> None:
+def is_relatable(tag: Tag, relation: Tag) -> bool:
+    """Only character <> parody/series pairs get related."""
+
+    return (tag.category == 'character' and relation.category in ['parody', 'series']) or (
+        tag.category in ['parody', 'series'] and relation.category == 'character'
+    )
+
+
+def evaluate_relations(tag: Tag, relation: Tag) -> None:
     """
-    Evaluates if the relation between two tags is valid.
+    Evaluates if the relation between two tags is valid and updates the tag if so.
 
-    This function checks the possible relation of two tags on szurubooru. If the count of search results is above the
+    This function checks the possible relation of two tags on szurubooru. If the count of search results reaches the
     configured threshold, the relation is considered valid.
-
-    It also checks the relation against `found_relations`. It updates the tag with the new relation only if the relation
-    was not already set before.
 
     Args:
         tag (Tag): A szurubooru Tag object.
         relation (Tag): A szurubooru Tag object with a possible relation to `tag`.
-        found_relations (dict): A dictionary which keeps track of already matched relations. The key is the tag's name
-                                while its value is a list of matched relations.
 
     Returns:
         None
     """
 
-    # Create relation only if count of existing relation is above configured threshold
+    # Create the relation only if at least the configured threshold of posts has both tags
     try:
         count = next(szuru.get_posts(f'{tag.primary_name} {relation.primary_name}'))
     except StopIteration:
         count = 0
 
-    if int(count) > int(config.create_relations['threshold']):
-        # Update found_relations
-        if tag.primary_name not in found_relations:
-            found_relations[tag.primary_name] = []
-
-        if relation.primary_name not in found_relations[tag.primary_name]:
-            # Match only character and parody/series
-            if (tag.category == 'character' and relation.category in ['parody', 'series']) or (
-                tag.category in ['parody', 'series'] and relation.category == 'character'
-            ):
-                found_relations[tag.primary_name].append(relation.primary_name)
-
-            update_tag(tag, relation)
+    if int(count) >= int(config.create_relations['threshold']):
+        update_tag(tag, relation)
 
 
 def check_found_relations(related_tags: list[Tag], found_relations: dict) -> None:
     """
-    Checks each tag in related_tags if it's been matched already in found_relations.
+    Evaluates every relatable pair in related_tags which hasn't been evaluated yet.
 
-    This function iterates over a list of szurubooru Tag objects and checks each tag against a dictionary of found
-    relations. If the tag has not been matched already, it calls `evaluate_relations` to check if the relation is valid.
+    Each direction of a pair is evaluated once per run: the character gets the parody as implication, the parody gets
+    the character as suggestion. The post count is global, so evaluating a pair again can't change the result.
 
     Args:
         related_tags (list[Tag]): List of tag objects where category is either character or parody.
-        found_relations (dict): Dictionary which keeps track of already matched relations. The key is the tag's name
-                                while its value is a list of matched relations.
+        found_relations (dict): Dictionary which keeps track of already evaluated relations. The key is the tag's name
+                                while its value is a list of evaluated relations.
 
     Returns:
         None
     """
 
     for tag in related_tags:
-        # relations doesn't include the current tag
-        relations = related_tags.copy()
-        relations.remove(tag)
+        evaluated = found_relations.setdefault(tag.primary_name, [])
 
-        for relation in relations:
+        for relation in related_tags:
+            if not is_relatable(tag, relation) or relation.primary_name in evaluated:
+                continue
+
+            evaluated.append(relation.primary_name)
             try:
-                if relation.primary_name not in found_relations:
-                    evaluate_relations(tag, relation, found_relations)
+                evaluate_relations(tag, relation)
             # Skip tags szurubooru cannot search for, e.g. tags with unescaped special chars
             except SzurubooruError as e:
                 logger.debug(f'Skipping relation {tag.primary_name} <> {relation.primary_name}: {e}')

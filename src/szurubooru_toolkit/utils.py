@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import threading
+import urllib.parse
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
@@ -126,11 +127,12 @@ def resolve_onnx_providers(providers: list[str] | None) -> list[str]:
     return resolved
 
 
-def convert_rating(rating: str) -> str:
+def convert_rating(rating: str, site: str = None) -> str:
     """Map different ratings to szurubooru compatible rating.
 
     Args:
         rating (str): The rating you want to convert
+        site (str, optional): The site the rating comes from. Danbooru's 's' means sensitive, not safe.
 
     Returns:
         str: The szuru compatible rating
@@ -155,6 +157,9 @@ def convert_rating(rating: str) -> str:
         'rating:questionable': 'sketchy',
         'rating:explicit': 'unsafe',
     }
+
+    if site == 'danbooru' and rating == 's':
+        rating = 'sensitive'
 
     new_rating = switch.get(rating)
     logger.debug(f'Converted rating {rating} to {new_rating}')
@@ -242,6 +247,7 @@ def get_cached_implications(tag_name: str, create_missing: bool = False) -> list
     """
 
     from szurubooru_toolkit import szuru
+    from szurubooru_toolkit.szurubooru import TagExistsError
     from szurubooru_toolkit.szurubooru import TagNotFoundError
 
     with _implications_lock:
@@ -253,7 +259,11 @@ def get_cached_implications(tag_name: str, create_missing: bool = False) -> list
     except TagNotFoundError:
         if not create_missing:
             raise
-        szuru_tag = szuru.create_tag(tag_name)
+        try:
+            szuru_tag = szuru.create_tag(tag_name)
+        except TagExistsError:
+            # Another worker created it in the meantime
+            szuru_tag = szuru.get_tag(tag_name)
 
     implications = [implication.primary_name for implication in szuru_tag.implications]
 
@@ -469,7 +479,10 @@ def download_media(content_url: str, md5: str = None) -> bytes | None:
 
     for _ in range(2):
         try:
-            file = httpx.get(content_url, follow_redirects=True, timeout=30).content
+            response = httpx.get(content_url, follow_redirects=True, timeout=30)
+            # An error page isn't the media
+            response.raise_for_status()
+            file = response.content
         except Exception as e:
             logger.warning(f'Could not download post from {content_url}: {e}')
             continue
@@ -665,10 +678,11 @@ def prepare_post(results: dict, config: Config, categories: dict | None = None) 
 
     tags = []
     sources = []
-    rating = []
+    ratings = []
     booru_found = False
     pixiv_rating = None
     pixiv_artist = None
+    pixiv_tags = None
     for booru, result in results.items():
         if booru != 'pixiv':
             if categories is not None:
@@ -680,14 +694,13 @@ def prepare_post(results: dict, config: Config, categories: dict | None = None) 
             if booru == 'sankaku':
                 tags.append([tag['tagName'] for tag in result[0]['tags']])
                 sources.append(generate_src({'site': booru, 'id': result[0]['id']}))
-                rating = convert_rating(result[0]['rating'])
+                ratings.append(convert_rating(result[0]['rating']))
             else:
                 tags.append(result[0].tags.split())
                 sources.append(generate_src({'site': booru, 'id': result[0].id}))
-                rating = convert_rating(result[0].rating)
+                ratings.append(convert_rating(result[0].rating))
             booru_found = True
         else:
-            pixiv_tags = None
             if config.credentials['pixiv']['token']:
                 try:
                     pixiv = Pixiv(config.credentials['pixiv']['token'])
@@ -696,30 +709,30 @@ def prepare_post(results: dict, config: Config, categories: dict | None = None) 
                         pixiv_tags = pixiv.get_tags(pixiv_result)
                         tags.append(convert_tags(pixiv_tags))
                         pixiv_rating = pixiv.get_rating(pixiv_result)
-                    else:
-                        pixiv_rating = None
                 except ImportError as e:
                     logger.warning(f'{e} Skipping Pixiv metadata...')
-                    pixiv_rating = None
                 except PixivError as e:
                     logger.warning(f'Could not get result from pixiv: {e}')
-                    pixiv_rating = None
-
-            if not tags and pixiv_tags and config.auto_tagger['use_pixiv_tags']:
-                tags = pixiv_tags
 
             sources.append(results['pixiv'].url)
             pixiv_artist = Pixiv.extract_pixiv_artist(results['pixiv'].author_name)
-            if pixiv_artist:
-                tags.append([pixiv_artist])
+
+    # Fall back to the raw Pixiv tags only if neither the boorus nor Danbooru's translations had any
+    if pixiv_tags and not any(tags) and config.auto_tagger['use_pixiv_tags']:
+        tags.append(pixiv_tags)
+
+    if pixiv_artist:
+        tags.append([pixiv_artist])
 
     final_tags = [item for sublist in tags for item in sublist]
 
-    if not booru_found and pixiv_rating:
+    # Boorus can disagree; the strictest rating wins. Nothing known keeps the post's current safety.
+    if any(ratings):
+        rating = audit_rating(*ratings)
+    elif not booru_found and pixiv_rating:
         rating = pixiv_rating
-
-    if not booru_found and pixiv_artist:
-        final_tags.append(pixiv_artist)
+    else:
+        rating = []
 
     return final_tags, sources, rating
 
@@ -751,11 +764,11 @@ def invoke_gallery_dl(urls: list, tmp_path: str, params: list = [], workers: int
 
     if len(urls) > 1 and workers > 1:
         with ThreadPoolExecutor(max_workers=min(workers, len(urls))) as executor:
-            futures = [executor.submit(subprocess.run, base_command + [url]) for url in urls]
+            futures = [executor.submit(subprocess.run, base_command + ['--', url]) for url in urls]
             for future in futures:
                 future.result()
     else:
-        subprocess.run(base_command + urls)
+        subprocess.run(base_command + ['--'] + urls)
 
     return download_dir
 
@@ -813,7 +826,8 @@ def get_site(url: str) -> str:
         str: The name of the site that the URL belongs to, or None if no known site name is found in the URL.
     """
 
-    sites = {
+    # A tuple, so the first match is deterministic
+    sites = (
         'sankaku',
         'danbooru',
         'gelbooru',
@@ -824,7 +838,7 @@ def get_site(url: str) -> str:
         'kemono',
         'fanbox',
         'pixiv',
-    }
+    )
 
     # gallery-dl reports category 'exhentai' for both e-hentai.org and
     # exhentai.org; the toolkit handles both under 'e-hentai'.
@@ -835,9 +849,16 @@ def get_site(url: str) -> str:
     if 'donmai' in url:
         return 'danbooru'
 
-    for site in sites:
-        if site in url:
-            return site
+    # Yandere's domain is yande.re, its files are served from files.yande.re
+    if 'yande.re' in url:
+        return 'yandere'
+
+    # The host decides first: kemono.su/fanbox/... or a kemono file named pixiv_1.png is kemono
+    host = urllib.parse.urlsplit(url).hostname or ''
+    for candidate in (host, url):
+        for site in sites:
+            if site in candidate:
+                return site
 
 
 @total_ordering

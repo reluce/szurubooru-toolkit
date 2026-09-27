@@ -3,6 +3,7 @@ from loguru import logger
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
 from szurubooru_toolkit.szurubooru import SzurubooruError
+from szurubooru_toolkit.szurubooru import TagNotFoundError
 from szurubooru_toolkit.utils import collect_sources
 from szurubooru_toolkit.utils import get_cached_implications
 from szurubooru_toolkit.utils import interrupt_exit
@@ -41,7 +42,7 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
         except StopIteration:
             if not config.tag_posts['silence_info']:
                 logger.info(f'Found no posts for your query: {query}')
-            exit()
+            return
 
         if not config.tag_posts['silence_info']:
             logger.info(f'Found {total_posts} posts. Start tagging...')
@@ -63,7 +64,12 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
 
             if update_implications:
                 for tag in post.tags:
-                    for implication in get_cached_implications(tag):
+                    try:
+                        implications = get_cached_implications(tag)
+                    except TagNotFoundError:
+                        # A new tag gets created by the post update and has no implications yet
+                        implications = []
+                    for implication in implications:
                         if implication not in post.tags:
                             post.tags.append(implication)
 
@@ -76,7 +82,9 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
             logger.success('Finished tagging!')
     except SzurubooruError as e:
         logger.critical(f'Could not process your query: {e}')
-        exit(1)
+        if not config.tag_posts['silence_info']:
+            # silence_info is set when called per file from upload-media, where exiting would abort the whole batch
+            exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
         interrupt_exit()

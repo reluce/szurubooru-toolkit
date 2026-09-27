@@ -28,7 +28,7 @@ def main(query: str, except_ids: list = []) -> None:
 
         logger.debug(f'query = {query}')
 
-        posts = szuru.get_posts(query, pagination=False, videos=True)
+        posts = szuru.get_posts(query, videos=True)
 
         try:
             total_posts = next(posts)

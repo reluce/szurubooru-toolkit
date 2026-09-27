@@ -104,3 +104,15 @@ def test_limit_capped_at_100():
         return httpx.Response(200, json=[])
 
     run_search(handler, 'danbooru', 'foo', limit=500)
+
+
+@pytest.mark.parametrize(
+    ('booru', 'host', 'expected'),
+    [('danbooru', 'danbooru.donmai.us', 'sensitive')],
+)
+def test_s_rating_depends_on_booru(booru, host, expected):
+    def handler(request):
+        assert request.url.host == host
+        return httpx.Response(200, json=[{'id': 1, 'tag_string': 'x', 'tags': 'x', 'rating': 's'}])
+
+    assert run_search(handler, booru, 'x')[0].rating == expected

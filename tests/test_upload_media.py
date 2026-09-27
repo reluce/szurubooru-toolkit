@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import szurubooru_toolkit
 
 
@@ -192,3 +194,46 @@ def test_import_creates_categorized_tags_before_post(monkeypatch):
     )
     assert success
     assert events == [('tag', 'hatsune_miku', 'character'), ('post', ['hatsune_miku'])]
+
+
+def test_update_tags_if_exists_handles_similar_post_entries(monkeypatch):
+    # A too-similar match is a reverse-search entry {'distance', 'post'}, not a post resource
+    szuru = StubSzuru(similar_posts=[{'distance': 0.01, 'post': {'id': 7}}])
+    wire(monkeypatch, szuru)
+    upload_media.config.import_from_url['update_tags_if_exists'] = True
+    calls = {}
+    monkeypatch.setattr(upload_media, 'ensure_tag_categories', lambda *args: None)
+    monkeypatch.setattr(upload_media.tag_posts, 'main', lambda query, **kwargs: calls.setdefault('tag_posts', query))
+    monkeypatch.setattr(
+        upload_media.auto_tagger,
+        'main',
+        lambda post_id, **kwargs: calls.setdefault('auto_tagger', post_id) and False,
+    )
+
+    metadata = {'tags': ['foo'], 'source': 'https://example.com/7', 'safety': 'safe'}
+    success, _ = upload_media.upload_post(b'file-bytes', 'jpg', metadata=metadata)
+
+    assert success
+    assert szuru.created == []
+    assert calls == {'tag_posts': '7', 'auto_tagger': '7'}
+
+
+def test_get_files_matches_extensions_case_insensitively(tmp_path):
+    (tmp_path / 'sub').mkdir()
+    for name in ['IMG_0001.JPG', 'sub/b.Png', 'c.jpeg', 'notes.txt', '._IMG_0001.JPG']:
+        (tmp_path / name).write_bytes(b'x')
+
+    files = upload_media.get_files(str(tmp_path))
+
+    assert sorted(Path(file).relative_to(tmp_path).as_posix() for file in files) == ['IMG_0001.JPG', 'c.jpeg', 'sub/b.Png']
+
+
+def test_upload_post_normalizes_uppercase_extension(monkeypatch):
+    szuru = StubSzuru()
+    wire(monkeypatch, szuru)
+    extensions = []
+    monkeypatch.setattr(upload_media, 'get_media_token', lambda szuru, media, file_ext: extensions.append(file_ext))
+
+    upload_media.upload_post(b'file-bytes', 'MP4')
+
+    assert extensions == ['mp4']

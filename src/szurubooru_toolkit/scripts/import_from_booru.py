@@ -23,12 +23,11 @@ def main(booru: str, query: str) -> None:
     """
 
     try:
-        if config.import_from_booru['wd_tagger']:
-            config.upload_media['auto_tag'] = True
-            config.auto_tagger['saucenao'] = False
-            config.auto_tagger['wd_tagger'] = True
-        else:
-            config.upload_media['auto_tag'] = False
+        # import_from_url derives the auto-tagger settings from these; posts come
+        # from a booru with tags already, so only the WD tagger can add anything.
+        config.import_from_url['wd_tagger'] = config.import_from_booru['wd_tagger']
+        config.import_from_url['saucenao'] = False
+        config.import_from_url['md5_search'] = False
 
         config.import_from_url['hide_progress'] = config.import_from_booru['hide_progress']
         config.import_from_url['tmp_path'] = config.import_from_booru['tmp_path']

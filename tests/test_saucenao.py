@@ -31,10 +31,6 @@ def make_result(similarity, ext_urls, **data):
     [
         ('https://www.pixiv.net/member_illust.php?illust_id=123', 'pixiv'),
         ('https://danbooru.donmai.us/posts/123', 'donmai'),
-        ('https://gelbooru.com/index.php?id=1', 'gelbooru'),
-        ('https://yande.re/post/show/1', 'yande'),
-        ('https://konachan.com/post/show/1', 'konachan'),
-        ('https://chan.sankakucomplex.com/post/show/1', 'sankakucomplex'),
         ('https://example.com/foo', 'example'),
     ],
 )

@@ -1,3 +1,4 @@
+from math import ceil
 from time import sleep
 from typing import List
 from typing import Optional
@@ -41,7 +42,10 @@ class Danbooru:
         for _ in range(1, 12):
             try:
                 params = {'search[other_names_match]': other_tag, 'only': 'title'}
-                tag = self.client.get('/wiki_pages.json', params=params).json()[0]['title']
+                response = self.client.get('/wiki_pages.json', params=params)
+                # Throttling or server errors are retried, not mistaken for "no such tag"
+                response.raise_for_status()
+                tag = response.json()[0]['title']
 
                 logger.debug(f'Returning found tag for {other_tag}: {tag}')
 
@@ -84,7 +88,9 @@ class Danbooru:
                     artist = result[0]['name']
                 else:
                     params = {'search[any_other_name_like]': artist.lower(), 'search[is_deleted]': 'false'}
-                    artist = self.client.get('/artists.json', params=params).json()[0]['name']
+                    response = self.client.get('/artists.json', params=params)
+                    response.raise_for_status()
+                    artist = response.json()[0]['name']
 
                 logger.debug(f'Returning artist: {artist}')
 
@@ -126,16 +132,15 @@ class Danbooru:
             List[dict]: A page of found tags.
         """
 
-        if limit > 1000:
-            pages = limit // 1000
-        else:
-            pages = 1
+        # Danbooru returns at most 1000 tags per page
+        pages = max(1, ceil(limit / 1000))
 
         for page in range(1, pages + 1):
             params = {
-                'search[post_count]': f'>{min_post_count}',
+                'search[post_count]': f'>={min_post_count}',
                 'search[name_matches]': query,
-                'limit': limit,
+                # The last page only fills up to the limit
+                'limit': min(1000, limit - (page - 1) * 1000),
                 'page': page,
             }
 

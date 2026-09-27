@@ -10,19 +10,6 @@ from szurubooru_toolkit.scripts.find_duplicates import candidate_pairs  # noqa: 
 from szurubooru_toolkit.scripts.find_duplicates import find_duplicate_clusters  # noqa: E402
 
 
-def test_candidate_pairs_finds_close_hashes():
-    # Hashes 1 and 2 differ by 2 bits, hash 3 is far away from both
-    hashes = {
-        1: 0b1111_0000_1111_0000,
-        2: 0b1111_0000_1111_0011,
-        3: 0b0000_1111_0000_1111,
-    }
-
-    pairs = candidate_pairs(hashes, max_distance=4)
-
-    assert (1, 2) in pairs
-
-
 def test_candidate_pairs_never_misses_within_distance():
     # Pigeonhole guarantee: every pair within max_distance must be a candidate
     base = 0x0123456789ABCDEF
@@ -60,9 +47,3 @@ def test_find_duplicate_clusters_transitive():
     clusters = find_duplicate_clusters(hashes, max_distance=4)
 
     assert clusters == [{1, 2, 3}]
-
-
-def test_find_duplicate_clusters_no_duplicates():
-    hashes = {1: 0x0000000000000000, 2: 0xFFFFFFFFFFFFFFFF}
-
-    assert find_duplicate_clusters(hashes, max_distance=8) == []

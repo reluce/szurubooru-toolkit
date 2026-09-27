@@ -47,7 +47,11 @@ class Sankaku:
         data = {'login': username, 'password': password}
 
         response = httpx.post(url, headers=headers, json=data, timeout=30)
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError:
+            # e.g. an HTML error page from a proxy
+            raise Exception(f'Sankaku authentication failed with HTTP {response.status_code}')
 
         if response.status_code >= 400 or not data.get('success'):
             raise Exception(data.get('error'))
@@ -64,7 +68,10 @@ class Sankaku:
             page (int): The page of results to return. Defaults to 1.
 
         Returns:
-            list|None: The search results. None: If no results are found.
+            list: The search results.
+
+        Raises:
+            httpx.HTTPStatusError: On error responses, so the caller can retry (429, 5xx) or warn (401, 403).
         """
 
         params = {
@@ -75,7 +82,6 @@ class Sankaku:
         }
 
         response = self.client.get('/posts', params=params)
-        if response.is_success:
-            return response.json()
-        else:
-            return None
+        response.raise_for_status()
+
+        return response.json()
