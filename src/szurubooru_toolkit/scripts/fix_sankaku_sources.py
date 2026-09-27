@@ -12,7 +12,6 @@ from szurubooru_toolkit import config
 from szurubooru_toolkit.szurubooru import SzurubooruError
 from szurubooru_toolkit.utils import interrupt_exit
 
-
 # Sankaku (chan) hosts only — idol.sankakucomplex.com is a different site with its own IDs.
 HOSTS = {
     'sankakucomplex.com',

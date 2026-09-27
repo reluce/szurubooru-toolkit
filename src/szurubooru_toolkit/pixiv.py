@@ -6,7 +6,6 @@ from typing import Optional
 
 from loguru import logger
 
-
 # pixivpy3 is an optional dependency (the 'pixiv' extra). Fall back to a stub
 # exception so 'except PixivError' clauses keep working without it.
 try:

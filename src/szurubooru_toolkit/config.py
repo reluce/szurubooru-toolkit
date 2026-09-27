@@ -7,7 +7,6 @@ from pathlib import Path
 
 from loguru import logger
 
-
 # 'hide_progress' is deliberately absent: scripts try config.globals['hide_progress']
 # first and fall back to their own section's value on KeyError, so a global default
 # would silently override every per-section hide_progress setting.
@@ -403,7 +402,7 @@ class Config:
             for key, value in mapping.items()
         ):
             logger.critical(
-                'tag_categories.category_map must map general, artist, character, copyright or meta to nonempty category names!'
+                'tag_categories.category_map must map general, artist, character, copyright or meta to nonempty category names!',
             )
             exit(1)
         self.validate_szurubooru()

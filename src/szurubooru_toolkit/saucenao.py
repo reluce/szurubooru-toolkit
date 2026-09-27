@@ -11,7 +11,6 @@ from loguru import logger
 
 from szurubooru_toolkit.config import Config
 
-
 SEARCH_URL = 'https://saucenao.com/search.php'
 
 # Domains the toolkit knows how to handle, as matched by get_base_domain()

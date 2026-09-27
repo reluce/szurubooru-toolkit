@@ -11,7 +11,6 @@ from szurubooru_toolkit.szurubooru import TagExistsError
 from szurubooru_toolkit.szurubooru import TagNotFoundError
 from szurubooru_toolkit.szurubooru import UnknownTokenError
 
-
 BASE_URL = 'http://szuru.local'
 
 

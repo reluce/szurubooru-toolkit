@@ -13,7 +13,6 @@ from loguru import logger
 from szurubooru_toolkit import config
 from szurubooru_toolkit.scripts import import_from_url as import_from_url_script
 
-
 # Skip main's @logger.catch, which swallows errors: the response has to report failed imports
 import_from_url = import_from_url_script.main.__wrapped__
 

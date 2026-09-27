@@ -6,7 +6,6 @@ import pytest
 
 import szurubooru_toolkit
 
-
 # The webserver imports import_from_url, which reads module-level globals
 # normally created by setup_clients(); provide stand-ins for the import.
 szurubooru_toolkit.szuru = None

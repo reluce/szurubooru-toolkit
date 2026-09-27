@@ -5,7 +5,6 @@ import threading
 from szurubooru_toolkit.szurubooru import TagExistsError
 from szurubooru_toolkit.szurubooru import TagNotFoundError
 
-
 CATEGORY_NAMES = {0: 'general', 1: 'artist', 3: 'copyright', 4: 'character', 5: 'meta'}
 # Sankaku numbers its tag types differently: 5 is genre, 8 medium, 9 meta (studio 2 has no equivalent)
 SANKAKU_CATEGORY_NAMES = {0: 'general', 1: 'artist', 3: 'copyright', 4: 'character', 5: 'general', 8: 'meta', 9: 'meta'}

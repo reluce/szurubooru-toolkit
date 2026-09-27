@@ -25,7 +25,6 @@ from szurubooru_toolkit.utils import search_boorus
 from szurubooru_toolkit.utils import shrink_img
 from szurubooru_toolkit.utils import statistics
 
-
 wd_tagger = None
 # Reused across main() calls: upload-media calls main() once per file
 sauce = None

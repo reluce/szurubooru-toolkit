@@ -26,7 +26,6 @@ from szurubooru_toolkit.config import Config
 from szurubooru_toolkit.pixiv import Pixiv
 from szurubooru_toolkit.pixiv import PixivError
 
-
 # Keep track of total tagged posts
 total_tagged = 0
 total_wd_tagger = 0

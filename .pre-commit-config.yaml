@@ -3,7 +3,7 @@ default_language_version:
 
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
     -   id: check-docstring-first
     -   id: check-toml
@@ -16,13 +16,13 @@ repos:
         description: Makes sure files end in a newline and only a newline
 
 -   repo: https://github.com/PyCQA/flake8
-    rev: 6.1.0
+    rev: 7.4.1
     hooks:
     -   id: flake8
         additional_dependencies: [flake8-typing-imports==1.15.0]
 
 -   repo: https://github.com/psf/black
-    rev: 23.12.1
+    rev: 26.5.1
     hooks:
     -   id: black
 
@@ -32,21 +32,20 @@ repos:
 #     -   id: interrogate
 
 -   repo: https://github.com/asottile/pyupgrade
-    rev: v3.7.0
+    rev: v3.21.2
     hooks:
     -   id: pyupgrade
         args: [--py37-plus]
 
 -   repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
+    rev: 9.0.1
     hooks:
     -   id: isort
 
 -   repo: https://github.com/asottile/add-trailing-comma
-    rev: v3.1.0
+    rev: v4.0.0
     hooks:
     -   id: add-trailing-comma
-        args: [--py36-plus]
 
 -   repo: meta
     hooks:
