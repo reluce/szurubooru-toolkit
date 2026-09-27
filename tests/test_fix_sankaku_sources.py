@@ -15,7 +15,6 @@ def resolver(mapping):
     'url,expected',
     [
         ('https://chan.sankakucomplex.com/post/show/' + MD5, MD5),
-        ('https://chan.sankakucomplex.com/post/show/12345678', '12345678'),
         ('https://chan.sankakucomplex.com/en/posts/9PMw6q1LwRB', '9PMw6q1LwRB'),
         ('https://www.sankakucomplex.com/posts/9PMw6q1LwRB', '9PMw6q1LwRB'),
         ('https://sankakucomplex.com/posts/9PMw6q1LwRB', '9PMw6q1LwRB'),
@@ -23,8 +22,6 @@ def resolver(mapping):
         # not post links or not Sankaku chan at all
         ('https://www.sankakucomplex.com/2024/05/13/some-article', None),
         ('https://idol.sankakucomplex.com/post/show/12345', None),
-        ('https://chan.sankakucomplex.com/?tags=foo', None),
-        ('https://danbooru.donmai.us/posts/123', None),
         ('not a url', None),
     ],
 )

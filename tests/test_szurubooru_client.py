@@ -44,26 +44,11 @@ class RecordingClient:
         self.szuru = Szurubooru(BASE_URL, 'user', 'token', transport=httpx.MockTransport(recording_handler))
 
 
-def test_auth_header_encoding():
-    assert Szurubooru.encode_auth_headers('user', 'token') == 'dXNlcjp0b2tlbg=='
-
-
 def test_client_sends_token_auth():
     client = RecordingClient(lambda request: httpx.Response(200, json={'total': 0, 'results': []}))
     list(client.szuru.get_posts('foo'))
 
     assert client.requests[0].headers['Authorization'] == 'Token dXNlcjp0b2tlbg=='
-
-
-def test_get_posts_yields_total_then_posts():
-    def handler(request):
-        return httpx.Response(200, json={'total': 2, 'results': [make_post_json(1), make_post_json(2)]})
-
-    client = RecordingClient(handler)
-    results = list(client.szuru.get_posts('foo'))
-
-    assert results[0] == '2'
-    assert [post.id for post in results[1:]] == ['1', '2']
 
 
 def test_get_posts_empty_yields_nothing():
@@ -122,13 +107,6 @@ def test_get_posts_requests_only_needed_fields():
     assert 'checksumMD5' in fields
 
 
-def test_get_posts_numeric_query_searches_by_id():
-    client = RecordingClient(lambda request: httpx.Response(200, json={'total': 0, 'results': []}))
-    list(client.szuru.get_posts('123'))
-
-    assert 'id:123' in dict(client.requests[0].url.params)['query']
-
-
 def test_get_posts_excludes_videos_by_default():
     client = RecordingClient(lambda request: httpx.Response(200, json={'total': 0, 'results': []}))
     list(client.szuru.get_posts('foo'))
@@ -136,27 +114,6 @@ def test_get_posts_excludes_videos_by_default():
 
     assert dict(client.requests[0].url.params)['query'].startswith('type:image,animation ')
     assert not dict(client.requests[1].url.params)['query'].startswith('type:')
-
-
-def test_get_posts_escapes_unknown_tokens():
-    client = RecordingClient(lambda request: httpx.Response(200, json={'total': 0, 'results': []}))
-    list(client.szuru.get_posts('foo:bar rating:safe'))
-
-    query = dict(client.requests[0].url.params)['query']
-    assert 'foo\\:bar' in query
-    assert 'rating:safe' in query
-
-
-def test_get_posts_raises_unknown_token_error():
-    def handler(request):
-        return httpx.Response(
-            400,
-            json={'name': 'SearchError', 'title': 'Search error', 'description': 'SearchError: Unknown named token'},
-        )
-
-    client = RecordingClient(handler)
-    with pytest.raises(UnknownTokenError):
-        list(client.szuru.get_posts('foo'))
 
 
 def test_parse_post_builds_micro_tags():

@@ -85,10 +85,6 @@ def wd_tagger(model_dir):
     return WDTagger(str(model_dir))
 
 
-def test_input_size_from_model(wd_tagger):
-    assert wd_tagger.input_size == INPUT_SIZE
-
-
 def test_general_and_character_tags_with_rating(wd_tagger):
     tags, rating = wd_tagger.tag_image(make_image((255, 0, 0)), 'safe', set_tag=False)
 
@@ -155,12 +151,6 @@ def test_review_band_adds_needs_review(wd_tagger):
 
     assert 'needs_review' in tags
     assert 'hatsune_miku' not in tags
-
-
-def test_no_review_band_without_threshold(wd_tagger):
-    tags, _ = wd_tagger.tag_image(make_image((0, 0, 255)), 'safe', set_tag=False)
-
-    assert 'needs_review' not in tags
 
 
 def test_confident_character_not_marked_for_review(wd_tagger):

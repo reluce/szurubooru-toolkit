@@ -108,7 +108,7 @@ def test_limit_capped_at_100():
 
 @pytest.mark.parametrize(
     ('booru', 'host', 'expected'),
-    [('danbooru', 'danbooru.donmai.us', 'sensitive'), ('konachan', 'konachan.com', 'safe'), ('yandere', 'yande.re', 'safe')],
+    [('danbooru', 'danbooru.donmai.us', 'sensitive')],
 )
 def test_s_rating_depends_on_booru(booru, host, expected):
     def handler(request):

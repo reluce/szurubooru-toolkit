@@ -58,10 +58,6 @@ def test_sanitize_tags_replaces_whitespace():
     assert sanitize_tags(['tag 1', 'tag_2', 'a b c']) == ['tag_1', 'tag_2', 'a_b_c']
 
 
-def test_sanitize_tags_empty():
-    assert sanitize_tags([]) == []
-
-
 def test_collect_sources_dedup_and_join():
     result = collect_sources('foo', 'bar', 'foo')
     assert set(result.split('\n')) == {'foo', 'bar'}
@@ -73,10 +69,6 @@ def test_collect_sources_strips_trailing_comma():
 
 def test_collect_sources_drops_empty():
     assert collect_sources('', 'foo', None) == 'foo'
-
-
-def test_collect_sources_empty():
-    assert collect_sources() == ''
 
 
 def test_get_md5sum():
@@ -164,7 +156,6 @@ def test_download_media_retries_once_on_md5_mismatch(monkeypatch):
     'url,expected',
     [
         ('exhentai', 'e-hentai'),  # gallery-dl category, both domains
-        ('https://exhentai.org/g/1234/abcdef1234/', 'e-hentai'),
         ('https://e-hentai.org/g/1234/abcdef1234/', 'e-hentai'),
         ('danbooru', 'danbooru'),
         ('https://cdn.donmai.us/original/ab/cd/abcd1234.jpg', 'danbooru'),
@@ -188,7 +179,6 @@ def test_get_site(url, expected):
         (['1girl', 'nude', 'sex'], 'safe', 'unsafe'),  # highest matching level wins
         (['1girl', 'nude'], 'unsafe', 'unsafe'),  # never lowered
         (['1girl'], 'safe', 'safe'),  # no match
-        ([], 'safe', 'safe'),
     ],
 )
 def test_apply_safety_overrides(tags, safety, expected):

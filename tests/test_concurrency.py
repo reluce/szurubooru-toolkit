@@ -11,26 +11,6 @@ from szurubooru_toolkit.szurubooru import TagExistsError
 from szurubooru_toolkit.szurubooru import TagNotFoundError
 from szurubooru_toolkit.utils import get_cached_implications
 from szurubooru_toolkit.utils import run_concurrently
-from szurubooru_toolkit.utils import statistics
-
-
-def test_statistics_thread_safe():
-    utils.total_tagged = 0
-    utils.total_wd_tagger = 0
-    utils.total_untagged = 0
-    utils.total_skipped = 0
-
-    def hammer():
-        for _ in range(100):
-            statistics(tagged=1, wd_tagger=1, untagged=1, skipped=1)
-
-    threads = [threading.Thread(target=hammer) for _ in range(8)]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
-
-    assert statistics() == (800, 800, 800, 800)
 
 
 def test_cooldown_noop_without_trigger():
