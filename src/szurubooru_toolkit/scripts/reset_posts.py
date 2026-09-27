@@ -41,7 +41,10 @@ def main(query: str, except_ids: list = [], add_tags: list = []) -> None:
 
         def worker(post) -> None:
             if post.id not in except_ids:
-                post.tags = add_tags if add_tags else []
+                tags = add_tags if add_tags else []
+                if set(post.tags) == set(tags) and not post.source:
+                    return  # Already reset
+                post.tags = tags
                 post.source = ''
                 szuru.update_post(post)
 

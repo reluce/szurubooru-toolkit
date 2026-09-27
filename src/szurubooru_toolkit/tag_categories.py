@@ -42,7 +42,9 @@ def ensure_tag_categories(client, config, tags, categories, *, dry_run=False):
     """Create classified tags before post writes; leave existing tags untouched.
 
     The per-client cache and lock avoid repeated writes across upload workers.
-    Unknown categories are left to the server's default when it saves the post.
+    Lookups run outside the lock so workers don't queue behind each other's requests;
+    only creation is serialized. Unknown categories are left to the server's default
+    when it saves the post.
     """
     options = config.tag_categories
     if dry_run or not options['enabled']:
@@ -52,23 +54,28 @@ def ensure_tag_categories(client, config, tags, categories, *, dry_run=False):
         known = getattr(client, '_categorized_tags', None)
         if known is None:
             known = client._categorized_tags = set()
-        missing = []
-        for name in sorted({tag.replace(' ', '_') for tag in tags} - known):
-            try:
-                client.get_tag(name)
-            except TagNotFoundError:
-                missing.append(name)
-            else:
-                known.add(name)
-        if options['lookup_danbooru']:
-            from szurubooru_toolkit import danbooru
+        candidates = sorted({tag.replace(' ', '_') for tag in tags} - known)
+    found, missing = [], []
+    for name in candidates:
+        try:
+            client.get_tag(name)
+        except TagNotFoundError:
+            missing.append(name)
+        else:
+            found.append(name)
+    if options['lookup_danbooru']:
+        from szurubooru_toolkit import danbooru
 
-            unknown = [name for name in missing if name not in hints]
-            if unknown:
-                for name, category in danbooru.get_tag_categories(unknown).items():
-                    if category in CATEGORY_NAMES:
-                        hints[name] = CATEGORY_NAMES[category]
+        unknown = [name for name in missing if name not in hints]
+        if unknown:
+            for name, category in danbooru.get_tag_categories(unknown).items():
+                if category in CATEGORY_NAMES:
+                    hints[name] = CATEGORY_NAMES[category]
+    with _lock:
+        known.update(found)
         for name in missing:
+            if name in known:
+                continue  # Another worker created it since the lookup
             target = options['category_map'].get(hints.get(name))
             if not target:
                 continue

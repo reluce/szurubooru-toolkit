@@ -18,7 +18,7 @@ class StubSzuru:
         self.queries = []
         self.tags = {}
 
-    def get_posts(self, query, pagination=True, videos=False):
+    def get_posts(self, query, pagination=True, videos=False, max_results=None):
         self.queries.append(query)
         yield '10'
 

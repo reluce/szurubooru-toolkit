@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from loguru import logger
-from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
@@ -9,6 +8,7 @@ from szurubooru_toolkit.szurubooru import Tag
 from szurubooru_toolkit.szurubooru import TagExistsError
 from szurubooru_toolkit.szurubooru import TagNotFoundError
 from szurubooru_toolkit.utils import interrupt_exit
+from szurubooru_toolkit.utils import run_concurrently
 
 
 def convert_tag_category(category: int) -> str:
@@ -59,7 +59,10 @@ def add_implications(tag_name: str, implications: list, implied_categories: dict
             szuru.get_tag(implied)
         except TagNotFoundError:
             category = (implied_categories or {}).get(implied, 'default')
-            szuru.create_tag(implied, category)
+            try:
+                szuru.create_tag(implied, category)
+            except TagExistsError:
+                pass  # Another worker created it in the meantime
 
     tag = szuru.get_tag(tag_name)
     existing = {implication.primary_name for implication in tag.implications}
@@ -104,38 +107,39 @@ def main(tag_file: str = '', tag_name: str = '', category: str = '', implication
         except KeyError:
             hide_progress = config.create_tags['hide_progress']
 
+        workers = max(1, int(config.create_tags['workers']))
+
+        def create(name: str, tag_category: str) -> None:
+            try:
+                szuru.create_tag(name, tag_category, overwrite)
+            except TagExistsError:
+                pass  # Not logged, could result in lots of output with larger tag files
+
         if tag_file:
             with open(tag_file) as tag_file:
-                lines = tag_file.readlines()
+                rows = [line.strip().replace(' ', '').split(',') for line in tag_file]
+            rows = [row for row in rows if row[0]]  # skip blank lines
 
-                for line in tqdm(
-                    lines,
-                    ncols=80,
-                    position=0,
-                    leave=False,
-                    disable=hide_progress,
-                ):
-                    tag: list = line.strip().replace(' ', '').split(',')
-                    tag_name = tag[0]
-                    if not tag_name:
-                        continue  # blank line
-                    # A line without a category gets the default one
-                    tag_category = tag[1] if len(tag) > 1 and tag[1] else 'default'
+            # Create every tag first, so implied tags defined elsewhere in the file keep their category
+            # A line without a category gets the default one
+            run_concurrently(
+                rows,
+                lambda row: create(row[0], row[1] if len(row) > 1 and row[1] else 'default'),
+                workers,
+                len(rows),
+                hide_progress,
+            )
 
-                    try:
-                        szuru.create_tag(tag_name, tag_category, overwrite)
-                    except TagExistsError as e:  # noqa F841
-                        # logger.warning(e)  # Could result in lots of output with larger tag files
-                        pass
-
-                    tag_implications = [implied for implied in tag[2:] if implied]
-                    if tag_implications:
-                        add_implications(tag_name, tag_implications)
+            rows = [row for row in rows if any(row[2:])]
+            run_concurrently(
+                rows,
+                lambda row: add_implications(row[0], [implied for implied in row[2:] if implied]),
+                workers,
+                len(rows),
+                True,
+            )
         elif tag_name:
-            try:
-                szuru.create_tag(tag_name, category or 'default', overwrite)
-            except TagExistsError as e:  # noqa F841
-                pass
+            create(tag_name, category or 'default')
 
             if implications:
                 add_implications(tag_name, implications)
@@ -145,18 +149,13 @@ def main(tag_file: str = '', tag_name: str = '', category: str = '', implication
             results = danbooru.download_tags(config.create_tags['query'], min_post_count, limit)
 
             for result in results:
-                created = []
-                for tag in result:
-                    if not isinstance(tag, dict) or 'name' not in tag:
-                        continue
-                    tag_category = convert_tag_category(tag.get('category'))
-                    if tag_category is None:
-                        continue
-                    try:
-                        szuru.create_tag(tag['name'], tag_category, overwrite)
-                    except TagExistsError as e:  # noqa F841
-                        pass
-                    created.append(tag['name'])
+                page = [
+                    (tag['name'], tag_category)
+                    for tag in result
+                    if isinstance(tag, dict) and 'name' in tag and (tag_category := convert_tag_category(tag.get('category')))
+                ]
+                run_concurrently(page, lambda entry: create(*entry), workers, len(page), hide_progress)
+                created = [name for name, _ in page]
 
                 if created and config.create_tags['import_implications']:
                     implication_map = danbooru.get_tag_implications(created)
@@ -166,8 +165,13 @@ def main(tag_file: str = '', tag_name: str = '', category: str = '', implication
                         for name, numerical_category in danbooru.get_tag_categories(sorted(consequents)).items()
                     }
 
-                    for antecedent, implied_tags in implication_map.items():
-                        add_implications(antecedent, implied_tags, implied_categories)
+                    run_concurrently(
+                        implication_map.items(),
+                        lambda entry: add_implications(*entry, implied_categories),
+                        workers,
+                        len(implication_map),
+                        hide_progress,
+                    )
 
         logger.success('Finished creating tags!')
     except KeyboardInterrupt:

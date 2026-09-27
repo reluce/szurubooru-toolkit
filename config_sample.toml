@@ -65,6 +65,7 @@ workers = 4
 [create_relations]
 threshold = 3
 hide_progress = false
+workers = 4
 
 [fix_relations]
 hide_progress = false
@@ -77,6 +78,7 @@ overwrite = false
 # Import tag implications from Danbooru for tags created by a query
 import_implications = false
 hide_progress = false
+workers = 4
 
 [delete_posts]
 hide_progress = false

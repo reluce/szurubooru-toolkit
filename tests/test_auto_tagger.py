@@ -24,7 +24,7 @@ class StubSzuru:
         self.posts = list(posts)
         self.updated = []
 
-    def get_posts(self, query, pagination=True, videos=False):
+    def get_posts(self, query, pagination=True, videos=False, max_results=None):
         if self.posts:
             yield str(len(self.posts))
             yield from self.posts
@@ -105,3 +105,16 @@ def test_tag_posts_update_implications_with_new_tag(monkeypatch):
     tag_posts.main('1', add_tags=['brand_new_tag'])
 
     assert 'brand_new_tag' in szuru.updated[0].tags
+
+
+@pytest.mark.parametrize('add_tags,updates', [(['tagme'], 0), (['new_tag'], 1)])
+def test_tag_posts_skips_posts_which_would_not_change(monkeypatch, add_tags, updates):
+    szuru = StubSzuru([make_post()])
+    config = Config()
+    config.tag_posts.update(mode='append', update_implications=False)
+    monkeypatch.setattr(tag_posts, 'szuru', szuru)
+    monkeypatch.setattr(tag_posts, 'config', config)
+
+    tag_posts.main('1', add_tags=add_tags)
+
+    assert len(szuru.updated) == updates

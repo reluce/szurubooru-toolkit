@@ -1,5 +1,6 @@
+import threading
+
 from loguru import logger
-from tqdm import tqdm
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
@@ -7,6 +8,13 @@ from szurubooru_toolkit.szurubooru import SzurubooruError
 from szurubooru_toolkit.szurubooru import Tag
 from szurubooru_toolkit.szurubooru import UnknownTokenError
 from szurubooru_toolkit.utils import interrupt_exit
+from szurubooru_toolkit.utils import run_concurrently
+
+
+# Workers count posts concurrently; the tag updates are serialized, since two relations
+# of the same tag pushed at once would conflict on the tag version
+_update_lock = threading.Lock()
+_found_lock = threading.Lock()
 
 
 def collect_related_tags(tags: list[Tag]) -> list[Tag]:
@@ -92,12 +100,14 @@ def evaluate_relations(tag: Tag, relation: Tag) -> None:
 
     # Create the relation only if at least the configured threshold of posts has both tags
     try:
-        count = next(szuru.get_posts(f'{tag.primary_name} {relation.primary_name}'))
+        # Only the total is needed, so ask for a single post
+        count = next(szuru.get_posts(f'{tag.primary_name} {relation.primary_name}', max_results=1))
     except StopIteration:
         count = 0
 
     if int(count) >= int(config.create_relations['threshold']):
-        update_tag(tag, relation)
+        with _update_lock:
+            update_tag(tag, relation)
 
 
 def check_found_relations(related_tags: list[Tag], found_relations: dict) -> None:
@@ -110,20 +120,23 @@ def check_found_relations(related_tags: list[Tag], found_relations: dict) -> Non
     Args:
         related_tags (list[Tag]): List of tag objects where category is either character or parody.
         found_relations (dict): Dictionary which keeps track of already evaluated relations. The key is the tag's name
-                                while its value is a list of evaluated relations.
+                                while its value is a set of evaluated relations.
 
     Returns:
         None
     """
 
     for tag in related_tags:
-        evaluated = found_relations.setdefault(tag.primary_name, [])
-
         for relation in related_tags:
-            if not is_relatable(tag, relation) or relation.primary_name in evaluated:
+            if not is_relatable(tag, relation):
                 continue
 
-            evaluated.append(relation.primary_name)
+            with _found_lock:
+                evaluated = found_relations.setdefault(tag.primary_name, set())
+                if relation.primary_name in evaluated:
+                    continue
+                evaluated.add(relation.primary_name)
+
             try:
                 evaluate_relations(tag, relation)
             # Skip tags szurubooru cannot search for, e.g. tags with unescaped special chars
@@ -167,16 +180,11 @@ def main(query: str) -> None:
         # Keep track of found relations to reduce overhead
         found_relations = {}
 
-        for post in tqdm(
-            posts,
-            ncols=80,
-            position=0,
-            leave=False,
-            total=int(total_posts),
-            disable=hide_progress,
-        ):
-            related_tags = collect_related_tags(post.micro_tags)
-            check_found_relations(related_tags, found_relations)
+        def worker(post) -> None:
+            check_found_relations(collect_related_tags(post.micro_tags), found_relations)
+
+        workers = max(1, int(config.create_relations['workers']))
+        run_concurrently(posts, worker, workers, int(total_posts), hide_progress)
 
         logger.success('Finished creating relations!')
         exit(0)

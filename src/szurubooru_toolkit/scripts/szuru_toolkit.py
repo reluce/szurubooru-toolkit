@@ -335,8 +335,13 @@ def click_find_duplicates(ctx, query, threshold, limit, set_relations, workers):
         f' {config.CREATE_RELATIONS_DEFAULTS["threshold"]}).'
     ),
 )
+@click.option(
+    '--workers',
+    type=int,
+    help=f'How many posts to process concurrently (default: {config.CREATE_RELATIONS_DEFAULTS["workers"]}).',
+)
 @click.pass_context
-def click_create_relations(ctx, query, threshold):
+def click_create_relations(ctx, query, threshold, workers):
     """
     Create relations between character and parody tag categories
 
@@ -437,8 +442,15 @@ Examples:
     '--overwrite/--no-overwrite',
     help=f'Overwrite tag category if the tag already exists (default: {config.CREATE_TAGS_DEFAULTS["overwrite"]}).',
 )
+@click.option(
+    '--workers',
+    type=int,
+    help=f'How many tags to create concurrently (default: {config.CREATE_TAGS_DEFAULTS["workers"]}).',
+)
 @click.pass_context
-def click_create_tags(ctx, tag_name, tag_file, category, implications, import_implications, query, limit, min_post_count, overwrite):
+def click_create_tags(
+    ctx, tag_name, tag_file, category, implications, import_implications, query, limit, min_post_count, overwrite, workers
+):
     """
     Create tags based on a tag file, a single TAG_NAME or a query
 

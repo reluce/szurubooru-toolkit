@@ -27,7 +27,9 @@ from szurubooru_toolkit.utils import statistics
 
 
 wd_tagger = None
-_wd_tagger_lock = threading.Lock()
+# Reused across main() calls: upload-media calls main() once per file
+sauce = None
+_clients_lock = threading.Lock()
 
 # Shared across all main() invocations in this process, so concurrent upload
 # workers which each call auto_tagger.main() share the SauceNAO rate limit state.
@@ -423,10 +425,11 @@ def main(  # noqa C901
         else:
             query = post_id
 
+        global sauce
         if config.auto_tagger['saucenao']:
-            sauce = SauceNao(config)
-        else:
-            sauce = None
+            with _clients_lock:
+                if sauce is None:
+                    sauce = SauceNao(config)
 
         if config.auto_tagger['wd_tagger']:
             try:
@@ -437,11 +440,13 @@ def main(  # noqa C901
                 )
                 exit(1)
             global wd_tagger
-            with _wd_tagger_lock:
+            with _clients_lock:
                 if wd_tagger is None:
                     wd_tagger = WDTagger(config.auto_tagger['wd_tagger_model'], config.auto_tagger['wd_tagger_providers'])
 
-        posts = szuru.get_posts(query, videos=True)
+        limit = config.auto_tagger['limit']
+        limit = int(limit) if limit and int(limit) > 0 else None
+        posts = szuru.get_posts(query, videos=True, max_results=limit)
 
         try:
             total_posts = next(posts)
@@ -449,8 +454,8 @@ def main(  # noqa C901
             logger.info(f'Found no posts for your query: {query}')
             return limit_reached
 
-        if (limit := config.auto_tagger['limit']) and int(limit) > 0 and int(limit) < int(total_posts):
-            posts = [next(posts) for _ in range(int(limit))]
+        if limit and limit < int(total_posts):
+            posts = list(posts)
             total_posts = len(posts)
 
         if not from_upload_media:

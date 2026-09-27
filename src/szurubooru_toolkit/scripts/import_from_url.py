@@ -258,7 +258,7 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
     workers = max(1, int(config.import_from_url['workers']))
     run_concurrently(files, worker, workers, len(files), hide_progress)
 
-    relations_batch.reconcile(szuru)
+    relations_batch.reconcile(szuru, workers)
 
     if os.path.exists(download_dir):
         shutil.rmtree(download_dir)

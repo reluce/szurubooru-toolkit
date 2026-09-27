@@ -128,7 +128,7 @@ def test_download_media_returns_none_when_all_attempts_fail(monkeypatch):
         attempts.append(1)
         raise OSError('connection refused')
 
-    monkeypatch.setattr(utils.httpx, 'get', failing_get)
+    monkeypatch.setattr(utils._media_client, 'get', failing_get)
 
     assert utils.download_media('http://szuru.local/data/1.jpg', md5='abc') is None
     assert len(attempts) == 2
@@ -144,7 +144,7 @@ def test_download_media_retries_once_on_md5_mismatch(monkeypatch):
         def raise_for_status(self):
             pass
 
-    monkeypatch.setattr(utils.httpx, 'get', lambda *a, **k: FakeResponse(responses.pop(0)))
+    monkeypatch.setattr(utils._media_client, 'get', lambda *a, **k: FakeResponse(responses.pop(0)))
 
     file = utils.download_media('http://szuru.local/data/1.jpg', md5=get_md5sum(b'intact'))
 
@@ -206,7 +206,7 @@ def test_download_media_rejects_error_pages(monkeypatch):
     import httpx
 
     request = httpx.Request('GET', 'http://szuru.local/data/1.jpg')
-    monkeypatch.setattr(utils.httpx, 'get', lambda *a, **k: httpx.Response(404, content=b'Not found', request=request))
+    monkeypatch.setattr(utils._media_client, 'get', lambda *a, **k: httpx.Response(404, content=b'Not found', request=request))
 
     assert utils.download_media('http://szuru.local/data/1.jpg') is None
 
@@ -270,3 +270,18 @@ def test_prepare_post_falls_back_to_raw_pixiv_tags(monkeypatch, use_pixiv_tags):
     expected = ['オリジナル', '女の子', 'some_artist'] if use_pixiv_tags else ['some_artist']
     assert tags == expected
     assert rating == 'safe'
+
+
+def test_get_pixiv_reuses_client_until_reauth_is_due(monkeypatch):
+    created = []
+    monkeypatch.setattr(utils, 'Pixiv', lambda token: created.append(token) or object())
+    monkeypatch.setattr(utils, '_pixiv', None)
+    now = [1000.0]
+    monkeypatch.setattr(utils, 'monotonic', lambda: now[0])
+
+    first = utils.get_pixiv('token')
+    now[0] += utils.PIXIV_REAUTH_AFTER - 1
+    assert utils.get_pixiv('token') is first
+    now[0] += 2
+    assert utils.get_pixiv('token') is not first
+    assert len(created) == 2

@@ -150,7 +150,7 @@ class WDTagger:
         """
         Converts an image to the WD tagger input format.
 
-        Composites transparency onto white, pads the image to a square, resizes it to the model input size and returns
+        Shrinks the image to fit the model input size, composites transparency onto white, pads it to a square and returns
         a float32 BGR array with pixel values 0-255 (the format WD taggers were trained on).
 
         Args:
@@ -160,8 +160,15 @@ class WDTagger:
             np.ndarray: The image as an array of shape (1, size, size, 3).
         """
 
+        # Downscale before compositing/padding, which is ~3x cheaper for large images.
+        # draft() lets JPEGs decode at a reduced scale, kept at >= 2x the input size like thumbnail() does.
+        size = (self.input_size, self.input_size)
+        image.draft(None, (size[0] * 2, size[1] * 2))
+        image = image.convert('RGBA')
+        image.thumbnail(size, Image.BICUBIC)
+
         canvas = Image.new('RGBA', image.size, (255, 255, 255, 255))
-        canvas.alpha_composite(image.convert('RGBA'))
+        canvas.alpha_composite(image)
         image = canvas.convert('RGB')
 
         max_dim = max(image.size)
@@ -248,9 +255,11 @@ class WDTagger:
             frame_scores = []
             for timestamp in timestamps:
                 try:
+                    # Scaled to the model input in ffmpeg and piped as BMP, which skips PNG compressing a full-size frame
                     frame = subprocess.run(
-                        [ffmpeg, '-v', 'error', '-ss', f'{timestamp:.2f}', '-i', video_path]
-                        + ['-frames:v', '1', '-f', 'image2pipe', '-vcodec', 'png', '-'],
+                        [ffmpeg, '-v', 'error', '-ss', f'{timestamp:.2f}', '-i', video_path, '-frames:v', '1']
+                        + ['-vf', f'scale={self.input_size}:{self.input_size}:force_original_aspect_ratio=decrease']
+                        + ['-f', 'image2pipe', '-vcodec', 'bmp', '-'],
                         capture_output=True,
                         check=True,
                         timeout=120,

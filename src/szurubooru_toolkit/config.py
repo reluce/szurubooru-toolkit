@@ -64,6 +64,7 @@ TAG_CATEGORIES_DEFAULTS = {
 CREATE_RELATIONS_DEFAULTS = {
     'threshold': 3,
     'hide_progress': False,
+    'workers': 4,
 }
 
 FIX_RELATIONS_DEFAULTS = {
@@ -77,6 +78,7 @@ CREATE_TAGS_DEFAULTS = {
     'query': '*',
     'overwrite': False,
     'import_implications': False,
+    'workers': 4,
 }
 
 DELETE_POSTS_DEFAULTS = {'hide_progress': False, 'workers': 4}

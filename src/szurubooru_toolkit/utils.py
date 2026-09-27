@@ -13,11 +13,11 @@ from datetime import datetime
 from functools import total_ordering
 from io import BytesIO
 from pathlib import Path
+from time import monotonic
 from time import sleep
 
 import httpx
 from httpx import HTTPStatusError
-from httpx import ReadTimeout
 from loguru import logger
 from PIL import Image
 
@@ -33,6 +33,16 @@ total_wd_tagger = 0
 total_untagged = 0
 total_skipped = 0
 _statistics_lock = threading.Lock()
+
+
+# Pooled client for media downloads, keeps connections to szurubooru alive. httpx.Client is thread-safe.
+_media_client = httpx.Client(follow_redirects=True, timeout=30)
+
+# Shared Pixiv client; pixiv access tokens expire after an hour, so it's re-authenticated before that
+PIXIV_REAUTH_AFTER = 50 * 60  # seconds
+_pixiv = None
+_pixiv_created = 0.0
+_pixiv_lock = threading.Lock()
 
 
 warnings.filterwarnings('ignore', category=Image.DecompressionBombWarning)
@@ -225,6 +235,8 @@ def statistics(tagged=0, wd_tagger=0, untagged=0, skipped=0) -> tuple:
 
 
 _implications_cache: dict[str, list[str]] = {}
+# Tags found missing, so they aren't looked up again for every post
+_missing_tags: set[str] = set()
 _implications_lock = threading.Lock()
 
 
@@ -253,11 +265,15 @@ def get_cached_implications(tag_name: str, create_missing: bool = False) -> list
     with _implications_lock:
         if tag_name in _implications_cache:
             return _implications_cache[tag_name]
+        if tag_name in _missing_tags and not create_missing:
+            raise TagNotFoundError('TagNotFoundError', f'Tag "{tag_name}" not found')
 
     try:
         szuru_tag = szuru.get_tag(tag_name)
     except TagNotFoundError:
         if not create_missing:
+            with _implications_lock:
+                _missing_tags.add(tag_name)
             raise
         try:
             szuru_tag = szuru.create_tag(tag_name)
@@ -479,7 +495,7 @@ def download_media(content_url: str, md5: str = None) -> bytes | None:
 
     for _ in range(2):
         try:
-            response = httpx.get(content_url, follow_redirects=True, timeout=30)
+            response = _media_client.get(content_url)
             # An error page isn't the media
             response.raise_for_status()
             file = response.content
@@ -550,10 +566,48 @@ def generate_src(metadata: dict) -> str:
     return src
 
 
+# A booru failing this many searches in a row (down, blocked by Cloudflare, bad credentials, ...)
+# is skipped for the rest of the run instead of stalling every post with its retries
+BOORU_MAX_FAILURES = 3
+_booru_failures: dict[str, int] = {}
+_booru_failures_lock = threading.Lock()
+
+# Only these are worth waiting for, anything else fails the same way on the next try
+RETRYABLE_STATUS_CODES = (429, 500, 502, 503, 504)
+
+
+def _record_booru_search(booru: str, failed: bool) -> None:
+    """Tracks consecutive failed searches per booru and announces when one gets skipped."""
+
+    with _booru_failures_lock:
+        if not failed:
+            _booru_failures[booru] = 0
+            return
+
+        _booru_failures[booru] = _booru_failures.get(booru, 0) + 1
+        if _booru_failures[booru] == BOORU_MAX_FAILURES:
+            logger.warning(f'{booru} failed {BOORU_MAX_FAILURES} searches in a row, skipping it for the rest of this run.')
+
+    statistics(skipped=1)
+
+
 def _search_single_booru(booru: str, query: str, limit: int, page: int, credentials: dict[str, dict]) -> list | None:
     """
     Searches one booru with retries; returns the results or None.
+
+    Throttling, server errors and connection problems are retried, other errors fail
+    right away. Boorus with BOORU_MAX_FAILURES consecutive failures aren't searched anymore.
     """
+
+    # Search Gelbooru only if credentials are provided
+    # Otherwise the rate limits are too harsh
+    if booru == 'gelbooru' and booru not in credentials:
+        logger.debug('Skipping Gelbooru as no credentials were provided.')
+        return None
+
+    with _booru_failures_lock:
+        if _booru_failures.get(booru, 0) >= BOORU_MAX_FAILURES:
+            return None
 
     max_attempts = 11
 
@@ -562,38 +616,44 @@ def _search_single_booru(booru: str, query: str, limit: int, page: int, credenti
             if booru == 'sankaku':
                 from szurubooru_toolkit import sankaku
 
-                return sankaku.search(query, limit, page)
+                result = sankaku.search(query, limit, page)
             elif booru in credentials:
-                return boorus.search(booru, query, limit, page, credentials=credentials[booru])
-            # Search Gelbooru only if credentials are provided
-            # Otherwise the rate limits are too harsh
-            elif booru == 'gelbooru':
-                logger.debug('Skipping Gelbooru as no credentials were provided.')
-                return None
+                result = boorus.search(booru, query, limit, page, credentials=credentials[booru])
             else:
-                return boorus.search(booru, query, limit, page)
+                result = boorus.search(booru, query, limit, page)
         except KeyError:
             logger.debug(f'No result found in {booru} with "{query}"')
-            return None
+            result = None
         except HTTPStatusError as e:
             logger.debug(e)
-            if e.response.status_code in [401, 403]:
+            status = e.response.status_code
+            if status in [401, 403]:
                 logger.warning(f'Invalid credentials or unauthorized for {booru}.')
+                _record_booru_search(booru, failed=True)
+                return None
+            if status not in RETRYABLE_STATUS_CODES:
+                _record_booru_search(booru, failed=True)
                 return None
             logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
             if attempt < max_attempts:  # no need to sleep on the last attempt
                 sleep(5)
-        except ReadTimeout:
+            continue
+        except httpx.TransportError:
             logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
             if attempt < max_attempts:  # no need to sleep on the last attempt
                 sleep(5)
+            continue
         except Exception as e:
-            logger.debug(f'Could not get result from {booru} with "{query}": {e}. Trying again. in 5s...')
-            if attempt < max_attempts:  # no need to sleep on the last attempt
-                sleep(5)
+            # e.g. an HTML error page instead of JSON
+            logger.debug(f'Could not get result from {booru} with "{query}": {e}')
+            _record_booru_search(booru, failed=True)
+            return None
+
+        _record_booru_search(booru, failed=False)
+        return result
 
     logger.debug(f'Could not establish connection to {booru}, trying with next post...')
-    statistics(skipped=1)
+    _record_booru_search(booru, failed=True)
     return None
 
 
@@ -632,6 +692,27 @@ def search_boorus(booru: str, query: str, limit: int, page: int = 1, credentials
                 results[futures[future]] = result
 
     return results
+
+
+def get_pixiv(token: str) -> Pixiv:
+    """
+    Returns the shared Pixiv client, authenticating it on first use and after PIXIV_REAUTH_AFTER.
+
+    Args:
+        token (str): The pixiv refresh token.
+
+    Returns:
+        Pixiv: The authenticated client.
+    """
+
+    global _pixiv, _pixiv_created
+
+    with _pixiv_lock:
+        if _pixiv is None or monotonic() - _pixiv_created > PIXIV_REAUTH_AFTER:
+            _pixiv = Pixiv(token)
+            _pixiv_created = monotonic()
+
+        return _pixiv
 
 
 def convert_tags(tags: list) -> list:
@@ -703,7 +784,7 @@ def prepare_post(results: dict, config: Config, categories: dict | None = None) 
         else:
             if config.credentials['pixiv']['token']:
                 try:
-                    pixiv = Pixiv(config.credentials['pixiv']['token'])
+                    pixiv = get_pixiv(config.credentials['pixiv']['token'])
                     pixiv_result = pixiv.get_result(results['pixiv'].url)
                     if pixiv_result:
                         pixiv_tags = pixiv.get_tags(pixiv_result)
