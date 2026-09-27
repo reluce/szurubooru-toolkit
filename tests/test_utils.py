@@ -169,6 +169,11 @@ def test_download_media_retries_once_on_md5_mismatch(monkeypatch):
         ('danbooru', 'danbooru'),
         ('https://cdn.donmai.us/original/ab/cd/abcd1234.jpg', 'danbooru'),
         ('https://some.unknown.site/post/1', None),
+        ('https://files.yande.re/image/abc/yande.re%201234.jpg', 'yandere'),
+        # The host wins over site names elsewhere in the URL
+        ('https://kemono.su/fanbox/user/1/post/2', 'kemono'),
+        ('https://c1.kemono.su/data/ab/cd/abcd.png?f=pixiv_1.png', 'kemono'),
+        ('https://www.pixiv.net/fanbox/creator/1', 'pixiv'),
     ],
 )
 def test_get_site(url, expected):

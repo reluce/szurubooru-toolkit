@@ -529,7 +529,6 @@ def click_delete_posts(ctx, query, except_ids):
     '--shrink-dimensions',
     help=f'Maximum width and height of the shrunken image (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_dimensions"]}).',
 )
-@click.option('--limit', type=int, help=f'Limit the search results to be returned (default: {config.IMPORT_FROM_BOORU_DEFAULTS["limit"]}).')
 @click.pass_context
 def click_import_from_booru(
     ctx,

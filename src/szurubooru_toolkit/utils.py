@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import threading
+import urllib.parse
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
@@ -825,7 +826,8 @@ def get_site(url: str) -> str:
         str: The name of the site that the URL belongs to, or None if no known site name is found in the URL.
     """
 
-    sites = {
+    # A tuple, so the first match is deterministic
+    sites = (
         'sankaku',
         'danbooru',
         'gelbooru',
@@ -836,7 +838,7 @@ def get_site(url: str) -> str:
         'kemono',
         'fanbox',
         'pixiv',
-    }
+    )
 
     # gallery-dl reports category 'exhentai' for both e-hentai.org and
     # exhentai.org; the toolkit handles both under 'e-hentai'.
@@ -847,9 +849,16 @@ def get_site(url: str) -> str:
     if 'donmai' in url:
         return 'danbooru'
 
-    for site in sites:
-        if site in url:
-            return site
+    # Yandere's domain is yande.re, its files are served from files.yande.re
+    if 'yande.re' in url:
+        return 'yandere'
+
+    # The host decides first: kemono.su/fanbox/... or a kemono file named pixiv_1.png is kemono
+    host = urllib.parse.urlsplit(url).hostname or ''
+    for candidate in (host, url):
+        for site in sites:
+            if site in candidate:
+                return site
 
 
 @total_ordering
