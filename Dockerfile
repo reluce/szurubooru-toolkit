@@ -37,8 +37,9 @@ COPY . .
 COPY uv.lock pyproject.toml README.md ./
 RUN uv sync --frozen --no-dev $EXTRAS
 
-# The environment is fully baked above; without this, every `uv run` (each
-# cron job) re-syncs against the lockfile and uninstalls the extras.
+# The environment is fully baked above; without this, every `uv run` re-syncs
+# against the lockfile and uninstalls the extras. Cron jobs don't inherit ENV,
+# so entrypoint.sh sets it in the installed crontab as well.
 ENV UV_NO_SYNC=1
 
 RUN chmod +x /szurubooru-toolkit/entrypoint.sh

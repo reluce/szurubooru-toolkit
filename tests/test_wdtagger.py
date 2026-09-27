@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 
@@ -237,3 +238,22 @@ def test_selected_tag_categories_exclude_ratings_and_markers():
     tagger.tags = np.array(['solo', 'miku', 'general'])
     tagger.categories = np.array([0, 4, 9])
     assert tagger.tag_categories(['miku', 'general', 'needs_review', 'wd_tagger']) == {'miku': 'character'}
+
+
+def test_predict_video_hands_ffprobe_a_closed_complete_file(monkeypatch):
+    # Windows can't open a NamedTemporaryFile that's still open, so the video must be fully written and closed
+    from szurubooru_toolkit import wdtagger as wdtagger_module
+
+    seen = {}
+
+    def fake_run(command, **kwargs):
+        path = Path(command[-1])
+        seen['path'], seen['content'] = path, path.read_bytes()
+        raise subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr(wdtagger_module.shutil, 'which', lambda name: name)
+    monkeypatch.setattr(wdtagger_module.subprocess, 'run', fake_run)
+
+    assert WDTagger.predict_video(None, b'video-bytes') is None
+    assert seen['content'] == b'video-bytes'
+    assert not seen['path'].exists()

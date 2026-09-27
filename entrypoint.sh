@@ -6,7 +6,9 @@ set -e
 CRON_USER=root
 
 # Never modify the bind-mounted crontab; install a copy instead.
-cp /etc/cron.d/crontab /tmp/crontab
+# Cron doesn't pass the container's environment to jobs, so set UV_NO_SYNC
+# (see Dockerfile) in the crontab itself; otherwise every `uv run` re-syncs.
+{ echo 'UV_NO_SYNC=1'; cat /etc/cron.d/crontab; } > /tmp/crontab
 
 if [ -n "$PUID" ] || [ -n "$PGID" ]; then
     PUID="${PUID:-1000}"

@@ -224,13 +224,14 @@ class WDTagger:
             logger.warning('Video tagging requires ffmpeg and ffprobe on the PATH. Skipping video...')
             return None
 
-        with tempfile.NamedTemporaryFile(suffix='.video') as video_file:
-            video_file.write(video)
-            video_file.flush()
+        # A closed file in a temp dir, since Windows won't let ffprobe open a still-open NamedTemporaryFile
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            video_path = str(Path(tmp_dir) / 'input.video')
+            Path(video_path).write_bytes(video)
 
             try:
                 probe = subprocess.run(
-                    [ffprobe, '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', video_file.name],
+                    [ffprobe, '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', video_path],
                     capture_output=True,
                     check=True,
                     timeout=60,
@@ -248,7 +249,7 @@ class WDTagger:
             for timestamp in timestamps:
                 try:
                     frame = subprocess.run(
-                        [ffmpeg, '-v', 'error', '-ss', f'{timestamp:.2f}', '-i', video_file.name]
+                        [ffmpeg, '-v', 'error', '-ss', f'{timestamp:.2f}', '-i', video_path]
                         + ['-frames:v', '1', '-f', 'image2pipe', '-vcodec', 'png', '-'],
                         capture_output=True,
                         check=True,
