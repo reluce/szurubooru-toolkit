@@ -330,6 +330,7 @@ class Szurubooru:
         query: str,
         pagination: bool = True,
         videos: bool = False,
+        max_results: int = None,
     ) -> Generator[str | Post, None, None]:
         """
         Retrieves posts from szurubooru based on a query.
@@ -342,6 +343,8 @@ class Szurubooru:
             query (str): The query to use to retrieve the posts.
             pagination (bool, optional): Whether to retrieve all pages of results. Defaults to True.
             videos (bool, optional): Whether to include video posts in the results. Defaults to False.
+            max_results (int, optional): Stop after this many posts; only the pages needed are fetched.
+                The yielded total still is the full match count. Defaults to None (all posts).
 
         Yields:
             str | Post: The total count first, then the retrieved posts.
@@ -369,8 +372,9 @@ class Szurubooru:
         total = str(response['total'])
         logger.debug(f'Got a total of {total} results')
 
-        results = response['results']
-        pages = ceil(int(total) / 100)  # Max posts per page is 100
+        wanted = min(int(total), max_results) if max_results else int(total)
+        results = response['results'][:wanted]
+        pages = ceil(wanted / 100)  # Max posts per page is 100
         logger.debug(f'Searching across {pages} pages')
 
         if results:
@@ -386,6 +390,7 @@ class Szurubooru:
                 with ThreadPoolExecutor(max_workers=min(PAGE_FETCH_WORKERS, pages - 1)) as executor:
                     for page_results in executor.map(fetch_page, range(1, pages)):
                         results += page_results
+                del results[wanted:]
 
             for result in results:
                 yield self.parse_post(result)

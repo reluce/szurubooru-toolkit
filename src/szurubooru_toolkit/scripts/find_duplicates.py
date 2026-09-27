@@ -101,7 +101,9 @@ def main(query: str = '*') -> None:
         threshold = int(config.find_duplicates['threshold'])
 
         logger.info(f'Retrieving posts from {config.globals["url"]} with query "{query}"...')
-        posts = szuru.get_posts(query, videos=False)
+        limit = config.find_duplicates['limit']
+        limit = int(limit) if limit and int(limit) > 0 else None
+        posts = szuru.get_posts(query, videos=False, max_results=limit)
 
         try:
             total_posts = next(posts)
@@ -109,8 +111,8 @@ def main(query: str = '*') -> None:
             logger.info(f'Found no posts for your query: {query}')
             exit()
 
-        if (limit := config.find_duplicates['limit']) and int(limit) > 0 and int(limit) < int(total_posts):
-            posts = [next(posts) for _ in range(int(limit))]
+        if limit and limit < int(total_posts):
+            posts = list(posts)
             total_posts = len(posts)
 
         logger.info(f'Found {total_posts} posts. Computing perceptual hashes...')

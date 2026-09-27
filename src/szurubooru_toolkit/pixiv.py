@@ -1,3 +1,4 @@
+from functools import lru_cache
 from time import sleep
 from typing import Any
 from typing import List
@@ -137,6 +138,7 @@ class Pixiv:
         return 'safe'
 
     @classmethod
+    @lru_cache(maxsize=4096)  # Once per artist and run, it also creates the szurubooru tag
     def extract_pixiv_artist(cls, pixiv_artist: str) -> str:
         """
         Extracts the Pixiv artist name and checks if it exists on Danbooru.

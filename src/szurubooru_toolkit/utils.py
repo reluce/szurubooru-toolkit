@@ -13,6 +13,7 @@ from datetime import datetime
 from functools import total_ordering
 from io import BytesIO
 from pathlib import Path
+from time import monotonic
 from time import sleep
 
 import httpx
@@ -33,6 +34,16 @@ total_wd_tagger = 0
 total_untagged = 0
 total_skipped = 0
 _statistics_lock = threading.Lock()
+
+
+# Pooled client for media downloads, keeps connections to szurubooru alive. httpx.Client is thread-safe.
+_media_client = httpx.Client(follow_redirects=True, timeout=30)
+
+# Shared Pixiv client; pixiv access tokens expire after an hour, so it's re-authenticated before that
+PIXIV_REAUTH_AFTER = 50 * 60  # seconds
+_pixiv = None
+_pixiv_created = 0.0
+_pixiv_lock = threading.Lock()
 
 
 warnings.filterwarnings('ignore', category=Image.DecompressionBombWarning)
@@ -479,7 +490,7 @@ def download_media(content_url: str, md5: str = None) -> bytes | None:
 
     for _ in range(2):
         try:
-            response = httpx.get(content_url, follow_redirects=True, timeout=30)
+            response = _media_client.get(content_url)
             # An error page isn't the media
             response.raise_for_status()
             file = response.content
@@ -634,6 +645,27 @@ def search_boorus(booru: str, query: str, limit: int, page: int = 1, credentials
     return results
 
 
+def get_pixiv(token: str) -> Pixiv:
+    """
+    Returns the shared Pixiv client, authenticating it on first use and after PIXIV_REAUTH_AFTER.
+
+    Args:
+        token (str): The pixiv refresh token.
+
+    Returns:
+        Pixiv: The authenticated client.
+    """
+
+    global _pixiv, _pixiv_created
+
+    with _pixiv_lock:
+        if _pixiv is None or monotonic() - _pixiv_created > PIXIV_REAUTH_AFTER:
+            _pixiv = Pixiv(token)
+            _pixiv_created = monotonic()
+
+        return _pixiv
+
+
 def convert_tags(tags: list) -> list:
     """
     Search for tags that don't follow the Booru convention in Danbooru and convert them.
@@ -703,7 +735,7 @@ def prepare_post(results: dict, config: Config, categories: dict | None = None) 
         else:
             if config.credentials['pixiv']['token']:
                 try:
-                    pixiv = Pixiv(config.credentials['pixiv']['token'])
+                    pixiv = get_pixiv(config.credentials['pixiv']['token'])
                     pixiv_result = pixiv.get_result(results['pixiv'].url)
                     if pixiv_result:
                         pixiv_tags = pixiv.get_tags(pixiv_result)

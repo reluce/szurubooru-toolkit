@@ -24,7 +24,7 @@ class StubSzuru:
         self.posts = list(posts)
         self.updated = []
 
-    def get_posts(self, query, pagination=True, videos=False):
+    def get_posts(self, query, pagination=True, videos=False, max_results=None):
         if self.posts:
             yield str(len(self.posts))
             yield from self.posts

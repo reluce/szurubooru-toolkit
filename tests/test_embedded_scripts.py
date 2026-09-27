@@ -20,7 +20,7 @@ class StubSzuru:
     def __init__(self, error=None):
         self.error = error
 
-    def get_posts(self, query, pagination=True, videos=False):
+    def get_posts(self, query, pagination=True, videos=False, max_results=None):
         if self.error:
             raise self.error
         return iter([])

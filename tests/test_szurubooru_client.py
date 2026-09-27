@@ -74,6 +74,21 @@ def test_get_posts_paginates_without_extra_request():
     assert {dict(r.url.params).get('offset') for r in client.requests} == {None, '100', '200'}
 
 
+@pytest.mark.parametrize('max_results,requests', [(50, 1), (150, 2), (1000, 3)])
+def test_get_posts_max_results_fetches_only_needed_pages(max_results, requests):
+    def handler(request):
+        offset = int(dict(request.url.params).get('offset', 0))
+        posts = [make_post_json(offset + i) for i in range(100 if offset < 200 else 50)]
+        return httpx.Response(200, json={'total': 250, 'results': posts})
+
+    client = RecordingClient(handler)
+    results = list(client.szuru.get_posts('foo', max_results=max_results))
+
+    assert results[0] == '250'  # The total stays the full match count
+    assert [post.id for post in results[1:]] == [str(i) for i in range(min(max_results, 250))]
+    assert len(client.requests) == requests
+
+
 def test_get_posts_does_not_skip_posts_removed_while_iterating():
     # Server-side result set shrinks as the caller processes posts, like
     # `tag-posts --remove-tags foo` on query `foo` or deleting posts

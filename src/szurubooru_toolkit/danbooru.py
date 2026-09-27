@@ -1,3 +1,4 @@
+from functools import lru_cache
 from math import ceil
 from time import sleep
 from typing import List
@@ -25,6 +26,8 @@ class Danbooru:
             transport=transport,
         )
 
+    # Cached per run: imports and pixiv results look up the same tags and artists over and over
+    @lru_cache(maxsize=4096)
     def get_other_names_tag(self, other_tag: str) -> Optional[str]:
         """
         Search for the main tag name of the given tag.
@@ -64,6 +67,7 @@ class Danbooru:
 
         return tag
 
+    @lru_cache(maxsize=4096)
     def search_artist(self, artist: str) -> Optional[str]:
         """
         Search for the main artist name on Danbooru and return it.
