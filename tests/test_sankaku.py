@@ -42,3 +42,24 @@ def test_authenticate_reports_non_json_errors(make_sankaku, monkeypatch):
 
     with pytest.raises(Exception, match='HTTP 502'):
         make_sankaku(None)._authenticate('user', 'password')
+
+
+def test_login_is_deferred_to_the_first_search(make_sankaku, monkeypatch):
+    sankaku_module.config.credentials['sankaku'] = {'username': 'user', 'password': 'password'}
+    logins = []
+    monkeypatch.setattr(sankaku_module.Sankaku, '_authenticate', lambda self, *credentials: logins.append(credentials) or 'Bearer t')
+
+    seen = []
+
+    def handler(request):
+        seen.append(request.headers.get('Authorization'))
+        return httpx.Response(200, json=[])
+
+    sankaku = make_sankaku(handler)
+    assert logins == []
+
+    sankaku.search('md5:abc')
+    sankaku.search('md5:def')
+
+    assert logins == [('user', 'password')]
+    assert seen == ['Bearer t', 'Bearer t']

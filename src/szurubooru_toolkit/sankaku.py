@@ -1,3 +1,5 @@
+import threading
+
 import httpx
 
 from szurubooru_toolkit import config
@@ -22,10 +24,19 @@ class Sankaku:
         password = config.credentials['sankaku']['password']
 
         self.api_url = 'https://sankakuapi.com'
-        if username and password:
-            self.headers['Authorization'] = self._authenticate(username, password)
+        # Logged in on the first search, so commands that never use Sankaku don't wait for (or fail on) it
+        self._credentials = (username, password) if username and password else None
+        self._auth_lock = threading.Lock()
 
         self.client = httpx.Client(base_url=self.api_url, headers=self.headers, timeout=30, transport=transport)
+
+    def _ensure_authenticated(self) -> None:
+        """Logs in with the configured credentials once; a failed login is retried on the next search."""
+
+        with self._auth_lock:
+            if self._credentials:
+                self.client.headers['Authorization'] = self._authenticate(*self._credentials)
+                self._credentials = None
 
     def _authenticate(self, username: str, password: str) -> str:
         """
@@ -73,6 +84,8 @@ class Sankaku:
         Raises:
             httpx.HTTPStatusError: On error responses, so the caller can retry (429, 5xx) or warn (401, 403).
         """
+
+        self._ensure_authenticated()
 
         params = {
             'lang': 'en',

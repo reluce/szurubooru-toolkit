@@ -18,7 +18,6 @@ from time import sleep
 
 import httpx
 from httpx import HTTPStatusError
-from httpx import ReadTimeout
 from loguru import logger
 from PIL import Image
 
@@ -561,10 +560,48 @@ def generate_src(metadata: dict) -> str:
     return src
 
 
+# A booru failing this many searches in a row (down, blocked by Cloudflare, bad credentials, ...)
+# is skipped for the rest of the run instead of stalling every post with its retries
+BOORU_MAX_FAILURES = 3
+_booru_failures: dict[str, int] = {}
+_booru_failures_lock = threading.Lock()
+
+# Only these are worth waiting for, anything else fails the same way on the next try
+RETRYABLE_STATUS_CODES = (429, 500, 502, 503, 504)
+
+
+def _record_booru_search(booru: str, failed: bool) -> None:
+    """Tracks consecutive failed searches per booru and announces when one gets skipped."""
+
+    with _booru_failures_lock:
+        if not failed:
+            _booru_failures[booru] = 0
+            return
+
+        _booru_failures[booru] = _booru_failures.get(booru, 0) + 1
+        if _booru_failures[booru] == BOORU_MAX_FAILURES:
+            logger.warning(f'{booru} failed {BOORU_MAX_FAILURES} searches in a row, skipping it for the rest of this run.')
+
+    statistics(skipped=1)
+
+
 def _search_single_booru(booru: str, query: str, limit: int, page: int, credentials: dict[str, dict]) -> list | None:
     """
     Searches one booru with retries; returns the results or None.
+
+    Throttling, server errors and connection problems are retried, other errors fail
+    right away. Boorus with BOORU_MAX_FAILURES consecutive failures aren't searched anymore.
     """
+
+    # Search Gelbooru only if credentials are provided
+    # Otherwise the rate limits are too harsh
+    if booru == 'gelbooru' and booru not in credentials:
+        logger.debug('Skipping Gelbooru as no credentials were provided.')
+        return None
+
+    with _booru_failures_lock:
+        if _booru_failures.get(booru, 0) >= BOORU_MAX_FAILURES:
+            return None
 
     max_attempts = 11
 
@@ -573,38 +610,44 @@ def _search_single_booru(booru: str, query: str, limit: int, page: int, credenti
             if booru == 'sankaku':
                 from szurubooru_toolkit import sankaku
 
-                return sankaku.search(query, limit, page)
+                result = sankaku.search(query, limit, page)
             elif booru in credentials:
-                return boorus.search(booru, query, limit, page, credentials=credentials[booru])
-            # Search Gelbooru only if credentials are provided
-            # Otherwise the rate limits are too harsh
-            elif booru == 'gelbooru':
-                logger.debug('Skipping Gelbooru as no credentials were provided.')
-                return None
+                result = boorus.search(booru, query, limit, page, credentials=credentials[booru])
             else:
-                return boorus.search(booru, query, limit, page)
+                result = boorus.search(booru, query, limit, page)
         except KeyError:
             logger.debug(f'No result found in {booru} with "{query}"')
-            return None
+            result = None
         except HTTPStatusError as e:
             logger.debug(e)
-            if e.response.status_code in [401, 403]:
+            status = e.response.status_code
+            if status in [401, 403]:
                 logger.warning(f'Invalid credentials or unauthorized for {booru}.')
+                _record_booru_search(booru, failed=True)
+                return None
+            if status not in RETRYABLE_STATUS_CODES:
+                _record_booru_search(booru, failed=True)
                 return None
             logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
             if attempt < max_attempts:  # no need to sleep on the last attempt
                 sleep(5)
-        except ReadTimeout:
+            continue
+        except httpx.TransportError:
             logger.debug(f'Could not establish connection to {booru}. Trying again in 5s...')
             if attempt < max_attempts:  # no need to sleep on the last attempt
                 sleep(5)
+            continue
         except Exception as e:
-            logger.debug(f'Could not get result from {booru} with "{query}": {e}. Trying again. in 5s...')
-            if attempt < max_attempts:  # no need to sleep on the last attempt
-                sleep(5)
+            # e.g. an HTML error page instead of JSON
+            logger.debug(f'Could not get result from {booru} with "{query}": {e}')
+            _record_booru_search(booru, failed=True)
+            return None
+
+        _record_booru_search(booru, failed=False)
+        return result
 
     logger.debug(f'Could not establish connection to {booru}, trying with next post...')
-    statistics(skipped=1)
+    _record_booru_search(booru, failed=True)
     return None
 
 

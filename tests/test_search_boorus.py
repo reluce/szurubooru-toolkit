@@ -29,6 +29,12 @@ class FakeSankaku:
         return self.result
 
 
+@pytest.fixture(autouse=True)
+def reset_booru_failures(monkeypatch):
+    # The circuit breaker state is per process; keep tests independent
+    monkeypatch.setattr(utils, '_booru_failures', {})
+
+
 @pytest.fixture
 def fake_sankaku(monkeypatch):
     fake = FakeSankaku()
@@ -111,6 +117,57 @@ def test_search_boorus_one_failure_does_not_abort_others(monkeypatch, fake_sanka
 
     assert 'danbooru' not in results
     assert set(results) == {'konachan', 'yandere'}
+
+
+def test_failing_booru_is_skipped_after_consecutive_failures(monkeypatch):
+    calls = []
+
+    def fake_search(booru, query, limit, page, credentials=None):
+        calls.append(booru)
+        raise ValueError('<html>Just a moment...</html>')
+
+    monkeypatch.setattr(boorus, 'search', fake_search)
+
+    for _ in range(utils.BOORU_MAX_FAILURES + 2):
+        assert search_boorus('konachan', 'md5:abc', 1, 0) == {}
+
+    # Non-retryable errors aren't retried, and the booru isn't searched once the breaker is open
+    assert len(calls) == utils.BOORU_MAX_FAILURES
+
+
+def test_success_resets_failure_count(monkeypatch):
+    outcomes = [ValueError('boom')] * (utils.BOORU_MAX_FAILURES - 1) + [['post']] + [ValueError('boom')]
+
+    def fake_search(booru, query, limit, page, credentials=None):
+        outcome = outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    monkeypatch.setattr(boorus, 'search', fake_search)
+
+    for _ in range(utils.BOORU_MAX_FAILURES + 1):
+        search_boorus('konachan', 'md5:abc', 1, 0)
+
+    assert utils._booru_failures['konachan'] == 1
+
+
+def test_client_errors_are_not_retried(monkeypatch):
+    import httpx
+
+    calls = []
+    request = httpx.Request('GET', 'https://konachan.com/post.json')
+
+    def fake_search(booru, query, limit, page, credentials=None):
+        calls.append(booru)
+        response = httpx.Response(422, request=request)
+        raise httpx.HTTPStatusError('Unprocessable', request=request, response=response)
+
+    monkeypatch.setattr(boorus, 'search', fake_search)
+    monkeypatch.setattr(utils, 'sleep', lambda seconds: pytest.fail('must not wait for a retry'))
+
+    assert search_boorus('konachan', 'md5:abc', 1, 0) == {}
+    assert calls == ['konachan']
 
 
 @pytest.mark.parametrize(
