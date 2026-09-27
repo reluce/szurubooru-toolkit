@@ -10,7 +10,6 @@ from szurubooru_toolkit.szurubooru import UnknownTokenError
 from szurubooru_toolkit.utils import interrupt_exit
 from szurubooru_toolkit.utils import run_concurrently
 
-
 # Workers count posts concurrently; the tag updates are serialized, since two relations
 # of the same tag pushed at once would conflict on the tag version
 _update_lock = threading.Lock()

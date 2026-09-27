@@ -2,7 +2,6 @@ from pathlib import Path
 
 import szurubooru_toolkit
 
-
 # upload_media reads module-level globals normally created by setup_clients();
 # provide stand-ins so the module can be imported in tests.
 szurubooru_toolkit.szuru = None

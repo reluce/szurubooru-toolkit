@@ -449,7 +449,17 @@ Examples:
 )
 @click.pass_context
 def click_create_tags(
-    ctx, tag_name, tag_file, category, implications, import_implications, query, limit, min_post_count, overwrite, workers
+    ctx,
+    tag_name,
+    tag_file,
+    category,
+    implications,
+    import_implications,
+    query,
+    limit,
+    min_post_count,
+    overwrite,
+    workers,
 ):
     """
     Create tags based on a tag file, a single TAG_NAME or a query

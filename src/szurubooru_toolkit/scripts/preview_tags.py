@@ -14,7 +14,6 @@ from szurubooru_toolkit.wdtagger import CATEGORY_RATING
 from szurubooru_toolkit.wdtagger import RATING_MAP
 from szurubooru_toolkit.wdtagger import WDTagger
 
-
 # Video file extensions handled via frame sampling instead of direct image decoding
 VIDEO_EXTENSIONS = {'.mp4', '.webm', '.mkv', '.avi', '.mov'}
 

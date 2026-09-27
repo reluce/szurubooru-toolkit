@@ -2,10 +2,11 @@
 line-length = 140
 skip-string-normalization = true
 preview = true
+target-version = ["py311"]
 
 [tool.isort]
 line_length = 120
-lines_after_imports = 2
+lines_after_imports = -1
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 known_first_party = ["szurubooru_toolkit"]
 known_local_folder = ["src/szurubooru_toolkit"]
@@ -24,7 +25,7 @@ authors = [
 license = "GPL-3.0-only"
 requires-python = ">=3.11"
 dependencies = [
-    "Pillow<12.0.0,>=9.5.0",
+    "Pillow<13.0.0,>=9.5.0",
     "httpx<1.0.0,>=0.24.0",
     "click<9.0.0,>=8.0.0",
     "tqdm<5.0.0,>=4.65.0",
@@ -47,14 +48,14 @@ keywords = [
 wd-tagger = [
     "onnxruntime<2.0.0,>=1.19.0",
     "numpy<3.0.0,>=1.23.5",
-    "huggingface-hub<1.0.0,>=0.23.0",
+    "huggingface-hub<3.0.0,>=0.23.0",
 ]
 # GPU variant: CUDA/cuDNN runtimes come from PyPI, the host only needs the
 # NVIDIA driver (in Docker: the NVIDIA Container Toolkit).
 wd-tagger-cuda = [
     "onnxruntime-gpu[cuda,cudnn]<2.0.0,>=1.21.0",
     "numpy<3.0.0,>=1.23.5",
-    "huggingface-hub<1.0.0,>=0.23.0",
+    "huggingface-hub<3.0.0,>=0.23.0",
 ]
 pixiv = [
     "pixivpy3<4.0.0,>=3.7.4",
@@ -70,10 +71,10 @@ szuructl = "szurubooru_toolkit.scripts.szuru_toolkit:cli"
 
 [dependency-groups]
 dev = [
-    "black<24.0.0,>=23.0.0",
-    "flake8<7.0.0,>=6.0.0",
-    "isort<6.0.0,>=5.10.1",
-    "pre-commit<4.0.0,>=3.0.0",
+    "black<27.0.0,>=23.0.0",
+    "flake8<8.0.0,>=6.0.0",
+    "isort<10.0.0,>=5.10.1",
+    "pre-commit<5.0.0,>=3.0.0",
     "pytest<9.0.0,>=8.0.0",
     # For the WD tagger tests: run and build small ONNX models
     "onnxruntime<2.0.0,>=1.19.0",

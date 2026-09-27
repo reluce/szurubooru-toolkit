@@ -3,7 +3,6 @@ import pytest
 from szurubooru_toolkit.scripts.fix_sankaku_sources import extract_post_id
 from szurubooru_toolkit.scripts.fix_sankaku_sources import fix_source
 
-
 MD5 = '7a9fa422507e43705c2ae48b7cde5997'
 
 

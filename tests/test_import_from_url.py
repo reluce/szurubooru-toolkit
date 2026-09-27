@@ -2,7 +2,6 @@ import pytest
 
 import szurubooru_toolkit
 
-
 # import_from_url reads module-level globals normally created by setup_clients();
 # provide stand-ins so the module can be imported in tests.
 szurubooru_toolkit.szuru = None

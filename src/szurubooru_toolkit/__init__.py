@@ -46,40 +46,42 @@ def setup_logger() -> None:
                 format=''.join(
                     '<lm>[{level}]</lm> <lg>[{time:DD.MM.YYYY, HH:mm:ss zz}]</lg> <ly>[{module}.{function}]</ly> {message}',
                 ),
-            )
+            ),
         )
-    handlers.extend([
-        dict(
-            sink=console_sink,
-            backtrace=False,
-            diagnose=False,
-            colorize=True,
-            level='INFO',
-            filter=lambda record: record['level'].no < 30,
-            format='<le>[{level}]</le> {message}',
-        ),
-        dict(
-            sink=console_sink,
-            backtrace=False,
-            diagnose=False,
-            colorize=True,
-            level='WARNING',
-            filter=lambda record: record['level'].no < 40,
-            format=''.join(
-                '<ly>[{level}]</ly> <ly>[{module}.{function}]</ly> {message}',
+    handlers.extend(
+        [
+            dict(
+                sink=console_sink,
+                backtrace=False,
+                diagnose=False,
+                colorize=True,
+                level='INFO',
+                filter=lambda record: record['level'].no < 30,
+                format='<le>[{level}]</le> {message}',
             ),
-        ),
-        dict(
-            sink=console_sink,
-            backtrace=False,
-            diagnose=False,
-            colorize=True,
-            level='ERROR',
-            format=''.join(
-                '<lr>[{level}]</lr> <ly>[{module}.{function}]</ly> {message}',
+            dict(
+                sink=console_sink,
+                backtrace=False,
+                diagnose=False,
+                colorize=True,
+                level='WARNING',
+                filter=lambda record: record['level'].no < 40,
+                format=''.join(
+                    '<ly>[{level}]</ly> <ly>[{module}.{function}]</ly> {message}',
+                ),
             ),
-        ),
-    ])
+            dict(
+                sink=console_sink,
+                backtrace=False,
+                diagnose=False,
+                colorize=True,
+                level='ERROR',
+                format=''.join(
+                    '<lr>[{level}]</lr> <ly>[{module}.{function}]</ly> {message}',
+                ),
+            ),
+        ],
+    )
     logger.configure(handlers=handlers)
 
 

@@ -11,7 +11,6 @@ from typing import Generator
 import httpx
 from loguru import logger
 
-
 # Only the post fields parse_post consumes; slims down large search responses
 POST_FIELDS = 'id,source,contentUrl,version,relations,checksumMD5,type,safety,tags'
 
@@ -40,7 +39,7 @@ _TAG_EXISTS_DESCRIPTIONS = (
 )
 
 
-def _is_invalid_fields_error(error: 'SzurubooruApiError') -> bool:
+def _is_invalid_fields_error(error: SzurubooruApiError) -> bool:
     return error.name == 'FailedToDeserializeQueryString' or 'invalid field' in error.description
 
 
@@ -253,9 +252,7 @@ class Szurubooru:
             else:
                 if response.status_code not in TRANSIENT_STATUS_CODES or attempt == TRANSIENT_RETRIES:
                     break
-                logger.debug(
-                    f'{method} {path} returned HTTP{response.status_code}, retrying in {attempt * TRANSIENT_BACKOFF}s...'
-                )
+                logger.debug(f'{method} {path} returned HTTP{response.status_code}, retrying in {attempt * TRANSIENT_BACKOFF}s...')
             time.sleep(attempt * TRANSIENT_BACKOFF)
 
         try:
@@ -331,7 +328,7 @@ class Szurubooru:
         pagination: bool = True,
         videos: bool = False,
         max_results: int = None,
-    ) -> Generator[str | Post, None, None]:
+    ) -> Generator[str | Post]:
         """
         Retrieves posts from szurubooru based on a query.
 

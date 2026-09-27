@@ -1,6 +1,5 @@
 import szurubooru_toolkit
 
-
 # delete_posts reads module-level globals normally created by setup_clients();
 # provide stand-ins so the module can be imported in tests.
 szurubooru_toolkit.szuru = None

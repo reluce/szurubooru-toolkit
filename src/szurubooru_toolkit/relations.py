@@ -20,7 +20,6 @@ from typing import Iterable
 from loguru import logger
 from PIL import Image
 
-
 # Maximum Hamming distance between two dHashes (64 bit) to consider posts related.
 # Image-set variants with small differences typically stay well below this.
 PHASH_THRESHOLD = 8
@@ -46,7 +45,7 @@ def dhash(image: bytes, hash_size: int = 8) -> int | None:
         with Image.open(BytesIO(image)) as img:
             # Lets JPEGs decode in grayscale at up to 1/8 scale; plenty for a 9x8 grid
             img.draft('L', ((hash_size + 1) * 8, hash_size * 8))
-            pixels = list(img.convert('L').resize((hash_size + 1, hash_size), Image.LANCZOS).getdata())
+            pixels = list(img.convert('L').resize((hash_size + 1, hash_size), Image.LANCZOS).tobytes())
     except Exception:
         return None
 

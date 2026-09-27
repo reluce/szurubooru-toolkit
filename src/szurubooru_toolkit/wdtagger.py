@@ -12,7 +12,6 @@ from PIL import Image
 
 from szurubooru_toolkit.utils import resolve_onnx_providers
 
-
 # Category ids in selected_tags.csv
 CATEGORY_GENERAL = 0
 CATEGORY_CHARACTER = 4

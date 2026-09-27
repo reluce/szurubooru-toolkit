@@ -14,7 +14,6 @@ from loguru import logger
 
 from szurubooru_toolkit.tag_categories import extract_categories
 
-
 USER_AGENT = 'szurubooru-toolkit (https://github.com/reluce/szurubooru-toolkit)'
 
 # One pooled client for all boorus: connections are kept alive per host, so

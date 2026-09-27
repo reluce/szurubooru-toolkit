@@ -7,7 +7,6 @@ from szurubooru_toolkit import boorus
 from szurubooru_toolkit import utils
 from szurubooru_toolkit.utils import search_boorus
 
-
 # auto_tagger reads module-level globals normally created by setup_clients();
 # provide stand-ins so the module can be imported in tests.
 szurubooru_toolkit.szuru = None

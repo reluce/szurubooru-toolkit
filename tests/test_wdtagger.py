@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 
-
 pytest.importorskip('onnxruntime')
 onnx = pytest.importorskip('onnx')
 
@@ -18,7 +17,6 @@ from PIL import Image  # noqa: E402
 
 from szurubooru_toolkit.wdtagger import WDTagger  # noqa: E402
 from szurubooru_toolkit.wdtagger import frame_timestamps  # noqa: E402
-
 
 INPUT_SIZE = 448
 

@@ -29,7 +29,6 @@ from pathlib import Path
 from urllib.parse import parse_qs
 from urllib.parse import urlparse
 
-
 REPO = Path(__file__).resolve().parents[3]
 
 
