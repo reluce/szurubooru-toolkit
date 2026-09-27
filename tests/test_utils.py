@@ -202,6 +202,11 @@ def test_generate_src_e_hentai():
     assert utils.generate_src(metadata) == 'https://e-hentai.org/g/4046994/d23b006a6f'
 
 
+def test_convert_rating_danbooru_s_is_sensitive():
+    assert convert_rating('s', 'danbooru') == 'sketchy'
+    assert convert_rating('s', 'konachan') == 'safe'
+
+
 def test_download_media_rejects_error_pages(monkeypatch):
     import httpx
 
@@ -209,3 +214,64 @@ def test_download_media_rejects_error_pages(monkeypatch):
     monkeypatch.setattr(utils.httpx, 'get', lambda *a, **k: httpx.Response(404, content=b'Not found', request=request))
 
     assert utils.download_media('http://szuru.local/data/1.jpg') is None
+
+
+class PrepareConfig:
+    credentials = {'pixiv': {'token': 'token'}}
+    auto_tagger = {'use_pixiv_tags': True}
+
+
+def booru_result(rating, tags='tag'):
+    from szurubooru_toolkit.boorus import BooruPost
+
+    return [BooruPost(id=1, tags=tags, rating=rating)]
+
+
+def test_prepare_post_uses_strictest_booru_rating():
+    results = {'danbooru': booru_result('explicit'), 'konachan': booru_result('safe')}
+
+    # Whichever order the boorus answered in
+    for ordered in (results, dict(reversed(results.items()))):
+        _, _, rating = utils.prepare_post(ordered, PrepareConfig)
+        assert rating == 'unsafe'
+
+
+def test_prepare_post_without_ratings_keeps_post_safety():
+    _, _, rating = utils.prepare_post({'danbooru': booru_result('')}, PrepareConfig)
+
+    assert not rating
+
+
+class FakePixiv:
+    def __init__(self, token):
+        pass
+
+    def get_result(self, url):
+        return object()
+
+    def get_tags(self, result):
+        return ['オリジナル', '女の子']
+
+    def get_rating(self, result):
+        return 'safe'
+
+    @staticmethod
+    def extract_pixiv_artist(name):
+        return 'some_artist'
+
+
+@pytest.mark.parametrize('use_pixiv_tags', [True, False])
+def test_prepare_post_falls_back_to_raw_pixiv_tags(monkeypatch, use_pixiv_tags):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(utils, 'Pixiv', FakePixiv)
+    # Danbooru has no translation for any of the Pixiv tags
+    monkeypatch.setattr(utils, 'convert_tags', lambda tags: [])
+    config = SimpleNamespace(credentials=PrepareConfig.credentials, auto_tagger={'use_pixiv_tags': use_pixiv_tags})
+    pixiv = SimpleNamespace(url='https://www.pixiv.net/artworks/1', author_name='someone')
+
+    tags, _, rating = utils.prepare_post({'pixiv': pixiv}, config)
+
+    expected = ['オリジナル', '女の子', 'some_artist'] if use_pixiv_tags else ['some_artist']
+    assert tags == expected
+    assert rating == 'safe'

@@ -47,7 +47,7 @@ def config(monkeypatch):
 
 def test_source_categories_survive_normalization(config):
     posts = _parse_danbooru(
-        [{'id': 1, 'rating': 's', 'tag_string': 'miku solo', 'tag_string_character': 'miku', 'tag_string_general': 'solo'}]
+        [{'id': 1, 'rating': 's', 'tag_string': 'miku solo', 'tag_string_character': 'miku', 'tag_string_general': 'solo'}],
     )
     hints = {}
     tags, _, _ = prepare_post({'danbooru': posts}, config, hints)
@@ -59,7 +59,10 @@ def test_source_categories_survive_normalization(config):
 def test_existing_aliases_unknown_and_filtered_tags(config):
     client = Client()
     ensure_tag_categories(
-        client, config, ['alias', 'unknown', 'new name'], {'alias': 'character', 'new name': 'character', 'removed': 'character'}
+        client,
+        config,
+        ['alias', 'unknown', 'new name'],
+        {'alias': 'character', 'new name': 'character', 'removed': 'character'},
     )
     assert client.created == [('new_name', 'Character')]
     assert client.tags['existing'].category == 'Manual'
@@ -133,3 +136,16 @@ def test_auto_tagger_categorizes_only_final_tags(config, monkeypatch, dry_run):
     auto_tagger.process_post(post, None, None, threading.Event(), [], ['removed'])
     assert client.created == ([] if dry_run else [('miku', 'Character')])
     assert len(client.posts) == (0 if dry_run else 1)
+
+
+def test_sankaku_tag_types_use_sankaku_numbering():
+    tags = [{'tagName': name, 'type': type_} for name, type_ in [('genre_tag', 5), ('medium_tag', 8), ('meta_tag', 9), ('studio_tag', 2)]]
+
+    assert extract_categories({'tags': tags}) == {'genre_tag': 'general', 'medium_tag': 'meta', 'meta_tag': 'meta'}
+
+
+def test_gallery_dl_sankaku_genre_and_medium_keys():
+    assert extract_categories({'tags_genre': ['genre_tag'], 'tags_medium': ['medium_tag']}) == {
+        'genre_tag': 'general',
+        'medium_tag': 'meta',
+    }

@@ -7,14 +7,18 @@ from szurubooru_toolkit.szurubooru import TagNotFoundError
 
 
 CATEGORY_NAMES = {0: 'general', 1: 'artist', 3: 'copyright', 4: 'character', 5: 'meta'}
+# Sankaku numbers its tag types differently: 5 is genre, 8 medium, 9 meta (studio 2 has no equivalent)
+SANKAKU_CATEGORY_NAMES = {0: 'general', 1: 'artist', 3: 'copyright', 4: 'character', 5: 'general', 8: 'meta', 9: 'meta'}
+# gallery-dl writes Sankaku's extra types as tags_genre and tags_medium
+_KEY_CATEGORIES = {category: category for category in CATEGORY_NAMES.values()} | {'genre': 'general', 'medium': 'meta'}
 _lock = threading.Lock()
 
 
 def extract_categories(metadata: dict) -> dict[str, str]:
     """Read categorized strings from booru metadata, or typed Sankaku tags."""
     result = {}
-    for category in CATEGORY_NAMES.values():
-        for key in (f'tag_string_{category}', f'tags_{category}'):
+    for key_name, category in _KEY_CATEGORIES.items():
+        for key in (f'tag_string_{key_name}', f'tags_{key_name}'):
             tags = metadata.get(key, [])
             if isinstance(tags, str):
                 tags = tags.split()
@@ -28,7 +32,7 @@ def extract_categories(metadata: dict) -> dict[str, str]:
                 category = tag.get('type', tag.get('category'))
                 if isinstance(category, str) and category.isdigit():
                     category = int(category)
-                category = CATEGORY_NAMES.get(category, category)
+                category = SANKAKU_CATEGORY_NAMES.get(category, category)
                 if name and category in CATEGORY_NAMES.values():
                     result[name] = category
     return result

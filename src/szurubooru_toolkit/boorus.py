@@ -28,6 +28,9 @@ _RATINGS = {
     'g': 'general',
 }
 
+# Danbooru's scheme is general/sensitive/questionable/explicit, so its 's' isn't safe
+_DANBOORU_RATINGS = _RATINGS | {'s': 'sensitive'}
+
 
 @dataclass
 class BooruPost:
@@ -42,8 +45,8 @@ class BooruPost:
     tag_categories: dict[str, str] = field(default_factory=dict)
 
 
-def _normalize_rating(rating: str) -> str:
-    return _RATINGS.get(rating, rating)
+def _normalize_rating(rating: str, ratings: dict = _RATINGS) -> str:
+    return ratings.get(rating, rating)
 
 
 def _parse_danbooru(data: list) -> list[BooruPost]:
@@ -57,7 +60,7 @@ def _parse_danbooru(data: list) -> list[BooruPost]:
                 id=post['id'],
                 tags=post.get('tag_string', ''),
                 tag_categories=extract_categories(post),
-                rating=_normalize_rating(post.get('rating', '')),
+                rating=_normalize_rating(post.get('rating', ''), _DANBOORU_RATINGS),
                 md5=post.get('md5'),
                 file_url=post.get('file_url'),
                 source=post.get('source'),

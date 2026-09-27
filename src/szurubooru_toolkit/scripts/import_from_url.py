@@ -229,7 +229,7 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
             metadata['source'] = generate_src(metadata)
 
             if 'rating' in metadata:
-                metadata['safety'] = convert_rating(metadata['rating'])
+                metadata['safety'] = convert_rating(metadata['rating'], site)
             else:
                 metadata['safety'] = config.upload_media['default_safety']
 
