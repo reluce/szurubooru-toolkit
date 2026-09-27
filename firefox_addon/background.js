@@ -10,7 +10,11 @@ browser.runtime.onMessage.addListener(function (message, sender, sendResponse) {
                 '&range=' + encodeURIComponent(range);
     
     fetch(url, { method: 'POST' })
-      .then(response => response.text())
+      .then(response => response.text().then(text => {
+        // fetch only rejects on network errors, a 4xx/5xx response is a failed import too
+        if (!response.ok) throw new Error(text || `HTTP ${response.status}`);
+        return text;
+      }))
       .then(result => {
         console.log('Import result:', result);
         // Optionally show a notification
@@ -48,7 +52,11 @@ browser.runtime.onMessage.addListener(function (message, sender, sendResponse) {
       },
       body: JSON.stringify({ urls: urls })
     })
-      .then(response => response.text())
+      .then(response => response.text().then(text => {
+        // fetch only rejects on network errors, a 4xx/5xx response is a failed import too
+        if (!response.ok) throw new Error(text || `HTTP ${response.status}`);
+        return text;
+      }))
       .then(result => {
         console.log('Import all tabs result:', result);
         browser.notifications.create({

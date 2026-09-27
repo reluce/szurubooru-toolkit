@@ -751,11 +751,11 @@ def invoke_gallery_dl(urls: list, tmp_path: str, params: list = [], workers: int
 
     if len(urls) > 1 and workers > 1:
         with ThreadPoolExecutor(max_workers=min(workers, len(urls))) as executor:
-            futures = [executor.submit(subprocess.run, base_command + [url]) for url in urls]
+            futures = [executor.submit(subprocess.run, base_command + ['--', url]) for url in urls]
             for future in futures:
                 future.result()
     else:
-        subprocess.run(base_command + urls)
+        subprocess.run(base_command + ['--'] + urls)
 
     return download_dir
 
