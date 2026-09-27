@@ -203,9 +203,9 @@ def process_post(  # noqa C901
         None
     """
 
-    # Once the daily SauceNAO limit is reached and the WD tagger is disabled,
+    # Once the daily SauceNAO limit is reached and nothing else can tag,
     # the remaining posts are counted as untagged (same as the sequential break before)
-    if limit_event.is_set() and not config.auto_tagger['wd_tagger']:
+    if limit_event.is_set() and not config.auto_tagger['wd_tagger'] and not config.auto_tagger['md5_search']:
         statistics(untagged=1)
         return
 
@@ -243,7 +243,7 @@ def process_post(  # noqa C901
             image = download_media(post.content_url, post.md5)
             # Shrink files >2MB
             try:
-                if post.type != 'video' and len(image) > 2000000:
+                if image and post.type != 'video' and len(image) > 2000000:
                     image = shrink_img(image, resize=True, convert=True)
             except UnidentifiedImageError:
                 logger.debug('Could not shrink image')
@@ -275,7 +275,8 @@ def process_post(  # noqa C901
 
     # Tag with the WD tagger. Videos are tagged from sampled frames if enabled.
     is_video = post.type == 'video'
-    can_tag_media = not is_video or (config.auto_tagger['wd_tagger_videos'] and image)
+    # No image means the download failed
+    can_tag_media = bool(image) and (not is_video or config.auto_tagger['wd_tagger_videos'])
     pixiv_result_only = True if len(tags_by_sauce) < 2 else False
     if (
         (not tags_by_md5 and pixiv_result_only and config.auto_tagger['wd_tagger']) or config.auto_tagger['wd_tagger_forced']
@@ -293,7 +294,7 @@ def process_post(  # noqa C901
         )
 
         tags_by_wd_tagger, post.safety = result
-        if config.tag_categories["enabled"]:
+        if config.tag_categories['enabled']:
             for name, category in wd_tagger.tag_categories(tags_by_wd_tagger).items():
                 categories.setdefault(name, category)
 
@@ -408,7 +409,7 @@ def main(  # noqa C901
 
         if not config.auto_tagger['saucenao'] and not config.auto_tagger['wd_tagger'] and not config.auto_tagger['md5_search']:
             logger.info('Nothing to do. Enable either SauceNAO or the WD tagger in your config.')
-            exit()
+            return limit_reached
 
         if config.auto_tagger['dry_run']:
             logger.info('Dry run enabled: no posts will be updated.')
@@ -446,7 +447,7 @@ def main(  # noqa C901
             total_posts = next(posts)
         except StopIteration:
             logger.info(f'Found no posts for your query: {query}')
-            exit()
+            return limit_reached
 
         if (limit := config.auto_tagger['limit']) and int(limit) > 0 and int(limit) < int(total_posts):
             posts = [next(posts) for _ in range(int(limit))]
@@ -474,6 +475,9 @@ def main(  # noqa C901
         print_statistics(total_posts)
     except SzurubooruError as e:
         logger.critical(f'Could not process your query: {e}')
+        if post_id:
+            # Called per file from upload-media: exiting would abort the whole batch
+            return limit_reached or _limit_event.is_set()
         exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')

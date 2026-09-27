@@ -242,6 +242,7 @@ def get_cached_implications(tag_name: str, create_missing: bool = False) -> list
     """
 
     from szurubooru_toolkit import szuru
+    from szurubooru_toolkit.szurubooru import TagExistsError
     from szurubooru_toolkit.szurubooru import TagNotFoundError
 
     with _implications_lock:
@@ -253,7 +254,11 @@ def get_cached_implications(tag_name: str, create_missing: bool = False) -> list
     except TagNotFoundError:
         if not create_missing:
             raise
-        szuru_tag = szuru.create_tag(tag_name)
+        try:
+            szuru_tag = szuru.create_tag(tag_name)
+        except TagExistsError:
+            # Another worker created it in the meantime
+            szuru_tag = szuru.get_tag(tag_name)
 
     implications = [implication.primary_name for implication in szuru_tag.implications]
 
@@ -469,7 +474,10 @@ def download_media(content_url: str, md5: str = None) -> bytes | None:
 
     for _ in range(2):
         try:
-            file = httpx.get(content_url, follow_redirects=True, timeout=30).content
+            response = httpx.get(content_url, follow_redirects=True, timeout=30)
+            # An error page isn't the media
+            response.raise_for_status()
+            file = response.content
         except Exception as e:
             logger.warning(f'Could not download post from {content_url}: {e}')
             continue

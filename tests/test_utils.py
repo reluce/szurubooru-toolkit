@@ -149,6 +149,9 @@ def test_download_media_retries_once_on_md5_mismatch(monkeypatch):
         def __init__(self, content):
             self.content = content
 
+        def raise_for_status(self):
+            pass
+
     monkeypatch.setattr(utils.httpx, 'get', lambda *a, **k: FakeResponse(responses.pop(0)))
 
     file = utils.download_media('http://szuru.local/data/1.jpg', md5=get_md5sum(b'intact'))
@@ -197,3 +200,12 @@ def test_generate_src_e_hentai():
     metadata = {'site': 'e-hentai', 'gid': 4046994, 'token': 'd23b006a6f'}
 
     assert utils.generate_src(metadata) == 'https://e-hentai.org/g/4046994/d23b006a6f'
+
+
+def test_download_media_rejects_error_pages(monkeypatch):
+    import httpx
+
+    request = httpx.Request('GET', 'http://szuru.local/data/1.jpg')
+    monkeypatch.setattr(utils.httpx, 'get', lambda *a, **k: httpx.Response(404, content=b'Not found', request=request))
+
+    assert utils.download_media('http://szuru.local/data/1.jpg') is None
