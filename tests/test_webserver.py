@@ -62,6 +62,8 @@ def test_empty_overrides_restore_configured_values(monkeypatch):
     from szurubooru_toolkit.config import Config
 
     config = Config()
+    # override_config validates these; don't rely on a local config.toml providing them
+    config.globals.update(url='http://szuru.local', username='user', api_token='token')
     config.import_from_url.update(cookies='/configured/cookies.txt', range=':50')
     monkeypatch.setattr(webserver, 'config', config)
     monkeypatch.setattr(webserver, '_configured', {})
