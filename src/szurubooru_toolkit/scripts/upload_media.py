@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import shutil
-from glob import glob
 from pathlib import Path
 
 import httpx
@@ -38,13 +37,18 @@ def get_files(upload_dir: str) -> list:
         list: A list which contains the full path of each found images/videos (includes subdirectories).
     """
 
-    allowed_extensions = ['jpg', 'jpeg', 'png', 'mp4', 'webm', 'gif', 'swf', 'webp']
+    allowed_extensions = {'jpg', 'jpeg', 'png', 'mp4', 'webm', 'gif', 'swf', 'webp'}
     files = []
 
-    # Extensions match case-insensitively (IMG_0001.JPG); hidden files like macOS' ._IMG.jpg are skipped, as glob did
-    for extension in allowed_extensions:
-        pattern = ''.join(f'[{char}{char.upper()}]' for char in extension)
-        files += glob(upload_dir + '/**/*.' + pattern, recursive=True)
+    # One walk instead of a glob per extension. Extensions match case-insensitively (IMG_0001.JPG);
+    # hidden files and directories like macOS' ._IMG.jpg are skipped, as glob did
+    for root, dirs, names in os.walk(upload_dir, followlinks=True):
+        dirs[:] = [name for name in dirs if not name.startswith('.')]
+        files += [
+            os.path.join(root, name)
+            for name in names
+            if not name.startswith('.') and os.path.splitext(name)[1][1:].lower() in allowed_extensions
+        ]
 
     return files
 
@@ -522,7 +526,7 @@ def main(
                 workers = max(1, int(config.upload_media['workers']))
                 run_concurrently(files_to_upload, worker, workers, len(files_to_upload), hide_progress)
 
-                batch.reconcile(szuru)
+                batch.reconcile(szuru, workers)
 
                 if config.upload_media['cleanup']:
                     cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted

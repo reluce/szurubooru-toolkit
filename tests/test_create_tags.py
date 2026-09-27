@@ -99,6 +99,17 @@ def test_main_tag_file_with_implication_columns(szuru, tmp_path):
     assert implication_names(szuru.tags['cat_girl']) == []
 
 
+def test_main_tag_file_implied_tags_keep_their_own_line_category(szuru, tmp_path):
+    # Lines are processed concurrently; the implied tag's own line must still set its category
+    tag_file = tmp_path / 'tags.txt'
+    tag_file.write_text('slime_girl,character,monster_girl\n' * 20 + 'monster_girl,meta\n')
+
+    create_tags.main(tag_file=str(tag_file))
+
+    assert szuru.tags['monster_girl'].category == 'meta'
+    assert implication_names(szuru.tags['slime_girl']) == ['monster_girl']
+
+
 def test_main_tag_file_skips_blank_lines_and_defaults_category(szuru, tmp_path):
     tag_file = tmp_path / 'tags.txt'
     tag_file.write_text('slime_girl,character\n\nno_category\n')

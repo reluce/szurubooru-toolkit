@@ -235,6 +235,8 @@ def statistics(tagged=0, wd_tagger=0, untagged=0, skipped=0) -> tuple:
 
 
 _implications_cache: dict[str, list[str]] = {}
+# Tags found missing, so they aren't looked up again for every post
+_missing_tags: set[str] = set()
 _implications_lock = threading.Lock()
 
 
@@ -263,11 +265,15 @@ def get_cached_implications(tag_name: str, create_missing: bool = False) -> list
     with _implications_lock:
         if tag_name in _implications_cache:
             return _implications_cache[tag_name]
+        if tag_name in _missing_tags and not create_missing:
+            raise TagNotFoundError('TagNotFoundError', f'Tag "{tag_name}" not found')
 
     try:
         szuru_tag = szuru.get_tag(tag_name)
     except TagNotFoundError:
         if not create_missing:
+            with _implications_lock:
+                _missing_tags.add(tag_name)
             raise
         try:
             szuru_tag = szuru.create_tag(tag_name)

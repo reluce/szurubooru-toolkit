@@ -255,9 +255,11 @@ class WDTagger:
             frame_scores = []
             for timestamp in timestamps:
                 try:
+                    # Scaled to the model input in ffmpeg and piped as BMP, which skips PNG compressing a full-size frame
                     frame = subprocess.run(
-                        [ffmpeg, '-v', 'error', '-ss', f'{timestamp:.2f}', '-i', video_path]
-                        + ['-frames:v', '1', '-f', 'image2pipe', '-vcodec', 'png', '-'],
+                        [ffmpeg, '-v', 'error', '-ss', f'{timestamp:.2f}', '-i', video_path, '-frames:v', '1']
+                        + ['-vf', f'scale={self.input_size}:{self.input_size}:force_original_aspect_ratio=decrease']
+                        + ['-f', 'image2pipe', '-vcodec', 'bmp', '-'],
                         capture_output=True,
                         check=True,
                         timeout=120,

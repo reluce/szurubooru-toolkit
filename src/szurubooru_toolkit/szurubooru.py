@@ -364,7 +364,8 @@ class Szurubooru:
         if not videos:
             query = f'type:image,animation {query}'
 
-        params = {'query': query, 'limit': 100}
+        # A small max_results fits on one page, so don't let the server serialize more
+        params = {'query': query, 'limit': min(100, max_results) if max_results else 100}
         logger.debug(f'Getting posts with query params: {params}')
 
         response = self._fetch_post_resource('/posts/', params)

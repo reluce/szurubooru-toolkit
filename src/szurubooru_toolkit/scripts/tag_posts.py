@@ -48,6 +48,8 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
             logger.info(f'Found {total_posts} posts. Start tagging...')
 
         def worker(post) -> None:
+            original = set(post.tags), post.source
+
             if mode == 'append':
                 if add_tags:
                     post.tags = list(set().union(post.tags, add_tags))
@@ -73,7 +75,9 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
                         if implication not in post.tags:
                             post.tags.append(implication)
 
-            szuru.update_post(post)
+            # Re-runs mostly hit posts which already are as requested
+            if (set(post.tags), post.source) != original:
+                szuru.update_post(post)
 
         workers = max(1, int(config.tag_posts['workers']))
         run_concurrently(posts, worker, workers, int(total_posts), hide_progress)

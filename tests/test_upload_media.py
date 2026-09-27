@@ -220,7 +220,8 @@ def test_update_tags_if_exists_handles_similar_post_entries(monkeypatch):
 
 def test_get_files_matches_extensions_case_insensitively(tmp_path):
     (tmp_path / 'sub').mkdir()
-    for name in ['IMG_0001.JPG', 'sub/b.Png', 'c.jpeg', 'notes.txt', '._IMG_0001.JPG']:
+    (tmp_path / '.hidden').mkdir()
+    for name in ['IMG_0001.JPG', 'sub/b.Png', 'c.jpeg', 'notes.txt', '._IMG_0001.JPG', '.hidden/d.jpg', 'jpg']:
         (tmp_path / name).write_bytes(b'x')
 
     files = upload_media.get_files(str(tmp_path))

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import threading
-from collections import defaultdict
 
 from loguru import logger
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
+from szurubooru_toolkit.relations import candidate_pairs
 from szurubooru_toolkit.relations import cluster
 from szurubooru_toolkit.relations import dhash
 from szurubooru_toolkit.relations import hamming_distance
@@ -14,49 +14,6 @@ from szurubooru_toolkit.szurubooru import SzurubooruError
 from szurubooru_toolkit.utils import download_media
 from szurubooru_toolkit.utils import interrupt_exit
 from szurubooru_toolkit.utils import run_concurrently
-
-
-def candidate_pairs(hashes: dict[int, int], max_distance: int, hash_bits: int = 64) -> set[tuple[int, int]]:
-    """
-    Returns the post id pairs whose hashes could be within `max_distance` bits.
-
-    Uses the pigeonhole principle: the hash is split into `max_distance + 1` disjoint
-    bit bands, and two hashes within `max_distance` must be identical in at least one
-    band. Only pairs sharing a band value get an exact Hamming check later, which
-    avoids the full O(n²) comparison over all posts.
-
-    Args:
-        hashes (dict[int, int]): Post ids mapped to their perceptual hash.
-        max_distance (int): The maximum Hamming distance considered a duplicate.
-        hash_bits (int, optional): The hash width in bits. Defaults to 64.
-
-    Returns:
-        set[tuple[int, int]]: Candidate post id pairs (smaller id first).
-    """
-
-    bands = max_distance + 1
-    band_bits = hash_bits // bands
-
-    if band_bits == 0:
-        # Degenerate case: more bands than bits, fall back to all pairs
-        ids = list(hashes)
-        return {(min(a, b), max(a, b)) for index, a in enumerate(ids) for b in ids[index + 1 :]}
-
-    buckets = defaultdict(list)
-
-    for post_id, post_hash in hashes.items():
-        for band in range(bands):
-            band_value = (post_hash >> (band * band_bits)) & ((1 << band_bits) - 1)
-            buckets[(band, band_value)].append(post_id)
-
-    pairs = set()
-    for members in buckets.values():
-        if len(members) > 1:
-            for index, post_a in enumerate(members):
-                for post_b in members[index + 1 :]:
-                    pairs.add((min(post_a, post_b), max(post_a, post_b)))
-
-    return pairs
 
 
 def find_duplicate_clusters(hashes: dict[int, int], max_distance: int) -> list[set[int]]:

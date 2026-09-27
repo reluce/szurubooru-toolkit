@@ -62,8 +62,10 @@ class FakeSzuruTags:
 @pytest.fixture(autouse=True)
 def clear_implications_cache():
     utils._implications_cache.clear()
+    utils._missing_tags.clear()
     yield
     utils._implications_cache.clear()
+    utils._missing_tags.clear()
 
 
 def test_implications_cached_across_calls(monkeypatch):
@@ -91,6 +93,13 @@ def test_implications_missing_raises_without_create(monkeypatch):
 
     with pytest.raises(TagNotFoundError):
         get_cached_implications('nope')
+    with pytest.raises(TagNotFoundError):
+        get_cached_implications('nope')
+    assert fake.get_calls == 1  # the miss is remembered
+
+    # Callers which create missing tags still get to create it
+    assert get_cached_implications('nope', create_missing=True) == []
+    assert fake.created == ['nope']
 
 
 @pytest.mark.parametrize('workers', [1, 4])
