@@ -110,10 +110,17 @@ class WDTagger:
                 )
                 exit(1)
 
+            def fetch(filename: str) -> str:
+                # Use the cached file without contacting the Hub; only download on a cache miss
+                try:
+                    return hf_hub_download(repo_id=model, filename=filename, local_files_only=True)
+                except Exception:
+                    logger.debug(f'Downloading "{filename}" of WD tagger model "{model}" from Hugging Face...')
+                    return hf_hub_download(repo_id=model, filename=filename)
+
             try:
-                logger.debug(f'Downloading WD tagger model "{model}" from Hugging Face (cached after first download)...')
-                model_path = hf_hub_download(repo_id=model, filename='model.onnx')
-                tags_path = hf_hub_download(repo_id=model, filename='selected_tags.csv')
+                model_path = fetch('model.onnx')
+                tags_path = fetch('selected_tags.csv')
             except Exception as e:
                 logger.debug(f'Model download error: {e}')
                 logger.critical(f'WD tagger model "{model}" could not be downloaded. Check your wd_tagger_model setting.')
