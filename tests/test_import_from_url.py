@@ -65,3 +65,19 @@ def test_gelbooru_credentials_passed_to_gallery_dl(monkeypatch, categorize):
     assert '--option=extractor.gelbooru.api-key=abc' in captured['params']
 
     assert ('--option=extractor.gelbooru.tags=true' in captured['params']) is categorize
+
+
+def test_already_uploaded_queries_checksum(monkeypatch):
+    queries = []
+
+    class Szuru:
+        def get_posts(self, query, **kwargs):
+            queries.append(query)
+            if query.endswith('a9993e364706816aba3e25717850c26c9cd0d89d'):  # sha1('abc')
+                yield '1'
+
+    monkeypatch.setattr(import_from_url, 'szuru', Szuru())
+
+    assert import_from_url.already_uploaded(b'abc') is True
+    assert import_from_url.already_uploaded(b'other') is False
+    assert queries[0] == 'content-checksum:a9993e364706816aba3e25717850c26c9cd0d89d'

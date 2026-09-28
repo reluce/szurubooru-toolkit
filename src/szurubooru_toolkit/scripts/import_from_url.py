@@ -1,4 +1,5 @@
 import glob
+import hashlib
 import json
 import os
 import shutil
@@ -120,6 +121,30 @@ def sort_file_by_time(file) -> datetime:
     return time_value
 
 
+def already_uploaded(content: bytes) -> bool:
+    """
+    Checks whether a byte-identical post already exists in szurubooru.
+
+    This is a single search request, so duplicates get skipped before the costly tag
+    lookups and the temporary upload for the reverse search. Converted or shrunk
+    uploads don't match their original checksum; those still get caught by the
+    reverse search in upload_media.
+
+    Args:
+        content (bytes): The downloaded file.
+
+    Returns:
+        bool: True if a post with the same SHA1 checksum exists, False otherwise or on errors.
+    """
+
+    try:
+        query = f'content-checksum:{hashlib.sha1(content).hexdigest()}'
+        return next(szuru.get_posts(query, pagination=False, videos=True, max_results=1), None) is not None
+    except Exception as e:
+        logger.debug(f'Checksum lookup failed, falling back to the reverse search: {e}')
+        return False
+
+
 @logger.catch
 def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bool = False) -> None:
     """
@@ -219,6 +244,13 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
     relations_batch = RelationsBatch()
 
     def worker(file: str) -> None:
+        with open(file, 'rb') as file_b:
+            content = file_b.read()
+
+        if not config.import_from_url['update_tags_if_exists'] and already_uploaded(content):
+            logger.debug(f'File "{file}" is already uploaded')
+            return
+
         with open(file + '.json') as f:
             metadata = json.load(f)
             try:
@@ -247,13 +279,12 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
             if add_tags:
                 metadata['tags'] += add_tags
 
-            with open(file, 'rb') as file_b:
-                upload_media.main(
-                    file_to_upload=file_b.read(),
-                    file_ext=Path(file).suffix[1:],
-                    metadata=metadata,
-                    relations_batch=relations_batch,
-                )
+            upload_media.main(
+                file_to_upload=content,
+                file_ext=Path(file).suffix[1:],
+                metadata=metadata,
+                relations_batch=relations_batch,
+            )
 
     workers = max(1, int(config.import_from_url['workers']))
     run_concurrently(files, worker, workers, len(files), hide_progress)
