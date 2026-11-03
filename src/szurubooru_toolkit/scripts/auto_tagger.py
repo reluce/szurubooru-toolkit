@@ -88,9 +88,6 @@ def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes, cooldown: Sa
     else:
         limit_reached = True
 
-    if limit_reached and config.auto_tagger['wd_tagger']:
-        config.auto_tagger['saucenao'] = False
-
     return results, limit_reached
 
 
@@ -123,7 +120,7 @@ def print_statistics(total_posts):
 
     This function retrieves the statistics of the tagging process by calling the `statistics` function. It then logs
     these statistics, including the total number of posts, the number of tagged posts, the number of posts tagged by
-    the WD tagger, the number of untagged posts, and the number of skipped posts.
+    the WD tagger, and the number of untagged posts.
 
     Args:
         total_posts (int): The total number of posts processed.
@@ -132,14 +129,13 @@ def print_statistics(total_posts):
         None
     """
 
-    total_tagged, total_wd_tagger, total_untagged, total_skipped = statistics()
+    total_tagged, total_wd_tagger, total_untagged = statistics()
 
     logger.success('Script has finished tagging.')
     logger.info(f'Total:     {total_posts}')
     logger.info(f'Tagged:    {str(total_tagged)}')
     logger.info(f'WD tagger: {str(total_wd_tagger)}')
     logger.info(f'Untagged:  {str(total_untagged)}')
-    logger.info(f'Skipped:   {str(total_skipped)}')
 
 
 def image_required(
@@ -380,7 +376,6 @@ def main(  # noqa C901
     remove_tags: list = [],
     post_id: str = None,
     file_to_upload: bytes = None,
-    limit_reached: bool = False,
     md5: str = '',
 ) -> None:
     """
@@ -400,7 +395,6 @@ def main(  # noqa C901
         remove_tags (list, optional): Tags to remove from the post. Defaults to [].
         post_id (str, optional): The `post_id` of the szurubooru post. Defaults to None.
         file_to_upload (bytes, optional): If set, will be uploaded to SauceNAO directly. Defaults to None.
-        limit_reached (bool, optional): If set, indicates that the SauceNAO limit has been reached. Defaults to False.
         md5 (str, optional): If set, will search boorus with given md5 hash instead of the one from the post. Defaults to ''.
 
     Returns:
@@ -419,7 +413,7 @@ def main(  # noqa C901
 
         if not config.auto_tagger['saucenao'] and not config.auto_tagger['wd_tagger'] and not config.auto_tagger['md5_search']:
             logger.info('Nothing to do. Enable either SauceNAO or the WD tagger in your config.')
-            return limit_reached
+            return
 
         if config.auto_tagger['dry_run']:
             logger.info('Dry run enabled: no posts will be updated.')
@@ -460,7 +454,7 @@ def main(  # noqa C901
             total_posts = next(posts)
         except StopIteration:
             logger.info(f'Found no posts for your query: {query}')
-            return limit_reached
+            return
 
         if limit and limit < int(total_posts):
             posts = list(posts)
@@ -468,9 +462,6 @@ def main(  # noqa C901
 
         if not from_upload_media:
             logger.info(f'Found {total_posts} posts. Start tagging...')
-
-        if limit_reached:
-            _limit_event.set()
 
         def worker(post: Post) -> None:
             process_post(post, sauce, _cooldown, _limit_event, add_tags, remove_tags, md5, file_to_upload)
@@ -480,7 +471,7 @@ def main(  # noqa C901
             for post in posts:
                 worker(post)
 
-            return _limit_event.is_set()
+            return
 
         workers = max(1, int(config.auto_tagger['workers']))
         run_concurrently(posts, worker, workers, int(total_posts), hide_progress)
@@ -490,7 +481,7 @@ def main(  # noqa C901
         logger.critical(f'Could not process your query: {e}')
         if post_id:
             # Called per file from upload-media: exiting would abort the whole batch
-            return limit_reached or _limit_event.is_set()
+            return
         exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')

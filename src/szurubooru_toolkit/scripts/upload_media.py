@@ -141,7 +141,7 @@ def check_similarity(szuru: Szurubooru, image_token: str) -> tuple | None:
         return None, [], True
 
 
-def update_tags(post: Post, metadata: dict, saucenao_limit_reached: bool, original_md5: str, file_to_upload: bytes) -> bool:
+def update_tags(post: Post, metadata: dict, original_md5: str, file_to_upload: bytes) -> None:
     """
     Updates the tags of a post.
 
@@ -150,19 +150,13 @@ def update_tags(post: Post, metadata: dict, saucenao_limit_reached: bool, origin
     Args:
         post (Post): Post object.
         metadata (dict): Metadata to update the post with.
-        saucenao_limit_reached (bool): If the SauceNAO limit has been reached.
         original_md5 (str): The original MD5 hash of the file.
         file_to_upload (bytes): The file to upload.
-
-    Returns:
-        bool: If the SauceNAO limit has been reached.
     """
 
     # An exact match is a post resource, a similar match is a reverse-search entry {'distance', 'post'}
     id = str(post['id']) if 'id' in post else str(post['post']['id'])
     logger.debug(f'Trying to update tags for post {id}...')
-
-    config.tag_posts['mode'] = 'append'
 
     try:
         if not metadata['tags'] and metadata['tag_string']:
@@ -171,17 +165,9 @@ def update_tags(post: Post, metadata: dict, saucenao_limit_reached: bool, origin
         pass
 
     ensure_tag_categories(szuru, config, metadata['tags'], metadata.get('tag_categories', {}))
-    config.tag_posts['silence_info'] = True
-    tag_posts.main(query=id, add_tags=metadata['tags'], source=metadata['source'])
+    tag_posts.main(query=id, add_tags=metadata['tags'], source=metadata['source'], mode='append', embedded=True)
 
-    saucenao_limit_reached = auto_tagger.main(
-        post_id=id,
-        file_to_upload=file_to_upload,
-        limit_reached=saucenao_limit_reached,
-        md5=original_md5,
-    )
-
-    return saucenao_limit_reached
+    auto_tagger.main(post_id=id, file_to_upload=file_to_upload, md5=original_md5)
 
 
 def upload_file(szuru: Szurubooru, post: Post) -> None:
@@ -325,9 +311,9 @@ def upload_post(
     file_ext: str,
     metadata: dict = None,
     file_path: str = None,
-    saucenao_limit_reached: bool = False,
     relations_batch: RelationsBatch = None,
-) -> tuple[bool, bool]:
+    update_tags_if_exists: bool = False,
+) -> bool:
     """
     Uploads given file to szurubooru and checks for similar posts.
 
@@ -340,11 +326,11 @@ def upload_post(
         file_ext (str): The file extension.
         metadata (dict, optional): Attach metadata to the post. Defaults to None.
         file_path (str, optional): The path to the file (used for debugging). Defaults to None.
-        saucenao_limit_reached (bool, optional): If the SauceNAO limit has been reached. Defaults to False.
+        relations_batch (RelationsBatch, optional): Collects similarity edges for reconciliation. Defaults to None.
+        update_tags_if_exists (bool, optional): Add the metadata tags to already uploaded duplicates. Defaults to False.
 
     Returns:
-        Tuple[bool, bool]: A tuple where the first element indicates if the upload was successful or not, and the second
-                           element indicates if the SauceNAO limit has been reached.
+        bool: If the upload was successful.
     """
 
     post = Post()
@@ -361,12 +347,12 @@ def upload_post(
     if not post.token:
         # The upload failed and was already logged; a reverse search without a
         # token would only add a misleading MissingRequiredFileError (#78).
-        return False, saucenao_limit_reached
+        return False
 
     exact_post, similar_posts, errors = check_similarity(szuru, post.token)
 
     if errors:
-        return False, False  # Assume the saucenao_limit_reached is False
+        return False
 
     threshold = 1 - float(config.upload_media['max_similarity'])
 
@@ -406,7 +392,7 @@ def upload_post(
         post_id = upload_file(szuru, post)
 
         if not post_id:
-            return False, saucenao_limit_reached
+            return False
 
         # Record similarity edges so the batch reconciliation can complete the
         # relation sets once all files are uploaded (earlier posts don't know
@@ -420,20 +406,15 @@ def upload_post(
 
         # Tag post if enabled
         if config.upload_media['auto_tag']:
-            saucenao_limit_reached = auto_tagger.main(
-                post_id=str(post_id),
-                file_to_upload=post.media,
-                limit_reached=saucenao_limit_reached,
-                md5=original_md5,
-            )
+            auto_tagger.main(post_id=str(post_id), file_to_upload=post.media, md5=original_md5)
 
     else:
         logger.debug('File is already uploaded')
-        if config.import_from_url['update_tags_if_exists'] and metadata:
+        if update_tags_if_exists and metadata:
             for entry in existing_posts:
-                saucenao_limit_reached = update_tags(entry, metadata, saucenao_limit_reached, original_md5, post.media)
+                update_tags(entry, metadata, original_md5, post.media)
 
-    return True, saucenao_limit_reached
+    return True
 
 
 def main(
@@ -441,9 +422,8 @@ def main(
     file_to_upload: bytes = None,
     file_ext: str = None,
     metadata: dict = None,
-    saucenao_limit_reached: bool = False,
     relations_batch: RelationsBatch = None,
-) -> int:
+) -> None:
     """
     Main logic of the script.
 
@@ -457,10 +437,7 @@ def main(
         file_to_upload (bytes, optional): A specific file to upload. Defaults to None.
         file_ext (str, optional): The file extension of the file to upload. Defaults to None.
         metadata (dict, optional): Metadata to attach to the post. Defaults to None.
-        saucenao_limit_reached (bool, optional): If the SauceNAO limit has been reached. Defaults to False.
-
-    Returns:
-        int: The number of files uploaded.
+        relations_batch (RelationsBatch, optional): Collects similarity edges for reconciliation. Defaults to None.
 
     Raises:
         KeyError: If no files are found to upload and no source path is specified.
@@ -476,7 +453,6 @@ def main(
         else:
             files_to_upload = file_to_upload
             from_import_from = True
-            config.upload_media['hide_progress'] = True
 
         if files_to_upload:
             if not from_import_from:
@@ -488,10 +464,6 @@ def main(
                     hide_progress = config.upload_media['hide_progress']
 
                 batch = RelationsBatch()
-
-                # The duplicate handling in upload_post routes through the
-                # import_from_url flag; honor the upload_media one for this run.
-                config.import_from_url['update_tags_if_exists'] = config.upload_media['update_tags_if_exists']
 
                 def worker(file_path: str) -> None:
                     with open(file_path, 'rb') as f:
@@ -507,12 +479,13 @@ def main(
                                 'source': '',
                             }
 
-                    success, _ = upload_post(
+                    success = upload_post(
                         file,
                         file_ext=Path(file_path).suffix[1:],
                         metadata=metadata,
                         file_path=file_path,
                         relations_batch=batch,
+                        update_tags_if_exists=config.upload_media['update_tags_if_exists'],
                     )
 
                     if config.upload_media['cleanup'] and success:
@@ -535,15 +508,13 @@ def main(
                     logger.success('Script has finished uploading!')
 
             else:
-                _, saucenao_limit_reached = upload_post(
+                upload_post(
                     file_to_upload,
                     file_ext,
                     metadata,
-                    saucenao_limit_reached=saucenao_limit_reached,
                     relations_batch=relations_batch,
+                    update_tags_if_exists=config.import_from_url['update_tags_if_exists'],
                 )
-
-            return saucenao_limit_reached
         else:
             logger.info('No files found to upload.')
     except KeyboardInterrupt:

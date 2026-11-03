@@ -40,7 +40,7 @@ def test_upload_post_uploads_new_file_and_relates_similar_posts(monkeypatch):
     szuru = StubSzuru(similar_posts=[{'distance': 0.2, 'post': {'id': 7}}])
     wire(monkeypatch, szuru)
 
-    success, _ = upload_media.upload_post(b'file-bytes', 'jpg')
+    success = upload_media.upload_post(b'file-bytes', 'jpg')
 
     assert success
     assert len(szuru.created) == 1
@@ -53,7 +53,7 @@ def test_upload_post_skips_upload_when_too_similar(monkeypatch):
     szuru = StubSzuru(similar_posts=[{'distance': 0.01, 'post': {'id': 7}}])
     wire(monkeypatch, szuru)
 
-    success, _ = upload_media.upload_post(b'file-bytes', 'jpg')
+    success = upload_media.upload_post(b'file-bytes', 'jpg')
 
     assert success
     assert szuru.created == []
@@ -63,7 +63,7 @@ def test_upload_post_skips_upload_when_exact_match_exists(monkeypatch):
     szuru = StubSzuru(exact_post={'id': 3})
     wire(monkeypatch, szuru)
 
-    success, _ = upload_media.upload_post(b'file-bytes', 'jpg')
+    success = upload_media.upload_post(b'file-bytes', 'jpg')
 
     assert success
     assert szuru.created == []
@@ -109,7 +109,7 @@ def test_upload_media_passes_sidecar_tags_and_cleans_up(monkeypatch, tmp_path):
 
     def fake_upload_post(file, file_ext, metadata=None, file_path=None, relations_batch=None, **kwargs):
         captured['metadata'] = metadata
-        return True, False
+        return True
 
     monkeypatch.setattr(upload_media, 'upload_post', fake_upload_post)
 
@@ -132,7 +132,7 @@ def test_upload_media_without_sidecar_keeps_default_tags(monkeypatch, tmp_path):
 
     def fake_upload_post(file, file_ext, metadata=None, file_path=None, relations_batch=None, **kwargs):
         captured['metadata'] = metadata
-        return True, False
+        return True
 
     monkeypatch.setattr(upload_media, 'upload_post', fake_upload_post)
 
@@ -154,7 +154,7 @@ def test_upload_post_bails_without_token_and_skips_reverse_search(monkeypatch):
     szuru.reverse_search = lambda token: searched.append(token)
     wire(monkeypatch, szuru)
 
-    success, _ = upload_media.upload_post(b'file-bytes', 'jpg')
+    success = upload_media.upload_post(b'file-bytes', 'jpg')
 
     assert not success
     assert searched == []
@@ -181,7 +181,7 @@ def test_import_creates_categorized_tags_before_post(monkeypatch):
         return original(metadata)
 
     szuru.create_post = create_post
-    success, _ = upload_media.upload_post(
+    success = upload_media.upload_post(
         b'file-bytes',
         'jpg',
         metadata={
@@ -199,22 +199,28 @@ def test_update_tags_if_exists_handles_similar_post_entries(monkeypatch):
     # A too-similar match is a reverse-search entry {'distance', 'post'}, not a post resource
     szuru = StubSzuru(similar_posts=[{'distance': 0.01, 'post': {'id': 7}}])
     wire(monkeypatch, szuru)
-    upload_media.config.import_from_url['update_tags_if_exists'] = True
+    upload_media.config.tag_posts['mode'] = 'overwrite'
     calls = {}
     monkeypatch.setattr(upload_media, 'ensure_tag_categories', lambda *args: None)
-    monkeypatch.setattr(upload_media.tag_posts, 'main', lambda query, **kwargs: calls.setdefault('tag_posts', query))
+    monkeypatch.setattr(
+        upload_media.tag_posts,
+        'main',
+        lambda query, mode, **kwargs: calls.setdefault('tag_posts', (query, mode)),
+    )
     monkeypatch.setattr(
         upload_media.auto_tagger,
         'main',
-        lambda post_id, **kwargs: calls.setdefault('auto_tagger', post_id) and False,
+        lambda post_id, **kwargs: calls.setdefault('auto_tagger', post_id),
     )
 
     metadata = {'tags': ['foo'], 'source': 'https://example.com/7', 'safety': 'safe'}
-    success, _ = upload_media.upload_post(b'file-bytes', 'jpg', metadata=metadata)
+    success = upload_media.upload_post(b'file-bytes', 'jpg', metadata=metadata, update_tags_if_exists=True)
 
     assert success
     assert szuru.created == []
-    assert calls == {'tag_posts': '7', 'auto_tagger': '7'}
+    assert calls == {'tag_posts': ('7', 'append'), 'auto_tagger': '7'}
+    # Appending to the duplicate must not change the configured mode for later tag-posts runs
+    assert upload_media.config.tag_posts['mode'] == 'overwrite'
 
 
 def test_get_files_matches_extensions_case_insensitively(tmp_path):

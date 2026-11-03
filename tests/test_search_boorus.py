@@ -101,8 +101,6 @@ def test_search_boorus_empty_results_excluded(monkeypatch):
 
 
 def test_search_boorus_one_failure_does_not_abort_others(monkeypatch, fake_sankaku):
-    utils.total_skipped = 0
-
     def fake_search(booru, query, limit, page, credentials=None):
         if booru == 'danbooru':
             raise ValueError('boom')

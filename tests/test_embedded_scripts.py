@@ -38,7 +38,7 @@ def config(monkeypatch):
 def test_auto_tagger_returns_instead_of_exiting_for_upload_media(monkeypatch, config, error):
     monkeypatch.setattr(auto_tagger, 'szuru', StubSzuru(error))
 
-    assert auto_tagger.main(post_id='1', limit_reached=True) is True
+    assert auto_tagger.main(post_id='1') is None
 
 
 def test_auto_tagger_cli_still_exits_on_error(monkeypatch, config):
@@ -50,7 +50,6 @@ def test_auto_tagger_cli_still_exits_on_error(monkeypatch, config):
 
 @pytest.mark.parametrize('error', [None, SzurubooruError('server down')])
 def test_tag_posts_returns_instead_of_exiting_for_upload_media(monkeypatch, config, error):
-    config.tag_posts['silence_info'] = True
     monkeypatch.setattr(tag_posts, 'szuru', StubSzuru(error))
 
-    tag_posts.main(query='1', add_tags=['foo'])
+    tag_posts.main(query='1', add_tags=['foo'], embedded=True)

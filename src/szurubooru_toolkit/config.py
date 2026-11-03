@@ -120,7 +120,6 @@ TAG_POSTS_DEFAULTS = {
     'hide_progress': False,
     'update_implications': False,
     'mode': 'append',
-    'silence_info': False,
     'workers': 4,
 }
 

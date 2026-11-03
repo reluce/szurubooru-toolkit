@@ -30,7 +30,6 @@ from szurubooru_toolkit.pixiv import PixivError
 total_tagged = 0
 total_wd_tagger = 0
 total_untagged = 0
-total_skipped = 0
 _statistics_lock = threading.Lock()
 
 
@@ -205,7 +204,7 @@ def apply_safety_overrides(tags: list, safety: str, overrides: dict) -> str:
     return safety
 
 
-def statistics(tagged=0, wd_tagger=0, untagged=0, skipped=0) -> tuple:
+def statistics(tagged=0, wd_tagger=0, untagged=0) -> tuple:
     """Keep track of how posts were tagged.
 
     Input values will get added to previously set value.
@@ -222,15 +221,13 @@ def statistics(tagged=0, wd_tagger=0, untagged=0, skipped=0) -> tuple:
     global total_tagged
     global total_wd_tagger
     global total_untagged
-    global total_skipped
 
     with _statistics_lock:
         total_tagged += tagged
         total_wd_tagger += wd_tagger
         total_untagged += untagged
-        total_skipped += skipped
 
-        return total_tagged, total_wd_tagger, total_untagged, total_skipped
+        return total_tagged, total_wd_tagger, total_untagged
 
 
 _implications_cache: dict[str, list[str]] = {}
@@ -602,8 +599,6 @@ def _record_booru_search(booru: str, failed: bool) -> None:
         _booru_failures[booru] = _booru_failures.get(booru, 0) + 1
         if _booru_failures[booru] == BOORU_MAX_FAILURES:
             logger.warning(f'{booru} failed {BOORU_MAX_FAILURES} searches in a row, skipping it for the rest of this run.')
-
-    statistics(skipped=1)
 
 
 def _search_single_booru(booru: str, query: str, limit: int, page: int, credentials: dict[str, dict]) -> list | None:

@@ -11,7 +11,14 @@ from szurubooru_toolkit.utils import run_concurrently
 
 
 @logger.catch
-def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = '') -> None:
+def main(
+    query: str,
+    add_tags: list = [],
+    remove_tags: list = [],
+    source: str = '',
+    mode: str = None,
+    embedded: bool = False,
+) -> None:
     """
     Retrieve the posts from input query, set post.tags based on mode and update them in szurubooru.
 
@@ -20,6 +27,9 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
         add_tags (list, optional): A list of tags to add to the posts. Defaults to [].
         remove_tags (list, optional): A list of tags to remove from the posts. Defaults to [].
         source (str, optional): The source of the posts. Defaults to ''.
+        mode (str, optional): 'append' or 'overwrite'. Defaults to the configured mode.
+        embedded (bool, optional): Called per file from upload-media: log less and don't exit on errors,
+            since that would abort the whole batch. Defaults to False.
 
     Returns:
         None
@@ -31,7 +41,7 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
         except KeyError:
             hide_progress = config.tag_posts['hide_progress']
 
-        mode = config.tag_posts['mode']
+        mode = mode or config.tag_posts['mode']
         update_implications = config.tag_posts['update_implications']
         logger.debug(f'update_implications = {str(update_implications)}')
 
@@ -40,11 +50,11 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
         try:
             total_posts = next(posts)
         except StopIteration:
-            if not config.tag_posts['silence_info']:
+            if not embedded:
                 logger.info(f'Found no posts for your query: {query}')
             return
 
-        if not config.tag_posts['silence_info']:
+        if not embedded:
             logger.info(f'Found {total_posts} posts. Start tagging...')
 
         def worker(post) -> None:
@@ -82,12 +92,11 @@ def main(query: str, add_tags: list = [], remove_tags: list = [], source: str = 
         workers = max(1, int(config.tag_posts['workers']))
         run_concurrently(posts, worker, workers, int(total_posts), hide_progress)
 
-        if not config.tag_posts['silence_info']:
+        if not embedded:
             logger.success('Finished tagging!')
     except SzurubooruError as e:
         logger.critical(f'Could not process your query: {e}')
-        if not config.tag_posts['silence_info']:
-            # silence_info is set when called per file from upload-media, where exiting would abort the whole batch
+        if not embedded:
             exit(1)
     except KeyboardInterrupt:
         logger.info('Received keyboard interrupt from user.')
