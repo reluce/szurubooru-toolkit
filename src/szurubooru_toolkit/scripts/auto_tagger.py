@@ -39,6 +39,15 @@ _limit_event = threading.Event()
 _limit_announced = threading.Lock()
 
 
+def reset_saucenao_limit() -> None:
+    """Allows SauceNAO again after the daily limit was hit, for long-lived processes (the webserver)."""
+
+    global _limit_announced
+
+    _limit_event.clear()
+    _limit_announced = threading.Lock()
+
+
 def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes, cooldown: SauceNaoCooldown) -> tuple[dict, bool]:
     """
     Retrieves the SauceNAO results for a given image.

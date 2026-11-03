@@ -95,3 +95,23 @@ def test_failed_imports_are_reported(server, monkeypatch):
 def test_import_skips_logger_catch():
     # @logger.catch would swallow every error, so no import could ever be reported as failed
     assert webserver.import_from_url is webserver.import_from_url_script.main.__wrapped__
+
+
+def test_each_import_starts_a_fresh_run(server, monkeypatch):
+    # A booru outage or the daily SauceNAO limit must not outlive the request it happened in
+    from szurubooru_toolkit import utils
+    from szurubooru_toolkit.scripts import auto_tagger
+
+    base, _ = server
+    monkeypatch.setattr(utils, '_booru_failures', {'danbooru': utils.BOORU_MAX_FAILURES})
+    monkeypatch.setattr(utils, '_missing_tags', {'some_tag'})
+    auto_tagger._limit_event.set()
+    auto_tagger._limit_announced.acquire()
+
+    httpx.post(f'{base}/import-from-url', params={'url': 'https://example.com/1'})
+
+    assert utils._booru_failures == {}
+    assert utils._missing_tags == set()
+    assert not auto_tagger._limit_event.is_set()
+    assert auto_tagger._limit_announced.acquire(blocking=False)
+    auto_tagger._limit_announced.release()

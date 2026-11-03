@@ -575,6 +575,22 @@ _booru_failures_lock = threading.Lock()
 RETRYABLE_STATUS_CODES = (429, 500, 502, 503, 504)
 
 
+def reset_run_state() -> None:
+    """
+    Forgets skipped boorus and cached tag lookups, so the next run starts fresh.
+
+    Only needed by long-lived processes (the webserver): a booru that was down or a
+    tag that was missing would otherwise stay that way until a restart.
+    """
+
+    with _booru_failures_lock:
+        _booru_failures.clear()
+
+    with _implications_lock:
+        _implications_cache.clear()
+        _missing_tags.clear()
+
+
 def _record_booru_search(booru: str, failed: bool) -> None:
     """Tracks consecutive failed searches per booru and announces when one gets skipped."""
 

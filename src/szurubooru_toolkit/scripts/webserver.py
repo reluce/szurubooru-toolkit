@@ -11,7 +11,9 @@ from http.server import HTTPServer
 from loguru import logger
 
 from szurubooru_toolkit import config
+from szurubooru_toolkit.scripts import auto_tagger
 from szurubooru_toolkit.scripts import import_from_url as import_from_url_script
+from szurubooru_toolkit.utils import reset_run_state
 
 # Skip main's @logger.catch, which swallows errors: the response has to report failed imports
 import_from_url = import_from_url_script.main.__wrapped__
@@ -19,6 +21,13 @@ import_from_url = import_from_url_script.main.__wrapped__
 
 # The configured cookies/range, captured before the first request overrides them
 _configured = {}
+
+
+def start_run() -> None:
+    """Resets the state a CLI run starts without, since this process lives across days of imports."""
+
+    reset_run_state()
+    auto_tagger.reset_saucenao_limit()
 
 
 def apply_overrides(params: dict) -> None:
@@ -99,6 +108,7 @@ class ToolkitRequestHandler(BaseHTTPRequestHandler):
             self._respond('No URL provided', 400)
             return
 
+        start_run()
         apply_overrides(params)
         try:
             import_from_url(urls=[current_url])
@@ -123,6 +133,7 @@ class ToolkitRequestHandler(BaseHTTPRequestHandler):
         urls = data['urls']
         logger.info(f'Importing from {len(urls)} tabs')
 
+        start_run()
         apply_overrides(params)
 
         successful_imports = 0
