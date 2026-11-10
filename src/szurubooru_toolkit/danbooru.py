@@ -54,6 +54,12 @@ class Danbooru:
         self._skip_logged = False
 
     def _available(self) -> bool:
+        # Respect the per-run skip from the post search, otherwise every expired window retries a dead site
+        from szurubooru_toolkit import utils
+
+        if utils.booru_skipped('danbooru'):
+            return False
+
         with self._lock:
             if monotonic() < self._skip_until:
                 return False

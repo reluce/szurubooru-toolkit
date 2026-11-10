@@ -588,6 +588,13 @@ def reset_run_state() -> None:
         _missing_tags.clear()
 
 
+def booru_skipped(booru: str) -> bool:
+    """Whether the booru failed too often and is skipped for the rest of this run."""
+
+    with _booru_failures_lock:
+        return _booru_failures.get(booru, 0) >= BOORU_MAX_FAILURES
+
+
 def _record_booru_search(booru: str, failed: bool) -> None:
     """Tracks consecutive failed searches per booru and announces when one gets skipped."""
 
@@ -615,9 +622,8 @@ def _search_single_booru(booru: str, query: str, limit: int, page: int, credenti
         logger.debug('Skipping Gelbooru as no credentials were provided.')
         return None
 
-    with _booru_failures_lock:
-        if _booru_failures.get(booru, 0) >= BOORU_MAX_FAILURES:
-            return None
+    if booru_skipped(booru):
+        return None
 
     max_attempts = 11
 

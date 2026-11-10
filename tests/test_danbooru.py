@@ -195,3 +195,17 @@ def test_outage_is_not_cached_as_missing(monkeypatch):
 
     danbooru._skip_until = 0
     assert danbooru.search_artist('artist') == 'found'
+
+
+def test_run_level_skip_blocks_lookups(monkeypatch):
+    from szurubooru_toolkit import utils
+
+    monkeypatch.setitem(utils._booru_failures, 'danbooru', utils.BOORU_MAX_FAILURES)
+    calls = []
+
+    def handler(request):
+        calls.append(request.url.path)
+        return httpx.Response(200, json=[{'name': 'found'}])
+
+    assert make_danbooru(handler).search_artist('artist') is None
+    assert calls == []
