@@ -142,7 +142,6 @@ def test_throttled_lookups_are_retried_not_treated_as_missing(monkeypatch):
         '/artists.json': [
             httpx.Response(200, json=[]),
             httpx.Response(429, json={}),
-            httpx.Response(200, json=[]),
             httpx.Response(200, json=[{'name': 'main_name'}]),
         ],
     }
@@ -150,3 +149,49 @@ def test_throttled_lookups_are_retried_not_treated_as_missing(monkeypatch):
 
     assert danbooru.get_other_names_tag('オリジナル') == 'original'
     assert danbooru.search_artist('alias') == 'main_name'
+
+
+def test_uses_identifying_user_agent():
+    from szurubooru_toolkit.boorus import USER_AGENT
+
+    def handler(request):
+        assert request.headers['user-agent'] == USER_AGENT
+        return httpx.Response(200, json=[])
+
+    assert make_danbooru(handler).search_artist('x') is None
+
+
+def test_outage_skips_further_lookups_without_retrying(monkeypatch):
+    from szurubooru_toolkit import danbooru as danbooru_module
+
+    sleeps = []
+    monkeypatch.setattr(danbooru_module, 'sleep', lambda seconds: sleeps.append(seconds))
+    calls = []
+
+    def handler(request):
+        calls.append(request.url.path)
+        return httpx.Response(503, headers={'Retry-After': '30'}, text='<title>Downbooru</title>')
+
+    danbooru = make_danbooru(handler)
+
+    assert danbooru.search_artist('one') is None
+    assert danbooru.search_artist('two') is None
+    assert danbooru.get_other_names_tag('three') is None
+    assert calls == ['/artists.json']
+    assert sleeps == []
+
+
+def test_outage_is_not_cached_as_missing(monkeypatch):
+    from szurubooru_toolkit import danbooru as danbooru_module
+
+    monkeypatch.setattr(danbooru_module, 'sleep', lambda seconds: None)
+    responses = [
+        httpx.Response(503, headers={'Retry-After': '30'}, text='<title>Downbooru</title>'),
+        httpx.Response(200, json=[{'name': 'found'}]),
+    ]
+
+    danbooru = make_danbooru(lambda request: responses.pop(0))
+    assert danbooru.search_artist('artist') is None
+
+    danbooru._skip_until = 0
+    assert danbooru.search_artist('artist') == 'found'

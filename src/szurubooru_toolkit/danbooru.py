@@ -1,11 +1,34 @@
 from functools import lru_cache
 from math import ceil
+from threading import Lock
+from time import monotonic
 from time import sleep
 from typing import List
 from typing import Optional
 
 import httpx
 from loguru import logger
+
+from szurubooru_toolkit.boorus import USER_AGENT
+
+# 429 is a short throttle and worth retrying. 5xx (including Cloudflare's
+# "Downbooru" 503) means the site is down: fail the lookup and skip further
+# requests for Retry-After seconds instead of blocking the import 5s at a time.
+_RATE_LIMITED = 429
+_OUTAGE_STATUS_CODES = {401, 403, 500, 502, 503, 504}
+_RATE_LIMIT_RETRIES = 3
+
+
+class _Unavailable(Exception):
+    """Danbooru is down or blocked; remaining lookups should be skipped."""
+
+
+def _retry_after(response: httpx.Response, default: float) -> float:
+    value = response.headers.get('Retry-After')
+    try:
+        return max(float(value), 0.0)
+    except (TypeError, ValueError):
+        return default
 
 
 class Danbooru:
@@ -21,19 +44,69 @@ class Danbooru:
 
         self.client = httpx.Client(
             base_url='https://danbooru.donmai.us',
-            headers={'User-Agent': 'Danbooru dummy agent'},
+            headers={'User-Agent': USER_AGENT},
             timeout=30,
+            follow_redirects=True,
             transport=transport,
         )
+        self._lock = Lock()
+        self._skip_until = 0.0
+        self._skip_logged = False
 
-    # Cached per run: imports and pixiv results look up the same tags and artists over and over
-    @lru_cache(maxsize=4096)
+    def _available(self) -> bool:
+        with self._lock:
+            if monotonic() < self._skip_until:
+                return False
+            self._skip_logged = False
+            return True
+
+    def _mark_down(self, seconds: float, reason: str) -> None:
+        with self._lock:
+            self._skip_until = max(self._skip_until, monotonic() + seconds)
+            if not self._skip_logged:
+                logger.warning(f'{reason}; skipping Danbooru lookups for {int(seconds)}s')
+                self._skip_logged = True
+
+    def _get_json(self, path: str, params: dict) -> object:
+        """GET JSON from Danbooru, retrying 429s. Outages open a skip window."""
+
+        if not self._available():
+            raise _Unavailable
+
+        for attempt in range(1, _RATE_LIMIT_RETRIES + 1):
+            try:
+                response = self.client.get(path, params=params)
+            except (TimeoutError, httpx.TransportError) as e:
+                if attempt == _RATE_LIMIT_RETRIES:
+                    self._mark_down(30, f'Danbooru unreachable ({e})')
+                    raise _Unavailable from e
+                logger.debug(f'Danbooru {path} failed ({e}), retrying in 5s...')
+                sleep(5)
+                continue
+
+            if response.status_code == _RATE_LIMITED:
+                wait = _retry_after(response, 5 * attempt)
+                if attempt == _RATE_LIMIT_RETRIES:
+                    self._mark_down(wait, 'Danbooru rate limited (HTTP 429)')
+                    raise _Unavailable
+                logger.debug(f'Danbooru {path} HTTP 429, retrying in {wait}s...')
+                sleep(wait)
+                continue
+
+            if response.status_code in _OUTAGE_STATUS_CODES:
+                wait = _retry_after(response, 30)
+                self._mark_down(wait, f'Danbooru returned HTTP {response.status_code}')
+                raise _Unavailable
+
+            response.raise_for_status()
+            return response.json()
+
     def get_other_names_tag(self, other_tag: str) -> Optional[str]:
         """
         Search for the main tag name of the given tag.
 
-        This method searches for the main tag name of the supplied tag on Danbooru via its wiki pages. It retries on
-        connection errors up to 11 times with a 5 second delay. If the tag is not found, it returns None.
+        Cached per run. An outage is not cached as "missing" so a later recovery
+        can still resolve the tag.
 
         Args:
             other_tag (str): The tag you want to search for.
@@ -42,38 +115,35 @@ class Danbooru:
             Optional[str]: The main tag if found, None otherwise.
         """
 
-        for _ in range(1, 12):
-            try:
-                params = {'search[other_names_match]': other_tag, 'only': 'title'}
-                response = self.client.get('/wiki_pages.json', params=params)
-                # Throttling or server errors are retried, not mistaken for "no such tag"
-                response.raise_for_status()
-                tag = response.json()[0]['title']
+        if not self._available():
+            return None
+        try:
+            return self._get_other_names_tag(other_tag)
+        except _Unavailable:
+            return None
 
-                logger.debug(f'Returning found tag for {other_tag}: {tag}')
+    # Cached per run: imports and pixiv results look up the same tags and artists over and over
+    @lru_cache(maxsize=4096)
+    def _get_other_names_tag(self, other_tag: str) -> Optional[str]:
+        try:
+            pages = self._get_json('/wiki_pages.json', {'search[other_names_match]': other_tag, 'only': 'title'})
+            tag = pages[0]['title']
+        except (IndexError, KeyError, TypeError, ValueError):
+            logger.debug(f'Could not find tag for other_tag "{other_tag}"')
+            return None
+        except httpx.HTTPStatusError as e:
+            logger.debug(f'Could not look up tag "{other_tag}": {e}')
+            return None
 
-                break
-            except (IndexError, KeyError, ValueError):
-                logger.debug(f'Could not find tag for other_tag "{other_tag}"')
-                tag = None
-
-                break
-            except (TimeoutError, httpx.HTTPError):
-                logger.debug('Could not establish connection to Danbooru, trying again in 5s...')
-                sleep(5)
-        else:
-            logger.debug('Could not establish connection to Danbooru. Skip search for other tag...')
-            tag = None
-
+        logger.debug(f'Returning found tag for {other_tag}: {tag}')
         return tag
 
-    @lru_cache(maxsize=4096)
     def search_artist(self, artist: str) -> Optional[str]:
         """
         Search for the main artist name on Danbooru and return it.
 
-        This method searches for the main artist name on Danbooru, first by base name, then by other names. It retries
-        on connection errors up to 11 times with a 5 second delay. If the artist is not found, it returns None.
+        Looks up the artist first by base name, then by other names. Cached per
+        run; an outage is not cached as "missing".
 
         Args:
             artist (str): The artist name. Can be an alias as well.
@@ -82,41 +152,31 @@ class Danbooru:
             Optional[str]: The main artist name if found, None otherwise.
         """
 
-        for _ in range(1, 12):
-            try:
-                response = self.client.get('/artists.json', params={'search[name]': artist.lower()})
-                response.raise_for_status()
-                result = response.json()
+        if not self._available():
+            return None
+        try:
+            return self._search_artist(artist)
+        except _Unavailable:
+            return None
 
-                if result:
-                    artist = result[0]['name']
-                else:
-                    params = {'search[any_other_name_like]': artist.lower(), 'search[is_deleted]': 'false'}
-                    response = self.client.get('/artists.json', params=params)
-                    response.raise_for_status()
-                    artist = response.json()[0]['name']
+    @lru_cache(maxsize=4096)
+    def _search_artist(self, artist: str) -> Optional[str]:
+        try:
+            result = self._get_json('/artists.json', {'search[name]': artist.lower()})
+            if result:
+                name = result[0]['name']
+            else:
+                params = {'search[any_other_name_like]': artist.lower(), 'search[is_deleted]': 'false'}
+                name = self._get_json('/artists.json', params)[0]['name']
+        except (IndexError, KeyError, TypeError, ValueError):
+            logger.debug(f'Could not find artist "{artist.lower()}"')
+            return None
+        except httpx.HTTPStatusError as e:
+            logger.debug(f'Could not look up artist "{artist}": {e}')
+            return None
 
-                logger.debug(f'Returning artist: {artist}')
-
-                break
-            except (IndexError, KeyError):
-                logger.debug(f'Could not find artist "{artist.lower()}"')
-                artist = None
-
-                break
-            except ValueError:
-                logger.debug(f'Could not load JSON for artist {artist}')
-                artist = None
-
-                break
-            except (TimeoutError, httpx.HTTPError):
-                logger.debug('Could not establish connection to Danbooru, trying again in 5s...')
-                sleep(5)
-        else:
-            logger.debug('Could not establish connection to Danbooru. Skip this artist...')
-            artist = None
-
-        return artist
+        logger.debug(f'Returning artist: {name}')
+        return name
 
     def download_tags(self, query: str = '*', min_post_count: int = 10, limit: int = 100) -> List[dict]:
         """
@@ -150,11 +210,13 @@ class Danbooru:
 
             try:
                 logger.info(f'Fetching tags from Danbooru, page {page}...')
-                tags = self.client.get('/tags.json', params=params).json()
+                tags = self._get_json('/tags.json', params)
                 if not isinstance(tags, list):
                     logger.warning(f'Unexpected Danbooru response on page {page}: {tags!r}')
                     continue
                 yield tags
+            except _Unavailable:
+                return
             except Exception as e:
                 logger.critical(f'Could not fetch tags: {e}')
 
@@ -183,12 +245,14 @@ class Danbooru:
             }
 
             try:
-                results = self.client.get('/tag_implications.json', params=params).json()
+                results = self._get_json('/tag_implications.json', params)
                 if not isinstance(results, list):
                     logger.warning(f'Unexpected Danbooru response: {results!r}')
                     continue
                 for entry in results:
                     implications.setdefault(entry['antecedent_name'], []).append(entry['consequent_name'])
+            except _Unavailable:
+                return implications
             except Exception as e:
                 logger.critical(f'Could not fetch tag implications: {e}')
 
@@ -212,12 +276,14 @@ class Danbooru:
             params = {'search[name_comma]': ','.join(chunk), 'limit': 1000}
 
             try:
-                results = self.client.get('/tags.json', params=params).json()
+                results = self._get_json('/tags.json', params)
                 if not isinstance(results, list):
                     logger.warning(f'Unexpected Danbooru response: {results!r}')
                     continue
                 for entry in results:
                     categories[entry['name']] = entry['category']
+            except _Unavailable:
+                return categories
             except Exception as e:
                 logger.critical(f'Could not fetch tag categories: {e}')
 
