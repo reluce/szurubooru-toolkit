@@ -1,6 +1,6 @@
 """Webserver for the browser extensions, serving /import-from-url and /import-from-all-tabs.
 
-Runs on the standard library only; the browser extensions expect it on http://localhost:5000.
+Runs on the standard library only; the browser extensions expect it on http://127.0.0.1:5000.
 """
 
 import json

@@ -4,7 +4,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     const cookieLocation = message.inputCookieLocation || '';
     const range = message.inputRange || '';
     
-    const url = 'http://localhost:5000/import-from-url?url=' + 
+    const url = 'http://127.0.0.1:5000/import-from-url?url=' + 
                 encodeURIComponent(currentURL) + 
                 '&cookies=' + encodeURIComponent(cookieLocation) + 
                 '&range=' + encodeURIComponent(range);
@@ -41,7 +41,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     const cookieLocation = message.inputCookieLocation || '';
     const range = message.inputRange || '';
     
-    const url = 'http://localhost:5000/import-from-all-tabs?cookies=' + 
+    const url = 'http://127.0.0.1:5000/import-from-all-tabs?cookies=' + 
                 encodeURIComponent(cookieLocation) + 
                 '&range=' + encodeURIComponent(range);
     

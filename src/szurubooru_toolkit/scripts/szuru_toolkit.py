@@ -888,7 +888,7 @@ def click_webserver(ctx, host, port):
     """
     Run the webserver for the browser extensions
 
-    Serves /import-from-url and /import-from-all-tabs on localhost:5000,
+    Serves /import-from-url and /import-from-all-tabs on 127.0.0.1:5000,
     which the Chrome extension and Firefox addon connect to.
     """
 

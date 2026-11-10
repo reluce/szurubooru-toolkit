@@ -56,7 +56,7 @@ The add-on will remember your cookie file location and range settings between us
 
 ## Troubleshooting
 
-- Make sure the webserver is running on `http://localhost:5000`
+- Make sure the webserver is running on `http://127.0.0.1:5000`
 - Check the browser console for any error messages
 - Ensure you have the necessary permissions to access the URLs you're trying to import from
 - For authenticated sites, make sure your cookie file is accessible and valid
