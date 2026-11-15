@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "szurubooru-toolkit",
-  "version": "0.8",
+  "version": "0.8.1",
   "description": "Interact with your szurubooru-toolkit directly from your browser.",
   
   "permissions": [
