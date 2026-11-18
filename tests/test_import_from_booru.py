@@ -30,3 +30,14 @@ def test_auto_tagger_settings_survive_import_from_url(monkeypatch, tmp_path, wd_
         assert config.auto_tagger['wd_tagger'] is True
         assert config.auto_tagger['saucenao'] is False
         assert config.auto_tagger['md5_search'] is False
+
+
+def test_single_file_limit_uses_an_inclusive_range(monkeypatch):
+    config = Config()
+    config.import_from_booru['limit'] = 1
+    monkeypatch.setattr(import_from_booru, 'config', config)
+    monkeypatch.setattr(import_from_url, 'main', lambda urls: None)
+
+    import_from_booru.main('danbooru', 'foo')
+
+    assert config.import_from_url['range'] == '1-1'

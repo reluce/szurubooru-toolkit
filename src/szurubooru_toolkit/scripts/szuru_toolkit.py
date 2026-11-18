@@ -66,21 +66,25 @@ def collect_user_params(ctx: click.core.Context, section: str) -> None:
 @click.option(
     '--public',
     is_flag=True,
-    help=f'If your szurubooru instance is reachable from the internet (default: {config.GLOBALS_DEFAULTS["public"]}).',
+    help=f'Allow SauceNAO to fetch publicly reachable post URLs (default: {config.GLOBALS_DEFAULTS["public"]}).',
 )
 # Logging options
 @click.option('--log-enabled', is_flag=True, help=f'Create a log file (default: {config.LOGGING_DEFAULTS["log_enabled"]}).')
-@click.option('--log-colorized', is_flag=True, help=f'Colorize the log output (default: {config.LOGGING_DEFAULTS["log_colorized"]}).')
+@click.option(
+    '--log-colorized',
+    is_flag=True,
+    help=f'Include color codes in the log file (default: {config.LOGGING_DEFAULTS["log_colorized"]}).',
+)
 @click.option('--log-file', help=f'Output file for the log (default: {config.LOGGING_DEFAULTS["log_file"]})')
 @click.option(
     '--log-level',
     type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], case_sensitive=True),
-    help=f'Set the log level (default: {config.LOGGING_DEFAULTS["log_level"]}).',
+    help=f'Set the minimum level for the log file (default: {config.LOGGING_DEFAULTS["log_level"]}).',
 )
 @click.option(
     '--hide-progress',
     is_flag=True,
-    help='Hides the progress bar (default: False).',
+    help='Hide progress bars for commands that use the global setting.',
 )  # Don't use config.GLOBALS_DEFAULTS here, because we use that option with a try/except block
 @click.pass_context
 def cli(
@@ -122,19 +126,19 @@ def cli(
 @click.option('--add-tags', help='Specify tags, separated by a comma, which will be added to all posts matching your query.')
 @click.option('--remove-tags', help='Specify tags, separated by a comma, which will be removed from all posts matching your query.')
 @click.option('--saucenao/--no-saucenao', help=f'Search for posts with SauceNAO (default: {config.AUTO_TAGGER_DEFAULTS["saucenao"]}).')
-@click.option('--saucenao-api-token', help='Your SauceNAO API token. Increases daily limits.')
+@click.option('--saucenao-api-token', help='Optional SauceNAO API key. Request limits depend on your account.')
 @click.option(
     '--md5-search/--no-md5-search',
     help=f'Search for posts with the same MD5 hash on popular boorus (default: {config.AUTO_TAGGER_DEFAULTS["md5_search"]}).',
 )
 @click.option(
     '--limit',
-    help=f'Set the limit for the number of tagged elements (default: {config.AUTO_TAGGER_DEFAULTS["limit"]}).',
+    help='Maximum number of posts to process. Use 0 for no limit (default: unlimited).',
 )
 @click.option(
     '--wd-tagger/--no-wd-tagger',
     is_flag=True,
-    help=f'Tag posts with the WD tagger if file could not be found (default: {config.AUTO_TAGGER_DEFAULTS["wd_tagger"]}).',
+    help=f'Enable the local WD tagger as a fallback (default: {config.AUTO_TAGGER_DEFAULTS["wd_tagger"]}).',
 )
 @click.option(
     '--wd-tagger-model',
@@ -157,14 +161,17 @@ def cli(
 @click.option(
     '--wd-tagger-forced/--no-wd-tagger-forced',
     help=(
-        'Always tag with SauceNAO and the WD tagger. Overwrites wd-tagger-enabled (default:'
+        'Run WD even when a source lookup supplies tags. Requires enabled WD tagging (default:'
         f' {config.AUTO_TAGGER_DEFAULTS["wd_tagger_forced"]}).'
     ),
 )
 @click.option(
     '--wd-tagger-set-tag/--no-wd-tagger-set-tag',
     is_flag=True,
-    help=f'Tag WD tagger posts with tag "wd_tagger" (default: {config.AUTO_TAGGER_DEFAULTS["wd_tagger_set_tag"]}).',
+    help=(
+        'Add the "wd_tagger" marker when WD accepts a general or character tag '
+        f'(default: {config.AUTO_TAGGER_DEFAULTS["wd_tagger_set_tag"]}).'
+    ),
 )
 @click.option(
     '--wd-tagger-videos/--no-wd-tagger-videos',
@@ -187,28 +194,25 @@ def cli(
 @click.option(
     '--dry-run',
     is_flag=True,
-    help='Show which tags would be added or removed without updating any post.',
+    help='Preview tag and safety changes without updating posts.',
 )
 @click.option(
     '--update-relations/--dont-update-relations',
     help=(
-        'Set character <> parody relation if SauceNAO is disabled (or limit reached) and the WD tagger enabled (default:'
+        'Apply existing tag implications when WD finds tags and MD5 and SauceNAO find none (default:'
         f' {config.AUTO_TAGGER_DEFAULTS["update_relations"]}).'
     ),
 )
 @click.option(
     '--use-pixiv-artist/--dont-use-pixiv-artist',
     is_flag=True,
-    help=(
-        'If the artist could only be found on pixiv, create and use the pixiv artist (default:'
-        f' {config.AUTO_TAGGER_DEFAULTS["use_pixiv_artist"]}).'
-    ),
+    help=('Use a Pixiv artist name when no Danbooru artist matches (default:' f' {config.AUTO_TAGGER_DEFAULTS["use_pixiv_artist"]}).'),
 )
 @click.option(
     '--use-pixiv-tags/--dont-use-pixiv-tags',
     is_flag=True,
     help=(
-        'If the post could only be found on pixiv, create and use the pixiv tags (default:'
+        'Use raw Pixiv tags when booru tags and translated Pixiv tags are unavailable (default:'
         f' {config.AUTO_TAGGER_DEFAULTS["use_pixiv_tags"]}).'
     ),
 )
@@ -271,7 +275,7 @@ def click_auto_tagger(
 @click.option(
     '--min-score',
     type=float,
-    help=f'Hide scores below this value (default: {config.PREVIEW_TAGS_DEFAULTS["min_score"]}).',
+    help=f'Hide general and character scores below this value (default: {config.PREVIEW_TAGS_DEFAULTS["min_score"]}).',
 )
 @click.pass_context
 def click_preview_tags(ctx, target, min_score):
@@ -300,7 +304,7 @@ def click_preview_tags(ctx, target, min_score):
 @click.option(
     '--limit',
     type=int,
-    help=f'Limit the number of posts to scan (default: {config.FIND_DUPLICATES_DEFAULTS["limit"]}).',
+    help='Maximum number of posts to scan. Use 0 for no limit (default: unlimited).',
 )
 @click.option(
     '--set-relations/--no-set-relations',
@@ -316,7 +320,7 @@ def click_find_duplicates(ctx, query, threshold, limit, set_relations, workers):
     """
     Find visually duplicate posts via perceptual hashing
 
-    QUERY is a szurubooru query for posts to scan (default: all image posts).
+    QUERY is a szurubooru query for posts to scan (default: all image and animation posts).
     """
 
     collect_user_params(ctx, 'find_duplicates')
@@ -511,7 +515,7 @@ def click_delete_posts(ctx, query, except_ids):
 @click.option(
     '--limit',
     type=int,
-    help=f'The amount of posts that should be imported (default: {config.IMPORT_FROM_BOORU_DEFAULTS["limit"]}).',
+    help=f'Maximum number of media files selected per source (default: {config.IMPORT_FROM_BOORU_DEFAULTS["limit"]}).',
 )
 @click.option(
     '--wd-tagger/--no-wd-tagger',
@@ -519,24 +523,24 @@ def click_delete_posts(ctx, query, except_ids):
 )
 @click.option(
     '--convert-to-jpg/--no-convert-to-jpg',
-    help=f'Convert images to JPG if convert-threshold is exceeded (default: {config.UPLOAD_MEDIA_DEFAULTS["convert_to_jpg"]}).',
+    help=f'Convert PNGs above the size threshold to JPEG (default: {config.UPLOAD_MEDIA_DEFAULTS["convert_to_jpg"]}).',
 )
 @click.option(
     '--convert-threshold',
     help=(
-        'Convert images to JPG if the file size is bigger than this threshold (default:'
+        'File size above which PNGs are converted when enabled, e.g. 3MB (default:'
         f' {config.UPLOAD_MEDIA_DEFAULTS["convert_threshold"]}).'
     ),
 )
 @click.option(
     '--default-safety',
     type=click.Choice(['safe', 'sketchy', 'unsafe'], case_sensitive=True),
-    help=f'Default safety level for posts if it couldn\'t be detectecd (default: {config.UPLOAD_MEDIA_DEFAULTS["default_safety"]}).',
+    help=f'Fallback safety rating when the source supplies none (default: {config.UPLOAD_MEDIA_DEFAULTS["default_safety"]}).',
 )
 @click.option(
     '--max-similarity',
     type=str,
-    help=f'Images that exceeds this value won\'t get uploaded (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
+    help=f'Similarity cutoff for skipping duplicate uploads (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
 )
 @click.option(
     '--shrink/--no-shrink',
@@ -580,7 +584,7 @@ def click_import_from_booru(
 
 @cli.command(
     'import-from-url',
-    epilog='Example: szuru-toolkit import-from-url --cookies "~/cookies.txt" --range ":100" "https://twitter.com/<USERNAME>/likes"',
+    epilog='Example: szuru-toolkit import-from-url --cookies "~/cookies.txt" --range "1-50" "https://x.com/USERNAME/likes"',
 )
 @click.argument('urls', nargs=-1)
 @click.option('--input-file', help='Download URLs found in FILE')
@@ -603,28 +607,31 @@ def click_import_from_booru(
 @click.option('--saucenao/--no-saucenao', help=f'Search for posts with SauceNAO (default: {config.IMPORT_FROM_URL_DEFAULTS["saucenao"]}).')
 @click.option(
     '--use-twitter-artist/--dont-use-twitter-artist',
-    help=f'Create Twitter username and nickname tags for the artist (default: {config.IMPORT_FROM_URL_DEFAULTS["use_twitter_artist"]}).',
+    help=(
+        'Use the X username and display name if no Danbooru artist matches '
+        f'(default: {config.IMPORT_FROM_URL_DEFAULTS["use_twitter_artist"]}).'
+    ),
 )
 @click.option(
     '--convert-to-jpg/--no-convert-to-jpg',
-    help=f'Convert images to JPG if convert-threshold is exceeded (default: {config.UPLOAD_MEDIA_DEFAULTS["convert_to_jpg"]}).',
+    help=f'Convert PNGs above the size threshold to JPEG (default: {config.UPLOAD_MEDIA_DEFAULTS["convert_to_jpg"]}).',
 )
 @click.option(
     '--convert-threshold',
     help=(
-        'Convert images to JPG if the file size is bigger than this threshold (default:'
+        'File size above which PNGs are converted when enabled, e.g. 3MB (default:'
         f' {config.UPLOAD_MEDIA_DEFAULTS["convert_threshold"]}).'
     ),
 )
 @click.option(
     '--default-safety',
     type=click.Choice(['safe', 'sketchy', 'unsafe'], case_sensitive=True),
-    help=f'Default safety level for posts if it couldn\'t be detectecd (default: {config.UPLOAD_MEDIA_DEFAULTS["default_safety"]}).',
+    help=f'Fallback safety rating when the source supplies none (default: {config.UPLOAD_MEDIA_DEFAULTS["default_safety"]}).',
 )
 @click.option(
     '--max-similarity',
     type=str,
-    help=f'Images that exceeds this value won\'t get uploaded (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
+    help=f'Similarity cutoff for skipping duplicate uploads (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
 )
 @click.option(
     '--shrink/--no-shrink',
@@ -639,7 +646,7 @@ def click_import_from_booru(
     '--shrink-dimensions',
     help=f'Maximum width and height of the shrunken image (default: {config.UPLOAD_MEDIA_DEFAULTS["shrink_dimensions"]}).',
 )
-@click.option('--add-tags', help='Specify tags, separated by a comma, which will be added to all posts.')
+@click.option('--add-tags', help='Comma-separated tags to add to imported posts.')
 @click.option(
     '--update-tags-if-exists/--dont-update-tags-if-exists',
     is_flag=True,
@@ -675,9 +682,9 @@ def click_import_from_url(
     workers,
 ):
     """
-    Download images from URLS or file containing URLs
+    Import media from URLs or a file containing URLs
 
-    URLS is a comma-separated list of URLs to download images from.
+    Pass URLs as separate arguments or supply one URL per line with --input-file.
 
     For recurring imports from one URL, set queue_path to a persistent directory
     in [import_from_url] in config.toml. It stores the download archive and files
@@ -704,12 +711,12 @@ def click_import_from_url(
     module.main(list(urls), input_file, add_tags, verbose)
 
 
-@cli.command('reset-posts', epilog='Example: szuru-toolkit reset-posts reset-posts --except-ids "2,4" --add-tags "tagme,foo" "foobar"')
+@cli.command('reset-posts', epilog='Example: szuru-toolkit reset-posts --except-ids "2,4" --add-tags "tagme,foo" "foobar"')
 @click.argument('query')
 @click.option('--except-ids', help='Specify the post ids, separated by a comma, which should not be reset.')
 @click.option(
     '--add-tags',
-    help='Specify tags, separated by a comma, which will be added to all posts matching your query after resetting.',
+    help='Comma-separated replacement tags to apply after clearing the old tags.',
 )
 @click.pass_context
 def click_reset_posts(ctx, query, except_ids, add_tags):
@@ -742,11 +749,11 @@ def click_reset_posts(ctx, query, except_ids, add_tags):
 @click.argument('query')
 @click.option('--add-tags', help='Specify tags, separated by a comma, which will be added to all posts matching your query.')
 @click.option('--remove-tags', help='Specify tags, separated by a comma, which will be removed from all posts matching your query.')
-@click.option('--source', help='Set the source of the post')
+@click.option('--source', help='Source URL to append or replace according to --mode.')
 @click.option(
     '--mode',
     type=click.Choice(['overwrite', 'append'], case_sensitive=False),
-    help=f'Set mode to overwrite to remove already set tags, set append to keep them (default: {config.TAG_POSTS_DEFAULTS["mode"]}).',
+    help=f'Append to or replace the tags and source fields you supply (default: {config.TAG_POSTS_DEFAULTS["mode"]}).',
 )
 @click.option(
     '--update-implications/--dont-update-implications',
@@ -794,11 +801,11 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_impl
 @click.option('--auto-tag/--no-auto-tag', help=f'Tag posts automatically (default: {config.UPLOAD_MEDIA_DEFAULTS["auto_tag"]}).')
 @click.option(
     '--cleanup/--no-cleanup',
-    help=f'Remove the source files after uploading it (default: {config.UPLOAD_MEDIA_DEFAULTS["cleanup"]}).',
+    help=f'Clean up source files after upload or duplicate detection (default: {config.UPLOAD_MEDIA_DEFAULTS["cleanup"]}).',
 )
 @click.option(
     '--tags',
-    help=f'Specify tags, separated by a comma, which will be added to all posts (default: {config.UPLOAD_MEDIA_DEFAULTS["tags"]}).',
+    help=f'Comma-separated default tags for files without sidecar tags (default: {config.UPLOAD_MEDIA_DEFAULTS["tags"]}).',
 )
 @click.option(
     '--read-sidecar-tags/--no-read-sidecar-tags',
@@ -813,24 +820,24 @@ def click_tag_posts(ctx, query, add_tags, remove_tags, source, mode, update_impl
 )
 @click.option(
     '--convert-to-jpg/--no-convert-to-jpg',
-    help=f'Convert images to JPG if convert-threshold is exceeded (default: {config.UPLOAD_MEDIA_DEFAULTS["convert_to_jpg"]}).',
+    help=f'Convert PNGs above the size threshold to JPEG (default: {config.UPLOAD_MEDIA_DEFAULTS["convert_to_jpg"]}).',
 )
 @click.option(
     '--convert-threshold',
     help=(
-        'Convert images to JPG if the file size is bigger than this threshold (default:'
+        'File size above which PNGs are converted when enabled, e.g. 3MB (default:'
         f' {config.UPLOAD_MEDIA_DEFAULTS["convert_threshold"]}).'
     ),
 )
 @click.option(
     '--default-safety',
     type=click.Choice(['safe', 'sketchy', 'unsafe'], case_sensitive=True),
-    help=f'Default safety level for posts if it couldn\'t be detectecd (default: {config.UPLOAD_MEDIA_DEFAULTS["default_safety"]}).',
+    help=f'Fallback safety rating when the source supplies none (default: {config.UPLOAD_MEDIA_DEFAULTS["default_safety"]}).',
 )
 @click.option(
     '--max-similarity',
     type=str,
-    help=f'Images that exceeds this value won\'t get uploaded (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
+    help=f'Similarity cutoff for skipping duplicate uploads (default: {config.UPLOAD_MEDIA_DEFAULTS["max_similarity"]}).',
 )
 @click.option(
     '--shrink/--no-shrink',

@@ -45,10 +45,11 @@ as `["CoreMLExecutionProvider"]` on Apple Silicon or
 `wd-tagger-cuda` extra or use the [CUDA Docker image](docker.md#nvidia-acceleration).
 The toolkit falls back to the CPU if the requested provider is unavailable.
 
-WD normally supplements posts that lack a useful booru match. Set
-`wd_tagger_forced = true` to run it even on posts with matching source
-metadata. Use `wd_tagger_set_tag` to label WD-processed posts with
-`wd_tagger`. `update_relations` can add tag implications when WD finds tags
+WD normally supplements posts that lack a useful booru match. Enable
+`wd_tagger` and `wd_tagger_forced` in `[auto_tagger]` to also run it on
+posts with matching source metadata. Use `wd_tagger_set_tag` to add the
+`wd_tagger` marker when WD accepts at least one general or character tag.
+`update_relations` can add tag implications when WD finds tags
 for an otherwise unmatched post.
 
 ### Review scores and safety ratings

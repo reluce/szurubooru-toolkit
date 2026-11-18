@@ -5,18 +5,18 @@ url = "https://szuru.example.com"
 username = "my_szuru_user"
 api_token = "my_api_token"
 public = false
-hide_progress = false
+# Uncomment to override per-command progress settings where supported.
+# hide_progress = false
 
-[credentials]
-[credentials.pixiv]
-token = "None"
-[credentials.sankaku]
-username = "None"
-password = "None"
-# Specify Gelbooru credentials if you want to search Gelbooru, otherwise leave it commented out
-#[credentials.gelbooru]
-#user_id = "None"
-#api_key = "None"
+# Uncomment only the credential sections you use and replace their values.
+# [credentials.pixiv]
+# token = "my_pixiv_refresh_token"
+# [credentials.sankaku]
+# username = "my_sankaku_username"
+# password = "my_sankaku_password"
+# [credentials.gelbooru]
+# user_id = "my_gelbooru_user_id"
+# api_key = "my_gelbooru_api_key"
 
 [logging]
 log_enabled = false
@@ -33,7 +33,7 @@ lookup_danbooru = false
 category_map = { general = "default", artist = "artist", character = "character", copyright = "series", meta = "meta" }
 
 [auto_tagger]
-saucenao_api_token = "my_saucenao_api_token"
+# saucenao_api_token = "my_saucenao_api_token"
 saucenao = true
 md5_search = true
 # wd_tagger_model accepts a Hugging Face repo id (downloaded automatically on first use)
@@ -111,7 +111,7 @@ hide_progress = false
 
 [import_from_url]
 wd_tagger = false
-tmp_path = './tmp/gallery_dl'
+tmp_path = './tmp/gallery-dl'
 # Optional writable directory for recurring single-URL CLI imports.
 # Use a quoted path. Omit this setting to use temporary downloads.
 # The directory stores gallery-dl's archive and files awaiting upload.
@@ -142,7 +142,7 @@ hide_progress = false
 workers = 4
 
 [upload_media]
-src_path = "/local/path/to/upload/dir"
+src_path = "./upload_src"
 cleanup = false
 workers = 4
 tags = ["tagme"]

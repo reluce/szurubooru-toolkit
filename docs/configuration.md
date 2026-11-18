@@ -17,9 +17,9 @@ file locations and CLI overrides, see [configuration lookup](setup.md#configurat
 
 ## `[credentials]`
 
-Set up credentials in the subsections for the services you use. Treat
-`"None"` in the sample as placeholder text. Omit the service subsection
-if you have no credentials for it.
+Uncomment the subsections for the services you use and replace their example
+values. Omit unused subsections. If you copied an older sample, remove any
+unused credentials containing the literal string `"None"`.
 
 ### `[credentials.pixiv]`
 
@@ -76,7 +76,7 @@ the tagger invoked by imports or uploads.
 | `wd_tagger_providers` | Ordered list of ONNX Runtime execution providers. An empty list uses CPU inference. The CPU remains available as a fallback when you request acceleration. |
 | `wd_tagger_threshold` | Confidence cutoff for general tags, on a scale from 0 to 1. Scores must exceed this value to be accepted. |
 | `wd_tagger_character_threshold` | Separate confidence cutoff for character tags. Raising it makes character tagging more selective. |
-| `wd_tagger_forced` | Run WD inference even when source lookups already supplied useful tags. Requires WD tagging to be enabled. |
+| `wd_tagger_forced` | Run WD inference even when source lookups already supplied useful tags. Set `[auto_tagger].wd_tagger = true` to keep this setting active. For imports, enable WD in the import's section as well. |
 | `wd_tagger_set_tag` | Add the marker tag `wd_tagger` when inference accepts at least one general or character tag. |
 | `wd_tagger_videos` | Run WD inference on sampled video frames and average the scores. Requires ffmpeg. |
 | `wd_tagger_review` | Add `needs_review` when a character prediction falls in the review range. |

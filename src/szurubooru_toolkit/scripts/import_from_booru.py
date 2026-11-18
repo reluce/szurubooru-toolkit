@@ -31,7 +31,7 @@ def main(booru: str, query: str) -> None:
 
         config.import_from_url['hide_progress'] = config.import_from_booru['hide_progress']
         config.import_from_url['tmp_path'] = config.import_from_booru['tmp_path']
-        config.import_from_url['range'] = ':' + str(config.import_from_booru['limit'])
+        config.import_from_url['range'] = f'1-{config.import_from_booru["limit"]}'
         query = query.replace(' ', '+')
 
         booru_url_mapping = {

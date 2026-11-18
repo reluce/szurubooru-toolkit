@@ -25,8 +25,8 @@ command does not delete or merge posts.
 szuru-toolkit fix-relations "date:today"
 ```
 
-`fix-relations` follows existing post relations from the matching posts and
-ensures every member of a connected group is related to every other member.
+`fix-relations` collects the existing relations listed on posts matching the
+query and links every member of each resulting connected group.
 Related posts outside the query can also receive relation updates. To create
 implications and suggestions between **tags**, see
 [create relations](tagging.md#create-relations).

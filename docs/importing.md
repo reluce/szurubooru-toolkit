@@ -19,8 +19,10 @@ szuru-toolkit import-from-url --cookies "/path/to/cookies.txt" --range "1-10" "h
 Use a Netscape-format cookie file for authenticated downloads. The file must
 be readable by the machine or container that runs the toolkit. Set
 `[import_from_url].cookies` to reuse a path, or supply `--cookies` for a single
-run. `--range "1-10"` selects the first ten media files. A post with multiple
-images can take up multiple positions. `--verbose` shows gallery-dl output
+run. `--range "1-10"` selects the first ten media files. Use the inclusive
+`START-END` form when you want an exact count. Slice ranges such as `:100`
+exclude the upper bound. A post with multiple images can take up multiple
+positions. `--verbose` shows gallery-dl output
 to help diagnose authentication or extractor problems.
 
 If a cookie file is mounted read-only and gallery-dl reports that it cannot
@@ -86,9 +88,9 @@ szuru-toolkit import-from-booru --booru danbooru --limit 25 "tag_one tag_two"
 ```
 
 `--booru` accepts `danbooru`, `gelbooru`, `konachan`, `sankaku`, `yandere`
-and `all`. The query is sent to the source booru. The limit is applied per
-source when using `all`. This command imports tags from the source and supports
-optional WD tagging via `--wd-tagger` or `[import_from_booru].wd_tagger`.
+and `all`. The query is sent to the source booru. The limit counts media files
+per source, including when using `all`. The command imports source tags and
+supports optional WD tagging via `--wd-tagger` or `[import_from_booru].wd_tagger`.
 Its tagging workflow skips MD5 and SauceNAO lookups. For authenticated
 sources, see [credentials](setup.md#optional-service-credentials).
 
