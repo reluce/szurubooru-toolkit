@@ -678,6 +678,10 @@ def click_import_from_url(
     Download images from URLS or file containing URLs
 
     URLS is a comma-separated list of URLs to download images from.
+
+    For recurring imports from one URL, set queue_path to a persistent directory
+    in [import_from_url] in config.toml. It stores the download archive and files
+    awaiting upload. See the README for setup.
     """
 
     if not urls and not input_file:

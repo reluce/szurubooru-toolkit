@@ -132,6 +132,10 @@ replacing with your configuration.
 
 1. Create the folder `tmp` in the same location.
 
+   For [recurring single-feed imports](#recurring-imports-from-one-feed), a
+   `queue_path` such as `/szurubooru-toolkit/tmp/x-likes` uses the existing
+   `./tmp` bind mount. The cron user needs write access to that directory.
+
 1. If you would like to use tag files, create `misc/tags` in the same location
    and follow the instructions linked below
 
@@ -306,6 +310,45 @@ __Examples__
 * `szuru-toolkit import-from-url "https://e-hentai.org/g/<gid>/<token>/"`
 * `szuru-toolkit import-from-url --cookies "~/cookies.txt" --range ":100" "https://twitter.com/<USERNAME>/likes"`
 * `szuru-toolkit import-from-url --input-file urls.txt "https://danbooru.donmai.us/posts?tags=foo" "https://beta.sankakucomplex.com/post/show/<id>"`
+
+#### Recurring imports from one feed
+
+Set `queue_path` in the job's `config.toml` to a writable directory that persists
+between runs. The value must be a quoted path string. TOML booleans such as
+`true` are invalid here. Relative paths are resolved from the working directory.
+
+```toml
+[import_from_url]
+queue_path = "./state/x-likes"
+```
+
+With this option enabled, the toolkit passes two paths to gallery-dl.
+
+- `archive.sqlite3` records downloaded media IDs. When gallery-dl scans the feed
+  again, it skips archived media before downloading the files.
+- `pending/` holds downloaded media and their JSON metadata until the toolkit
+  confirms an upload or recognizes an existing duplicate in the booru. If an
+  upload fails, the next run retries the local file even if the item has moved
+  out of the feed's current scan window.
+
+The first run starts with an empty archive and can download existing media for
+the toolkit to check against the booru. Later runs still fetch the feed
+metadata. The `--range` option limits the media inspected in the feed, so choose
+a window large enough to include new media added between runs.
+
+```sh
+szuru-toolkit import-from-url --cookies "/path/to/cookies.txt" --range "1-50" "https://x.com/USERNAME/likes"
+```
+
+Use a dedicated configuration and queue directory for each feed. The queue
+accepts one URL per invocation and excludes `--input-file`. For a scheduled job,
+prevent overlapping runs on the same directory, for example with `flock`.
+Keep `queue_path` unset in configurations shared with `import-from-booru` or the
+browser-extension webserver.
+
+When `queue_path` is omitted, imports use a temporary download directory and
+the toolkit supplies no download archive. Any archive configured directly in
+gallery-dl can still apply.
 
 ### :outbox_tray: upload-media
 This script uploads media files from a local directory (`src_path`).

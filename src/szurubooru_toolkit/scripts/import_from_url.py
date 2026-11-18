@@ -166,7 +166,8 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
     The function then opens the downloaded file and calls the `upload_media.main` function to upload the file and its
     metadata. If the SauceNAO limit is reached during the upload, it logs a message and continues with the next file.
 
-    After all files have been processed, it removes the download directory and logs a success message.
+    Without a queue, the script removes the temporary download directory after processing. With queue_path set,
+    gallery-dl checks a persistent archive, and the importer keeps pending files until upload or duplicate confirmation.
 
     Args:
         urls (list, optional): A list of URLs from which to download posts. Defaults to an empty list.
