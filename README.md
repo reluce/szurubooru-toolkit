@@ -38,6 +38,7 @@ Pixiv support.
 | Guide | Topics |
 | --- | --- |
 | [Installation and configuration](docs/setup.md) | Installation options, API credentials, configuration lookup and logs |
+| [Configuration reference](docs/configuration.md) | Every key in the example configuration |
 | [Importing and uploading](docs/importing.md) | URLs, booru queries, cookies, recurring feeds, upload retries and local folders |
 | [Tagging and tag management](docs/tagging.md) | Automatic tagging, WD models, score previews, tag categories and bulk tag edits |
 | [Board maintenance](docs/maintenance.md) | Duplicate detection, post relations, Sankaku source repair, resets and deletion |

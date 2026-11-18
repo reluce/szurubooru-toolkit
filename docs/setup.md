@@ -60,6 +60,7 @@ The toolkit loads the first `config.toml` it finds, in this order.
 Explicit CLI options override file values for that run. The
 [sample configuration](../config_sample.toml) shows settings for individual
 commands and can contain different choices from the built-in defaults.
+The [configuration reference](configuration.md) explains each key.
 Relative paths are resolved from the process working directory. On Windows,
 use forward slashes in TOML path strings.
 

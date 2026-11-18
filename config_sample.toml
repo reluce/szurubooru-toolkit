@@ -1,3 +1,5 @@
+# See docs/configuration.md for an explanation of each setting.
+
 [globals]
 url = "https://szuru.example.com"
 username = "my_szuru_user"
