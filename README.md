@@ -5,359 +5,48 @@
 </p>
 
 # szurubooru-toolkit
-Python package and script collection to manage your [szurubooru](https://github.com/rr-/szurubooru) image board.
+
+A command-line toolkit for managing a [szurubooru](https://github.com/rr-/szurubooru)
+image board. Import media from URLs, other boorus, local folders or browser
+tabs. Tag posts with source metadata, reverse image search or the local WD
+tagger, and maintain duplicates, tags and relations.
+
+## Quick start
+
+With Python 3.11 or newer, install the package from
+[PyPI](https://pypi.org/project/szurubooru-toolkit/).
+
+```sh
+pip install szurubooru-toolkit
 ```
-Usage: szuru-toolkit [OPTIONS] COMMAND [ARGS]...
 
-  Toolkit to manage your szurubooru image board.
+Copy [config_sample.toml](config_sample.toml) to `config.toml` and fill in
+`url`, `username` and `api_token` under `[globals]`. To try a read-only command
+against your board, scan up to 20 recent images for duplicates.
 
-  Defaults can also be set in a config file.
-
-  Visit https://github.com/reluce/szurubooru-toolkit for more information.
-
-Options:
-  --url TEXT                      Base URL to your szurubooru instance.
-  --username TEXT                 Username which will be used to authenticate with the szurubooru API.
-  --api-token TEXT                API token for the user which will be used to authenticate with the
-                                  szurubooru API.
-  --public                        If your szurubooru instance is reachable from the internet (default:
-                                  False).
-  --log-enabled                   Create a log file (default: False).
-  --log-colorized                 Colorize the log output (default: True).
-  --log-file TEXT                 Output file for the log (default: szurubooru_toolkit.log)
-  --log-level [DEBUG|INFO|WARNING|ERROR|CRITICAL]
-                                  Set the log level (default: INFO).
-  --hide-progress                 Hides the progress bar (default: False).
-  -h, --help                      Show this message and exit.
-
-Commands:
-  auto-tagger          Tag posts automatically
-  create-relations     Create relations between character and parody tag categories
-  create-tags          Create tags based on a tag file or query
-  delete-posts         Delete posts
-  find-duplicates      Find visually duplicate posts via perceptual hashing
-  fix-relations        Complete post relation sets via transitive closure
-  fix-sankaku-sources  Rewrite outdated Sankaku source URLs to their canonical form
-  import-from-booru    Download and tag posts from various Boorus
-  import-from-url      Download images from URLS or file containing URLs
-  preview-tags         Show WD tagger scores near the thresholds without tagging anything
-  reset-posts          Remove tags and sources
-  tag-posts            Tag posts manually
-  upload-media         Upload media files
-  webserver            Run the webserver for the browser extensions
+```sh
+szuru-toolkit find-duplicates --limit 20 --no-set-relations "date:today"
+szuru-toolkit --help
 ```
-## :ballot_box_with_check: Requirements
-In order to run `szuru-toolkit`, Python `3.11` or newer is required.
 
-## :hammer_and_wrench: Installation
-This package is available on [PyPI](https://pypi.org/project/szurubooru-toolkit/) and can be installed with pip:
-`pip install szurubooru-toolkit`
+`szuructl` is a shorter alias. From a source checkout, run `uv sync` and prefix
+the commands with `uv run`. See the installation guide for optional WD and
+Pixiv support.
 
-The WD tagger (local machine learning tagging) and Pixiv support are optional extras since they pull in heavy dependencies:
+## Documentation
 
-* `pip install "szurubooru-toolkit[wd-tagger]"` for WD tagger support (installs ONNX Runtime)
-* `pip install "szurubooru-toolkit[pixiv]"` for Pixiv metadata support
-* `pip install "szurubooru-toolkit[wd-tagger,pixiv]"` for both
-
-Alternatively, you can clone the package from GitHub and set everything up with [uv](https://docs.astral.sh/uv/). In the root directory of this repository, execute `uv sync` (add `--extra wd-tagger --extra pixiv` for WD tagger and Pixiv support).
-
-### Docker Instructions
-If you would like to run the toolkit in a Docker container instead, follow the
-instructions below.
-
-Several image variants are published on each release, matching the optional
-extras. The default image is slim; the others bundle heavier dependencies, so
-pick the smallest one that covers what you enable in `config.toml`:
-
-| Tag | Extras included |
+| Guide | Topics |
 | --- | --- |
-| `reluce/szurubooru-toolkit:latest` | none (slim, default) |
-| `reluce/szurubooru-toolkit:latest-wd-tagger` | WD tagger (ONNX Runtime + ffmpeg) |
-| `reluce/szurubooru-toolkit:latest-wd-tagger-cuda` | WD tagger with CUDA acceleration (large image) |
-| `reluce/szurubooru-toolkit:latest-pixiv` | Pixiv metadata support |
-| `reluce/szurubooru-toolkit:latest-all` | WD tagger (CPU) + Pixiv |
-
-The `-wd-tagger-cuda` image needs an NVIDIA GPU exposed to the container. Install
-the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
-on the host (driver 580+ / CUDA 13), use the `latest-wd-tagger-cuda` image, and
-uncomment the `deploy.resources.reservations.devices` block in `docker-compose.yml`.
-Set `wd_tagger = true` and `wd_tagger_providers = ["CUDAExecutionProvider"]` under
-`[auto_tagger]` in `config.toml`.
-
-The device reservation follows Docker's [GPU access example](https://docs.docker.com/compose/how-tos/gpu-support/).
-Alternatively, `gpus: all` is valid with **Docker Compose 2.30.0 or newer**;
-see the [Compose reference](https://docs.docker.com/reference/compose-file/services/#gpus).
-Use one GPU configuration, not both. The device reservation does not require an
-additional `runtime: nvidia` entry in Docker's documented setup.
-
-Check your Compose version and validate the configuration before starting:
-
-```sh
-docker compose version
-docker compose config --quiet
-docker compose run --rm --entrypoint nvidia-smi szurubooru-toolkit
-```
-
-`nvidia-smi` should list the host GPU inside the container. This confirms device
-access; it does not prove that model inference uses CUDA. Check the WD tagger's
-startup logs for the selected provider, since unavailable providers fall back to CPU.
-
-Use the matching tag in your `docker-compose.yml` — e.g. `-wd-tagger` if you set
-`wd_tagger = true`. Every tag is also published per version, e.g. `:2.0.0`,
-`:2.0.0-wd-tagger`, `:2.0.0-pixiv` and `:2.0.0-all`.
-
-If the mounted volumes should not be owned by root (e.g. on NFS mounts or with
-rootless containers), set the `PUID` and `PGID` environment variables (see the
-commented block in `docker-compose.yml`): the container then creates a matching
-user on startup, chowns its working directory and runs the cron jobs as that
-user instead of root. Cron jobs using the documented `>/proc/1/fd/1 2>&1`
-redirect keep working: the container rewrites it to an internal log file that
-the non-root user can write and streams it to the container output.
-
-<details>
-1. Copy `docker-compose.yml` to the location where you want to run the toolkit.
-
-1. Copy `config_sample.toml` to the same location, renaming to `config.toml` and
-replacing with your configuration.
-
-1. Copy `crontab_sample` to the same location, renaming to `crontab` and adding
-   the commands you would like to run regularly. An example command is provided
-   in `crontab_sample`.
-
-1. Make sure to set the `src_path` option in `config.toml` to use
-   `/szurubooru-toolkit/upload_src`. If you're using a different directory than
-   `upload_src`, you may need to update the `docker-compose.yml` binding to be
-   something like `./uploads:/szurubooru-toolkit/uploads`, and set
-   `/szurubooru-toolkit/uploads` as the `src_path` option instead.
-
-1. Create the folder `tmp` in the same location.
-
-   For [recurring single-feed imports](#recurring-imports-from-one-feed), a
-   `queue_path` such as `/szurubooru-toolkit/tmp/x-likes` uses the existing
-   `./tmp` bind mount. The cron user needs write access to that directory.
-
-1. If you would like to use tag files, create `misc/tags` in the same location
-   and follow the instructions linked below
-
-1. Run `touch szurubooru_toolkit.log` in the same location to create a file for
-   the log. You may need to set the log location to
-   `/szurubooru-toolkit/szurubooru_toolkit.log` in `config.toml`
-
-1. Use `docker-compose up` or `docker-compose up -d` to start the container, or
-   start the container in the background, respectively. You can use
-   `docker-compose logs` or `docker-compose logs -f` to inspect the container
-   output, which will include szuru toolkit's output if you append your cron
-   jobs with `>/proc/1/fd/1 2>&1` like in the example job.
-
-1. If you just want to run a one-time command, leave the `crontab` file blank
-   and start the container with `docker-compose up -d`, taking note of the
-   `container_name` option in `docker-compose.yml`. Then, you can run commands
-   inside of the running container like this: `docker exec -it container_name
-   uv run szuru-toolkit auto-tagger`, replacing `container_name` with the container name.
-
-1. If you would like the container to run a one-time command and then quit with
-   `docker-compose.yml`, add a `command` configuration [like
-   this](https://docs.docker.com/compose/compose-file/compose-file-v3/#command).
-</details>
-
-## :memo: User configuration
-While the script `szuru-toolkit` can run with just command line options, you can also set your options in a config file.
-
-The script looks for a `config.toml` file in following locations:
-
-### Linux
-* Your current working directory from which `szuru-toolkit` is executed
-* `~/.config/szurubooru-toolkit/config.toml`
-* `/etc/szurubooru-toolkit/config.toml`
-
-### Windows
-* Your current working directory from which `szuru-toolkit` is executed
-* `$USERPROFILE/szurubooru-toolkit/config.toml`
-* `$APPDATA/szurubooru-toolkit/config.toml`
-
-Options passed to the `szuru-toolkit` script take priority over the config file.
-
-You can find a sample config file in the [GitHub repository](https://github.com/reluce/szurubooru-toolkit) of this package.
-
-Note that path names have to be specified with forward slashes (/) if you're using Windows.
-
-Creating a SauceNAO account and an API key is recommended.
-Please consider supporting the SauceNAO team as well by upgrading your plan.
-With a free plan, you can request up to 200 posts in 24h.
-
-For local machine learning tagging, posts can be tagged with one of [SmilingWolf's WD taggers](https://huggingface.co/SmilingWolf). Install the `wd-tagger` extra (`pip install "szurubooru-toolkit[wd-tagger]"`) and set `wd_tagger = true` in the `[auto_tagger]` section to use it.
-The model set in `wd_tagger_model` (default: [SmilingWolf/wd-eva02-large-tagger-v3](https://huggingface.co/SmilingWolf/wd-eva02-large-tagger-v3), ~1.2GB) gets downloaded automatically from Hugging Face on first use and is cached locally afterwards. Any of the WD v3/v2 taggers work, e.g. `SmilingWolf/wd-swinv2-tagger-v3` or `SmilingWolf/wd-vit-tagger-v3` for smaller and faster models.
-General tags and character tags use separate confidence thresholds (`wd_tagger_threshold` and `wd_tagger_character_threshold`), since character predictions are usually either confident or wrong. Use `szuru-toolkit preview-tags <file-or-post-id>` to see all scores near the thresholds when tuning them, and `szuru-toolkit auto-tagger --dry-run <query>` to preview which tags a run would change without updating any post.
-
-With `wd_tagger_review = true`, posts whose best character score lands between `wd_tagger_review_threshold` and `wd_tagger_character_threshold` get tagged `needs_review` — a szurubooru query for exactly the ambiguous character matches worth curating manually.
-
-Post safety is detected automatically: booru matches carry over their source rating, and the WD tagger predicts one (safe/sketchy/unsafe) for everything else. On top of that, `safety_overrides` in `[auto_tagger]` forces a minimum safety whenever certain tags are present, e.g. `safety_overrides = { sketchy = ["nude"], unsafe = ["sex"] }`. Safety is only ever raised by this, never lowered — a booru-provided `unsafe` stays `unsafe`.
-
-Videos are tagged as well if ffmpeg is installed (`wd_tagger_videos`): frames are sampled across the duration — longer videos get more frames — and their scores averaged, so tags that only appear in a single frame don't stick.
-
-Inference runs on the CPU by default. For hardware acceleration, set `wd_tagger_providers` in `config.toml`, e.g. `["CoreMLExecutionProvider"]` on Apple Silicon or `["CUDAExecutionProvider"]` on NVIDIA GPUs (install the `wd-tagger-cuda` extra instead of `wd-tagger`, or use the `-wd-tagger-cuda` Docker image). Unavailable providers fall back to the CPU.
-
-### Automatic tag categories
-
-New in 2.1.0.
-
-Enable `[tag_categories]` to categorize new tags from `auto-tagger`, `import-from-booru`,
-and `import-from-url`. For an instance with custom category names:
-
-```toml
-[tag_categories]
-enabled = true
-lookup_danbooru = false
-category_map = { general = "General", artist = "Artist", character = "Character", copyright = "Copyright", meta = "Metadata" }
-```
-
-Create the target categories in your instance first. Existing tags (including aliases)
-keep their categories. With the feature disabled, tagging behaves as before.
-The built-in mapping uses `default`, `artist`, `character`, `series`, and `meta`;
-omitted mapping entries retain these defaults. Category names on the right are case-sensitive.
-
-Danbooru metadata provides source categories; the WD model provides general and
-character categories without extra network requests. Imports ask gallery-dl for
-categorized tags on Gelbooru, Konachan, Yandere and Sankaku, which can require
-additional requests. When multiple tagging sources classify the same tag, the first
-available category wins (MD5 matches, then SauceNAO, then the WD model).
-
-Set `lookup_danbooru = true` to look up missing tags without source categories in
-batches on Danbooru. This is optional: unknown or unmapped tags are left to your
-instance's default category when the post is saved. New classified tags are created
-before the post is saved, and reused across workers. An auto-tagger dry run creates
-no tags and updates no posts. Incorrect target categories or insufficient permissions
-are reported as errors rather than silently assigning the wrong category.
-
-For compatibility, `[auto_tagger] remap_categories` and `category_map` are also
-accepted and apply to imports as well. Explicit `[tag_categories]` settings take
-precedence. This feature applies to newly created tags; it does not migrate existing tags.
-
-## :page_with_curl: Commands
-The CLI is installed as `szuru-toolkit` and under the shorter alias `szuructl` — both are identical.
-
-Following commands are currently available:
-
-* `auto-tagger`: Tag posts automatically
-* `create-relations`: Create relations between character and parody tag categories
-* `create-tags`: Create tags based on a tag file or query
-* `delete-posts`: Delete posts
-* `find-duplicates`: Find visually duplicate posts via perceptual hashing
-* `fix-relations`: Complete post relation sets so every member of a set references all other members
-* `fix-sankaku-sources`: Rewrite outdated Sankaku source URLs (legacy numeric or md5 based links) to their canonical form
-* `import-from-booru`: Download and tag posts from various Boorus
-* `import-from-url`: Batch importing of URLs based on [gallery-dl](https://github.com/mikf/gallery-dl)
-* `preview-tags`: Show WD tagger scores near the thresholds for a file or post without tagging anything
-* `reset-posts`: Remove tags and sources
-* `tag-posts`: Tag posts manually
-* `upload-media`: Upload media files
-* `webserver`: Run the webserver for the browser extensions
-
-Check `szuru-toolkit -h` or `szuru-toolkit COMMAND -h` for a detailed description of supported options.
-
-If you cloned the repo from GitHub, prefix the above scripts with `uv run`, e.g. `uv run szuru-toolkit auto-tagger "date:today"`. Note that your current working directory has to be the root of the GitHub project.
-
-If your query starts with a dash (`-`), for example to negate a tag, you have to separate the query from the command with two dashes (This doesn't work with uv run):
-
-`szuru-toolkit auto-tagger --no-wd-tagger -- "-foo bar"`
-
-While most commands are self explanatory, the following require a bit of extra attention:
-
-### :label: create-relations
-__Examples__
-* `szuru-toolkit create-relations hitori_bocchi`
-  * Will create the implication _bocchi_the_rock_ for tag _hitori_bocchi_ if other posts are found with query _hitori_bocchi_ containing _bocchi_the_rock_ as the parody (tag has to be of category _series_ or _parody_)
-  * Will also add _hitori_bocchi_ as a suggestion to the parody tag _bocchi_the_rock_
-  * These relations will only get generated if at least X posts are found containing the tags _bocchi_the_rock_ and _hitori_bocchi_. Control X with `threshold` under `[create_relations]` in `config.toml`.
-
-### :label: create-tags
-If no `tag_file` is specified, the script will download the most recent 100 tags from Danbooru which have been used at least ten times.
-
-You can use tools like [Grabber](https://github.com/Bionus/imgbrd-grabber) to download a tag list from common boorus.
-
-The `tag_file` has to be in following format:
-
-```
-<tag_a>,<category_name>
-<tag_b>,<category_name>,<implied_tag>,<implied_tag>
-<tag_..n>,<category_name>
-```
-
-The category has to be created beforehand manually (e.g. default, artist, parody/series, character and meta).
-
-Any columns after the category are added as implications; implied tags get created (category `default`) if they don't exist yet. A single tag can also be created directly with implications passed as an argument. With `import_implications = true` (or `--import-implications`), tags created by a Danbooru query additionally get their active Danbooru implications, with implied tags created under their Danbooru category.
-
-__Examples__
-* `szuru-toolkit create-tags`
-* `szuru-toolkit create-tags --query genshin* --overwrite`
-* `szuru-toolkit create-tags --query genshin* --import-implications`
-* `szuru-toolkit create-tags --tag-file tags.txt`
-* `szuru-toolkit create-tags --category character --implications "slime,monster_girl" slime_girl`
-
-### :link:	import-from-url
-This scripts imports posts with their tags from the URL passed to this script.
-In the background, it simply calls the [gallery-dl](https://github.com/mikf/gallery-dl) script and parses its output.
-Alternatively, an input file with multiple URLs can be specified.
-
-It's recommended to use the `--cookies` flag for authentication, check https://github.com/mikf/gallery-dl#cookies for details.
-
-Posts imported from e-hentai/exhentai get the gallery URL set as their source and the `artist:` tag from the gallery applied; the namespaced e-hentai tags themselves are not imported.
-
-__Examples__
-* `szuru-toolkit import-from-url "https://danbooru.donmai.us/posts?tags=foo"`
-* `szuru-toolkit import-from-url "https://chan.sankakucomplex.com/?tags=foo"`
-* `szuru-toolkit import-from-url "https://beta.sankakucomplex.com/post/show/<id>"`
-* `szuru-toolkit import-from-url "https://e-hentai.org/g/<gid>/<token>/"`
-* `szuru-toolkit import-from-url --cookies "~/cookies.txt" --range ":100" "https://twitter.com/<USERNAME>/likes"`
-* `szuru-toolkit import-from-url --input-file urls.txt "https://danbooru.donmai.us/posts?tags=foo" "https://beta.sankakucomplex.com/post/show/<id>"`
-
-#### Recurring imports from one feed
-
-Set `queue_path` in the job's `config.toml` to a writable directory that persists
-between runs. The value must be a quoted path string. TOML booleans such as
-`true` are invalid here. Relative paths are resolved from the working directory.
-
-```toml
-[import_from_url]
-queue_path = "./state/x-likes"
-```
-
-With this option enabled, the toolkit passes two paths to gallery-dl.
-
-- `archive.sqlite3` records downloaded media IDs. When gallery-dl scans the feed
-  again, it skips archived media before downloading the files.
-- `pending/` holds downloaded media and their JSON metadata until the toolkit
-  confirms an upload or recognizes an existing duplicate in the booru. If an
-  upload fails, the next run retries the local file even if the item has moved
-  out of the feed's current scan window.
-
-The first run starts with an empty archive and can download existing media for
-the toolkit to check against the booru. Later runs still fetch the feed
-metadata. The `--range` option limits the media inspected in the feed, so choose
-a window large enough to include new media added between runs.
-
-```sh
-szuru-toolkit import-from-url --cookies "/path/to/cookies.txt" --range "1-50" "https://x.com/USERNAME/likes"
-```
-
-Use a dedicated configuration and queue directory for each feed. The queue
-accepts one URL per invocation and excludes `--input-file`. For a scheduled job,
-prevent overlapping runs on the same directory, for example with `flock`.
-Keep `queue_path` unset in configurations shared with `import-from-booru` or the
-browser-extension webserver.
-
-When `queue_path` is omitted, imports use a temporary download directory and
-the toolkit supplies no download archive. Any archive configured directly in
-gallery-dl can still apply.
-
-### :outbox_tray: upload-media
-This script uploads media files from a local directory (`src_path`).
-
-With `read_sidecar_tags = true`, tags are read from a `<file>.txt` sidecar file next to each media file, one tag per line — both `abc.jpg.txt` (as written by gallery-dl `--write-tags`) and `abc.txt` are picked up. Files without a sidecar get the configured default `tags` as before. If a file is already uploaded, `update_tags_if_exists = true` appends the sidecar tags to the existing post instead. With `cleanup = true`, consumed sidecar files are removed along with their media files.
-
-__Examples__
-* `szuru-toolkit upload-media --cleanup --tags "foo,bar"`
-* `szuru-toolkit upload-media --read-sidecar-tags --update-tags-if-exists`
-
-## :information_source:	Image credit
-GitHub repo icon: <a href="https://www.flaticon.com/free-icons/code" title="code icons">Code icons created by Smashicons - Flaticon</a>
+| [Installation and configuration](docs/setup.md) | Installation options, API credentials, configuration lookup and logs |
+| [Importing and uploading](docs/importing.md) | URLs, booru queries, cookies, recurring feeds, upload retries and local folders |
+| [Tagging and tag management](docs/tagging.md) | Automatic tagging, WD models, score previews, tag categories and bulk tag edits |
+| [Board maintenance](docs/maintenance.md) | Duplicate detection, post relations, Sankaku source repair, resets and deletion |
+| [Docker and scheduled jobs](docs/docker.md) | Image variants, volumes, cron, model caching and GPU setup |
+| [Browser imports](docs/browser-extensions.md) | Chrome, Firefox and the local webserver |
+
+For packaged installs, the guides are also available under
+[Documentation on GitHub](https://github.com/reluce/szurubooru-toolkit#documentation).
+
+## Image credit
+
+Repository icon by [Flaticon](https://www.flaticon.com/free-icons-png/512/2581/2581053.png).

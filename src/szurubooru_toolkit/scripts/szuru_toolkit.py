@@ -681,7 +681,7 @@ def click_import_from_url(
 
     For recurring imports from one URL, set queue_path to a persistent directory
     in [import_from_url] in config.toml. It stores the download archive and files
-    awaiting upload. See the README for setup.
+    awaiting upload. See docs/importing.md for setup.
     """
 
     if not urls and not input_file:

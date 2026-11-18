@@ -114,7 +114,7 @@ tmp_path = './tmp/gallery_dl'
 # Use a quoted path. Omit this setting to use temporary downloads.
 # The directory stores gallery-dl's archive and files awaiting upload.
 # Keep it across runs and use a separate directory and one runner per feed.
-# See "Recurring imports from one feed" in the README.
+# See "Recurring imports from one feed" in docs/importing.md.
 # queue_path = './state/x-likes'
 use_twitter_artist = false
 max_similarity = "0.95"
