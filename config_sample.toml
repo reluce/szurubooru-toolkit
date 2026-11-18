@@ -110,6 +110,9 @@ hide_progress = false
 [import_from_url]
 wd_tagger = false
 tmp_path = './tmp/gallery_dl'
+# Optional for a recurring single-URL import. Keep this directory across runs
+# and use a separate queue per feed. Schedule only one runner per queue.
+# queue_path = '/state'
 use_twitter_artist = false
 max_similarity = "0.95"
 convert_to_jpg = false

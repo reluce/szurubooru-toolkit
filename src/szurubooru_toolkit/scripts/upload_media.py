@@ -423,7 +423,7 @@ def main(
     file_ext: str = None,
     metadata: dict = None,
     relations_batch: RelationsBatch = None,
-) -> None:
+) -> bool | None:
     """
     Main logic of the script.
 
@@ -438,6 +438,9 @@ def main(
         file_ext (str, optional): The file extension of the file to upload. Defaults to None.
         metadata (dict, optional): Metadata to attach to the post. Defaults to None.
         relations_batch (RelationsBatch, optional): Collects similarity edges for reconciliation. Defaults to None.
+
+    Returns:
+        bool | None: The upload result for a supplied file, or None for a directory.
 
     Raises:
         KeyError: If no files are found to upload and no source path is specified.
@@ -508,7 +511,7 @@ def main(
                     logger.success('Script has finished uploading!')
 
             else:
-                upload_post(
+                return upload_post(
                     file_to_upload,
                     file_ext,
                     metadata,

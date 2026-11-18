@@ -110,6 +110,7 @@ IMPORT_FROM_URL_DEFAULTS = {
     'range': ':100',
     'tmp_path': './tmp/gallery-dl',
     'use_twitter_artist': False,
+    'queue_path': None,
     'update_tags_if_exists': False,
     'workers': 4,
 }

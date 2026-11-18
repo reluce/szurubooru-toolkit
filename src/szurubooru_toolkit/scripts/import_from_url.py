@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -225,17 +226,39 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
     if not verbose:
         params.append('-q')
 
-    download_dir = invoke_gallery_dl(
-        urls,
-        config.import_from_url['tmp_path'],
-        params,
-        workers=max(1, int(config.import_from_url['workers'])),
-    )
+    workers = max(1, int(config.import_from_url['workers']))
+    queue_path = config.import_from_url.get('queue_path')
+    download_status = 0
+    if queue_path:
+        if len(urls) != 1 or input_file:
+            logger.error('A persistent import queue requires a single URL.')
+            raise SystemExit(1)
+        queue = Path(queue_path).resolve()
+        pending = queue / 'pending'
+        pending.mkdir(parents=True, exist_ok=True)
+        download_dir = str(pending)
+        download_status = subprocess.run(
+            [
+                'gallery-dl',
+                f'-D={pending}',
+                f'--download-archive={queue / "archive.sqlite3"}',
+                '-o',
+                'archive-event=after,skip',
+                *params,
+                '--',
+                urls[0],
+            ]
+        ).returncode
+        if download_status:
+            logger.error(f'gallery-dl exited with status {download_status}. Processing queued files.')
+    else:
+        download_dir = invoke_gallery_dl(urls, config.import_from_url['tmp_path'], params, workers=workers)
 
     files = [
         file
         for file in glob.glob(f'{download_dir}/*')
         if Path(file).suffix not in ['.psd', '.json', '.zip', '.7z', '.rar', '.tar', '.gz', '.txt']
+        and (not queue_path or (Path(file).suffix != '.part' and Path(file + '.json').is_file()))
     ]
     files = sort_files(files)
 
@@ -249,8 +272,15 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
 
         if not config.import_from_url['update_tags_if_exists'] and already_uploaded(content):
             logger.debug(f'File "{file}" is already uploaded')
-            return
+            imported = True
+        else:
+            imported = upload(content, file)
 
+        if queue_path and imported:
+            Path(file).unlink()
+            Path(file + '.json').unlink()
+
+    def upload(content: bytes, file: str) -> bool | None:
         with open(file + '.json') as f:
             metadata = json.load(f)
             try:
@@ -279,19 +309,23 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
             if add_tags:
                 metadata['tags'] += add_tags
 
-            upload_media.main(
+            return upload_media.main(
                 file_to_upload=content,
                 file_ext=Path(file).suffix[1:],
                 metadata=metadata,
                 relations_batch=relations_batch,
             )
 
-    workers = max(1, int(config.import_from_url['workers']))
     run_concurrently(files, worker, workers, len(files), hide_progress)
 
     relations_batch.reconcile(szuru, workers)
 
-    if os.path.exists(download_dir):
+    if queue_path:
+        remaining = sum(Path(file).exists() for file in files)
+        if remaining or download_status:
+            logger.error(f'Import incomplete. {remaining} queued file(s) will be retried.')
+            raise SystemExit(1)
+    elif os.path.exists(download_dir):
         shutil.rmtree(download_dir)
 
     logger.success('Finished importing!')
