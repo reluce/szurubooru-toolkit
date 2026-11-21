@@ -80,12 +80,8 @@ def get_saucenao_results(sauce: SauceNao, post: Post, image: bytes, cooldown: Sa
         if data and index == 'pixiv':
             results[index] = data
 
-    if not limit_long == 0:
-        # Pause SauceNAO requests for all workers after the short limit has been reached
-        if limit_short == 0:
-            logger.debug('Short limit reached for SauceNAO, cooling down for 35s...')
-            cooldown.trigger(35)
-    else:
+    # The short limit is paced inside SauceNao itself via the shared cooldown
+    if limit_long == 0:
         limit_reached = True
 
     return results, limit_reached
@@ -438,7 +434,7 @@ def main(  # noqa C901
         if config.auto_tagger['saucenao']:
             with _clients_lock:
                 if sauce is None:
-                    sauce = SauceNao(config)
+                    sauce = SauceNao(config, cooldown=_cooldown)
 
         if config.auto_tagger['wd_tagger']:
             try:

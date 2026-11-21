@@ -94,13 +94,19 @@ class SauceNaoCooldown:
 class SauceNao:
     """Handles everything related to SauceNAO and aggregating the results."""
 
-    def __init__(self, config: Config, transport: httpx.BaseTransport = None) -> None:
+    def __init__(
+        self,
+        config: Config,
+        transport: httpx.BaseTransport = None,
+        cooldown: SauceNaoCooldown | None = None,
+    ) -> None:
         """
         Initialize the SauceNAO client.
 
         Args:
             config (Config): The configuration object containing the SauceNAO API token and other settings.
             transport (httpx.BaseTransport, optional): Custom transport, used for testing.
+            cooldown (SauceNaoCooldown, optional): Cooldown gate shared by all workers using this client.
         """
 
         api_token = config.auto_tagger['saucenao_api_token']
@@ -112,6 +118,9 @@ class SauceNao:
         self.results_limit = 6
         self.retry_attempts = 12
         self.retry_delay = 5
+        # SauceNAO's short window is 30s; wait slightly longer so it has surely reset
+        self.short_cooldown = 35.0
+        self.cooldown = cooldown or SauceNaoCooldown()
         # Pooled client shared by all tagging workers; keeps the TLS connection
         # to saucenao.com alive across requests. httpx.Client is thread-safe.
         self.client = httpx.Client(timeout=30, transport=transport)
@@ -245,6 +254,9 @@ class SauceNao:
             params['api_key'] = self.api_key
 
         for attempt in range(self.retry_attempts):
+            # Every request goes through the shared gate, so one worker hitting the
+            # short limit pauses all of them instead of each one retrying blindly.
+            self.cooldown.wait()
             try:
                 if image:
                     logger.debug('Trying to get result from uploaded file...')
@@ -262,9 +274,8 @@ class SauceNao:
 
                 # Short limit exhausted: SauceNAO answers with 429 until the 30s window resets
                 if response.status_code == 429:
-                    logger.debug('SauceNAO rate limit hit, trying again in 5s...')
-                    if attempt < self.retry_attempts - 1:
-                        time.sleep(self.retry_delay)
+                    logger.debug(f'SauceNAO rate limit hit, pausing all requests for {self.short_cooldown:.0f}s...')
+                    self.cooldown.trigger(self.short_cooldown)
                     continue
 
                 if int(header.get('status', 0)) != 0:
@@ -272,6 +283,10 @@ class SauceNao:
                     return None
 
                 result = SauceNaoResponse(response_json, self.min_similarity)
+                # Pause one request early: other workers may already have requests in flight
+                if result.short_remaining <= 1:
+                    logger.debug(f'SauceNAO short limit almost used up, pausing for {self.short_cooldown:.0f}s...')
+                    self.cooldown.trigger(self.short_cooldown)
                 logger.debug(f'Received response with {len(result)} results above similarity threshold')
                 return result
 

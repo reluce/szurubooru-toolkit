@@ -1,3 +1,5 @@
+import time
+
 import httpx
 import pytest
 
@@ -76,9 +78,13 @@ def test_get_result_retries_on_short_limit():
         return httpx.Response(200, json=saucenao_response())
 
     sauce = make_saucenao(handler)
+    sauce.short_cooldown = 0.2
+    start = time.monotonic()
     response = sauce.get_result('http://szuru.local/img.jpg')
 
     assert len(attempts) == 3
+    # Each 429 must arm the shared cooldown rather than retrying immediately
+    assert time.monotonic() - start >= 0.4
     assert response is not None
 
 
