@@ -1,3 +1,5 @@
+import re
+import urllib.parse
 from functools import lru_cache
 from time import sleep
 from typing import Any
@@ -65,7 +67,17 @@ class Pixiv:
         """
 
         if 'pixiv.net/fanbox' not in result_url:
-            post_id = int(result_url.split('=')[-1])
+            parsed = urllib.parse.urlsplit(result_url)
+            illust_ids = urllib.parse.parse_qs(parsed.query).get('illust_id')
+            artwork_match = re.search(r'/artworks/(\d+)', parsed.path)
+            if illust_ids and illust_ids[0].isdigit():
+                post_id = int(illust_ids[0])
+            elif artwork_match:
+                post_id = int(artwork_match.group(1))
+            else:
+                logger.debug(f'Could not extract Pixiv illust ID from URL: {result_url}')
+                return None
+
             logger.debug(f'Getting result from id {post_id}')
 
             for _ in range(1, 12):
@@ -88,6 +100,14 @@ class Pixiv:
 
         return result
 
+    @staticmethod
+    def _extract_illust_tags(result: Any) -> list:
+        illust = result.get('illust') if isinstance(result, dict) else getattr(result, 'illust', None)
+        if not illust:
+            return []
+        tags = illust.get('tags') if isinstance(illust, dict) else getattr(illust, 'tags', None)
+        return tags or []
+
     def get_tags(self, result: Any) -> List[str]:
         """
         Extracts tags from the result.
@@ -104,12 +124,11 @@ class Pixiv:
 
         tags = []
 
-        if result.illust and result.illust.tags:
-            for tag in result.illust.tags:
-                temp = tag['name']
-                if temp is not None:
-                    if temp not in RESTRICTED_TAGS:
-                        tags.append(temp)
+        for tag in Pixiv._extract_illust_tags(result):
+            temp = tag['name']
+            if temp is not None:
+                if temp not in RESTRICTED_TAGS:
+                    tags.append(temp)
 
         logger.debug(f'Returning tags {tags}')
 
@@ -130,10 +149,9 @@ class Pixiv:
             str: The rating of the result ('unsafe' or 'safe').
         """
 
-        if result.illust and result.illust.tags:
-            for tag in result.illust.tags:
-                if tag['name'] in RESTRICTED_TAGS:
-                    return 'unsafe'
+        for tag in Pixiv._extract_illust_tags(result):
+            if tag['name'] in RESTRICTED_TAGS:
+                return 'unsafe'
         return 'safe'
 
     @classmethod

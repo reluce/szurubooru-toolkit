@@ -409,7 +409,7 @@ class Szurubooru:
         post.id = str(response['id'])
         post.source = response['source'] if response['source'] else ''
         content_url = response['contentUrl']
-        post.content_url = self.szuru_url + '/' + content_url
+        post.content_url = urllib.parse.urljoin(self.szuru_url + '/', content_url)
         post.version = response['version']
         post.relations = response['relations']
         post.md5 = response['checksumMD5']

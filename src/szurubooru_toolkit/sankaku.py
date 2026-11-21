@@ -53,11 +53,10 @@ class Sankaku:
             Exception: If the authentication fails.
         """
 
-        url = self.api_url + '/auth/token'
         headers = {'Accept': 'application/vnd.sankaku.api+json;v=2'}
         data = {'login': username, 'password': password}
 
-        response = httpx.post(url, headers=headers, json=data, timeout=30)
+        response = self.client.post('/auth/token', headers=headers, json=data)
         try:
             data = response.json()
         except ValueError:

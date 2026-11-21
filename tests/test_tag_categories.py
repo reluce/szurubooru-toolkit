@@ -149,3 +149,7 @@ def test_gallery_dl_sankaku_genre_and_medium_keys():
         'genre_tag': 'general',
         'medium_tag': 'meta',
     }
+
+
+def test_standard_booru_category_5_maps_to_meta():
+    assert extract_categories({'tags': [{'name': 'highres', 'category': 5}]}) == {'highres': 'meta'}

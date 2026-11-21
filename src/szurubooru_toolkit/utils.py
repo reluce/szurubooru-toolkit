@@ -358,12 +358,13 @@ def run_concurrently(items, worker, workers: int, total: int, hide_progress: boo
             futures.append(future)
         for _ in as_completed(futures):
             pass
-    except KeyboardInterrupt:
+    except BaseException:
         executor.shutdown(wait=False, cancel_futures=True)
         raise
+    else:
+        executor.shutdown()
     finally:
         progress.close()
-    executor.shutdown()
 
 
 def audit_rating(*ratings: str) -> str:
@@ -434,18 +435,21 @@ def collect_sources(*sources: str) -> str:
         collect_sources('foo', 'bar', foo') -> 'foo\nbar'
     """
 
-    # Remove empty sources
-    source_valid = [source for source in sources if source]
-
-    # Remove ','
+    # Split multi-line strings and remove empty sources
     sources_sanitized = []
-    for source in source_valid:
-        if source[-1] == ',':
-            source = source[:-1]
-        sources_sanitized.append(source)
+    for source in sources:
+        if not source:
+            continue
+        for line in source.splitlines():
+            if not line:
+                continue
+            if line[-1] == ',':
+                line = line[:-1]
+            if line:
+                sources_sanitized.append(line)
 
-    # Remove duplicates
-    source_valid = list(set(sources_sanitized))
+    # Remove duplicates while preserving order
+    source_valid = list(dict.fromkeys(sources_sanitized))
 
     delimiter = '\n'
     source_collected = delimiter.join(source_valid)
@@ -522,25 +526,22 @@ def generate_src(metadata: dict) -> str:
         str: The source URL for the post, or None if the site is not recognized.
     """
 
-    if 'id' in metadata:
-        id = str(metadata['id'])
-
     try:
         match metadata['site']:
             case 'danbooru' | 'donmai':
-                src = 'https://danbooru.donmai.us/posts/' + id
+                src = 'https://danbooru.donmai.us/posts/' + str(metadata['id'])
             case 'e-hentai':
                 id = str(metadata['gid'])
                 token = metadata['token']
                 src = f'https://e-hentai.org/g/{id}/{token}'
             case 'gelbooru':
-                src = 'https://gelbooru.com/index.php?page=post&s=view&id=' + id
+                src = 'https://gelbooru.com/index.php?page=post&s=view&id=' + str(metadata['id'])
             case 'konachan':
-                src = 'https://konachan.com/post/show/' + id
+                src = 'https://konachan.com/post/show/' + str(metadata['id'])
             case 'sankaku':
-                src = 'https://sankakucomplex.com/posts/' + id
+                src = 'https://sankakucomplex.com/posts/' + str(metadata['id'])
             case 'yandere':
-                src = 'https://yande.re/post/show/' + id
+                src = 'https://yande.re/post/show/' + str(metadata['id'])
             case 'twitter':
                 user = metadata['author']['name']
                 id = str(metadata['tweet_id'])
@@ -548,12 +549,14 @@ def generate_src(metadata: dict) -> str:
             case 'kemono':
                 user = metadata['user']
                 service = metadata['service']
+                id = str(metadata['id'])
                 src = f'https://kemono.party/{service}/user/{user}/post/{id}'
             case 'fanbox':
                 user = metadata['creatorId']
+                id = str(metadata['id'])
                 src = f'https://fanbox.cc/@{user}/posts/{id}'
             case 'pixiv':
-                src = 'https://www.pixiv.net/artworks/' + id
+                src = 'https://www.pixiv.net/artworks/' + str(metadata['id'])
             case _:
                 src = None
     except KeyError:
@@ -829,7 +832,7 @@ def prepare_post(results: dict, config: Config, categories: dict | None = None) 
     elif not booru_found and pixiv_rating:
         rating = pixiv_rating
     else:
-        rating = []
+        rating = None
 
     return final_tags, sources, rating
 
@@ -937,22 +940,20 @@ def get_site(url: str) -> str:
         'pixiv',
     )
 
-    # gallery-dl reports category 'exhentai' for both e-hentai.org and
-    # exhentai.org; the toolkit handles both under 'e-hentai'.
-    if 'exhentai' in url:
-        return 'e-hentai'
-
-    # Danbooru serves files from cdn.donmai.us; the toolkit handles it as 'danbooru'.
-    if 'donmai' in url:
-        return 'danbooru'
-
-    # Yandere's domain is yande.re, its files are served from files.yande.re
-    if 'yande.re' in url:
-        return 'yandere'
+    # Domain aliases checked before canonical names, host-first so a path/username
+    # mentioning another site doesn't override the actual host.
+    aliases = (
+        ('exhentai', 'e-hentai'),  # gallery-dl category for both e-hentai.org and exhentai.org
+        ('donmai', 'danbooru'),  # Danbooru serves files from cdn.donmai.us
+        ('yande.re', 'yandere'),  # Yandere's domain is yande.re / files.yande.re
+    )
 
     # The host decides first: kemono.su/fanbox/... or a kemono file named pixiv_1.png is kemono
     host = urllib.parse.urlsplit(url).hostname or ''
     for candidate in (host, url):
+        for alias, canonical in aliases:
+            if alias in candidate:
+                return canonical
         for site in sites:
             if site in candidate:
                 return site

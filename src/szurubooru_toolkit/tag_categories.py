@@ -28,10 +28,12 @@ def extract_categories(metadata: dict) -> dict[str, str]:
         for tag in tags:
             if isinstance(tag, dict):
                 name = tag.get('tagName') or tag.get('name')
+                is_sankaku = 'type' in tag or 'tagName' in tag
                 category = tag.get('type', tag.get('category'))
                 if isinstance(category, str) and category.isdigit():
                     category = int(category)
-                category = SANKAKU_CATEGORY_NAMES.get(category, category)
+                mapping = SANKAKU_CATEGORY_NAMES if is_sankaku else CATEGORY_NAMES
+                category = mapping.get(category, category)
                 if name and category in CATEGORY_NAMES.values():
                     result[name] = category
     return result

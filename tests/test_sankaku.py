@@ -37,11 +37,11 @@ def test_throttled_search_is_retried(make_sankaku, monkeypatch):
     assert utils._search_single_booru('sankaku', 'md5:abc', 1, 0, {}) == [{'id': 'abc'}]
 
 
-def test_authenticate_reports_non_json_errors(make_sankaku, monkeypatch):
-    monkeypatch.setattr(sankaku_module.httpx, 'post', lambda *a, **k: httpx.Response(502, text='<html>Bad Gateway</html>'))
+def test_authenticate_reports_non_json_errors(make_sankaku):
+    sankaku = make_sankaku(lambda request: httpx.Response(502, text='<html>Bad Gateway</html>'))
 
     with pytest.raises(Exception, match='HTTP 502'):
-        make_sankaku(None)._authenticate('user', 'password')
+        sankaku._authenticate('user', 'password')
 
 
 def test_login_is_deferred_to_the_first_search(make_sankaku, monkeypatch):

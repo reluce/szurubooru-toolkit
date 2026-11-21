@@ -284,3 +284,28 @@ def test_get_pixiv_reuses_client_until_reauth_is_due(monkeypatch):
     now[0] += 2
     assert utils.get_pixiv('token') is not first
     assert len(created) == 2
+
+
+def test_generate_src_returns_none_when_id_missing():
+    assert utils.generate_src({'site': 'danbooru'}) is None
+    assert utils.generate_src({'site': 'pixiv'}) is None
+
+
+def test_collect_sources_deduplicates_multiline_sources():
+    result = collect_sources('https://a\nhttps://b', 'https://a')
+    assert result == 'https://a\nhttps://b'
+
+
+def test_prepare_post_unknown_rating_is_none():
+    from types import SimpleNamespace
+
+    config = SimpleNamespace(credentials={'pixiv': {'token': None}}, auto_tagger={'use_pixiv_tags': False})
+    tags, sources, rating = utils.prepare_post({}, config)
+    assert tags == []
+    assert sources == []
+    assert rating is None
+
+
+def test_get_site_prefers_host_for_domain_aliases():
+    assert utils.get_site('https://twitter.com/donmai_artist/status/123') == 'twitter'
+    assert utils.get_site('https://cdn.donmai.us/original/ab/cd/123.jpg') == 'danbooru'
