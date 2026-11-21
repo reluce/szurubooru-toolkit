@@ -41,3 +41,16 @@ def test_single_file_limit_uses_an_inclusive_range(monkeypatch):
     import_from_booru.main('danbooru', 'foo')
 
     assert config.import_from_url['range'] == '1-1'
+
+
+def test_import_from_booru_clears_queue_path_and_encodes_query(monkeypatch):
+    config = Config()
+    config.import_from_url['queue_path'] = '/tmp/some-queue'
+    monkeypatch.setattr(import_from_booru, 'config', config)
+    captured = []
+    monkeypatch.setattr(import_from_url, 'main', lambda urls: captured.extend(urls))
+
+    import_from_booru.main('gelbooru', 'r&b c++ #tag')
+
+    assert config.import_from_url['queue_path'] is None
+    assert captured == ['https://gelbooru.com/index.php?page=post&s=list&tags=r%26b+c%2B%2B+%23tag']

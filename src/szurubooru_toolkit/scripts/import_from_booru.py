@@ -1,3 +1,5 @@
+import urllib.parse
+
 from loguru import logger
 
 from szurubooru_toolkit import config
@@ -31,8 +33,9 @@ def main(booru: str, query: str) -> None:
 
         config.import_from_url['hide_progress'] = config.import_from_booru['hide_progress']
         config.import_from_url['tmp_path'] = config.import_from_booru['tmp_path']
+        config.import_from_url['queue_path'] = None
         config.import_from_url['range'] = f'1-{config.import_from_booru["limit"]}'
-        query = query.replace(' ', '+')
+        query = urllib.parse.quote_plus(query)
 
         booru_url_mapping = {
             'danbooru': 'https://danbooru.donmai.us/posts?tags=',
@@ -42,10 +45,13 @@ def main(booru: str, query: str) -> None:
             'yandere': 'https://yande.re/post?tags=',
         }
 
+        booru = booru.lower()
         if booru in booru_url_mapping:
             urls = [booru_url_mapping[booru] + query]
         elif booru == 'all':
-            urls = [booru_url_mapping[booru] + query for booru in booru_url_mapping]
+            urls = [booru_url_mapping[site] + query for site in booru_url_mapping]
+        else:
+            raise ValueError(f'Unsupported booru: {booru}')
 
         import_from_url.main(urls)
     except KeyboardInterrupt:

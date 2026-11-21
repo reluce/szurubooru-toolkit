@@ -199,6 +199,7 @@ def test_update_tags_if_exists_handles_similar_post_entries(monkeypatch):
     # A too-similar match is a reverse-search entry {'distance', 'post'}, not a post resource
     szuru = StubSzuru(similar_posts=[{'distance': 0.01, 'post': {'id': 7}}])
     wire(monkeypatch, szuru)
+    upload_media.config.upload_media['auto_tag'] = True
     upload_media.config.tag_posts['mode'] = 'overwrite'
     calls = {}
     monkeypatch.setattr(upload_media, 'ensure_tag_categories', lambda *args: None)
@@ -243,3 +244,25 @@ def test_upload_post_normalizes_uppercase_extension(monkeypatch):
     upload_media.upload_post(b'file-bytes', 'MP4')
 
     assert extensions == ['mp4']
+
+
+def test_update_tags_if_exists_respects_auto_tag_disabled(monkeypatch):
+    szuru = StubSzuru(exact_post={'id': 7})
+    wire(monkeypatch, szuru)
+    upload_media.config.upload_media['auto_tag'] = False
+    calls = {}
+    monkeypatch.setattr(upload_media, 'ensure_tag_categories', lambda *args: None)
+    monkeypatch.setattr(upload_media.tag_posts, 'main', lambda query, **kwargs: calls.setdefault('tag_posts', query))
+    monkeypatch.setattr(upload_media.auto_tagger, 'main', lambda **kwargs: calls.setdefault('auto_tagger', True))
+
+    metadata = {'tags': ['foo'], 'source': 'https://example.com/7', 'safety': 'safe'}
+    assert upload_media.upload_post(b'file-bytes', 'jpg', metadata=metadata, update_tags_if_exists=True)
+    assert calls == {'tag_posts': '7'}
+
+
+def test_main_empty_bytes_does_not_trigger_directory_mode(monkeypatch):
+    szuru = StubSzuru()
+    wire(monkeypatch, szuru)
+    monkeypatch.setattr(upload_media, 'get_files', lambda path: (_ for _ in ()).throw(AssertionError('must not scan dir')))
+
+    assert upload_media.main(file_to_upload=b'', file_ext='jpg') is False

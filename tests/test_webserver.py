@@ -115,3 +115,29 @@ def test_each_import_starts_a_fresh_run(server, monkeypatch):
     assert not auto_tagger._limit_event.is_set()
     assert auto_tagger._limit_announced.acquire(blocking=False)
     auto_tagger._limit_announced.release()
+
+
+def test_webserver_survives_system_exit_from_import(server, monkeypatch):
+    base, _ = server
+
+    def failing_import(urls):
+        raise SystemExit(1)
+
+    monkeypatch.setattr(webserver, 'import_from_url', failing_import)
+
+    response = httpx.post(f'{base}/import-from-url', params={'url': 'https://example.com/1'})
+    assert response.status_code == 500
+
+    # Server is still alive for subsequent requests
+    response = httpx.post(f'{base}/import-from-all-tabs', json={'urls': ['https://example.com/1']})
+    assert response.status_code == 200
+    assert 'Failed: 1' in response.text
+
+
+@pytest.mark.parametrize('payload', ['["urls"]', '"urls"', '{"urls": "not-a-list"}', '{"urls": []}'])
+def test_import_from_all_tabs_rejects_malformed_json_payloads(server, payload):
+    base, _ = server
+
+    response = httpx.post(f'{base}/import-from-all-tabs', content=payload, headers={'Content-Type': 'application/json'})
+
+    assert response.status_code == 400

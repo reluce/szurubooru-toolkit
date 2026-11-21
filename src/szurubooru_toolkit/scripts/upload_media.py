@@ -167,7 +167,8 @@ def update_tags(post: Post, metadata: dict, original_md5: str, file_to_upload: b
     ensure_tag_categories(szuru, config, metadata['tags'], metadata.get('tag_categories', {}))
     tag_posts.main(query=id, add_tags=metadata['tags'], source=metadata['source'], mode='append', embedded=True)
 
-    auto_tagger.main(post_id=id, file_to_upload=file_to_upload, md5=original_md5)
+    if config.upload_media['auto_tag']:
+        auto_tagger.main(post_id=id, file_to_upload=file_to_upload, md5=original_md5)
 
 
 def upload_file(szuru: Szurubooru, post: Post) -> None:
@@ -447,13 +448,26 @@ def main(
     """
 
     try:
-        if not file_to_upload:
-            try:
-                files_to_upload = src_path if src_path else get_files(config.upload_media['src_path'])
-                from_import_from = False
-            except KeyError:
-                logger.critical('No files found to upload. Please specify a source path.')
+        cleanup_target = None
+        if file_to_upload is None:
+            if isinstance(src_path, str) and src_path:
+                files_to_upload = get_files(src_path)
+                cleanup_target = src_path
+            elif src_path:
+                files_to_upload = src_path
+                cleanup_target = config.upload_media.get('src_path')
+            else:
+                target_dir = config.upload_media.get('src_path')
+                if not target_dir:
+                    logger.critical('No files found to upload. Please specify a source path.')
+                    return
+                files_to_upload = get_files(target_dir)
+                cleanup_target = target_dir
+            from_import_from = False
         else:
+            if not file_to_upload:
+                logger.warning('Skipping empty file.')
+                return False
             files_to_upload = file_to_upload
             from_import_from = True
 
@@ -504,8 +518,8 @@ def main(
 
                 batch.reconcile(szuru, workers)
 
-                if config.upload_media['cleanup']:
-                    cleanup_dirs(config.upload_media['src_path'])  # Remove dirs after files have been deleted
+                if config.upload_media['cleanup'] and cleanup_target:
+                    cleanup_dirs(cleanup_target)  # Remove dirs after files have been deleted
 
                 if not from_import_from:
                     logger.success('Script has finished uploading!')

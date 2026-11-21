@@ -130,3 +130,10 @@ def test_persistent_queue_retries_failed_upload_when_refresh_fails(monkeypatch, 
     assert second.value.code == 1
     assert attempts == [b'new image', b'new image']
     assert sorted(path.name for path in pending.iterdir()) == ['partial.jpg.part']
+
+
+def test_set_tags_handles_missing_hashtags_and_none_values(monkeypatch):
+    monkeypatch.setattr(import_from_url, 'convert_tags', lambda tags: list(tags))
+    assert import_from_url.set_tags({'site': 'twitter', 'tags': []}) == []
+    assert import_from_url.set_tags({'site': 'twitter', 'hashtags': None}) == []
+    assert import_from_url.set_tags({'site': 'pixiv', 'tags': None}) == []

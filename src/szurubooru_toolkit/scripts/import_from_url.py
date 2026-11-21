@@ -1,4 +1,3 @@
-import glob
 import hashlib
 import json
 import os
@@ -57,15 +56,16 @@ def set_tags(metadata: dict) -> list:
     if metadata['site'] in allow_tags_for_sites:
         try:
             if metadata['site'] in ['fanbox', 'pixiv']:
-                metadata['tags'] = convert_tags(metadata['tags'])
+                metadata['tags'] = convert_tags(metadata['tags'] or [])
             elif metadata['site'] == 'twitter':
-                metadata['tags'] = convert_tags(metadata['hashtags'])
+                metadata['tags'] = convert_tags(metadata['hashtags'] or [])
             else:
                 if isinstance(metadata['tags'], str):
                     metadata['tags'] = metadata['tags'].split()
         except KeyError:
-            if isinstance(metadata['tag_string'], str):
-                metadata['tags'] = metadata['tag_string'].split()
+            tag_string = metadata.get('tag_string')
+            if isinstance(tag_string, str):
+                metadata['tags'] = tag_string.split()
             else:
                 metadata['tags'] = []
     else:
@@ -255,12 +255,18 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
     else:
         download_dir = invoke_gallery_dl(urls, config.import_from_url['tmp_path'], params, workers=workers)
 
-    files = [
-        file
-        for file in glob.glob(f'{download_dir}/*')
-        if Path(file).suffix not in ['.psd', '.json', '.zip', '.7z', '.rar', '.tar', '.gz', '.txt']
-        and (not queue_path or (Path(file).suffix != '.part' and Path(file + '.json').is_file()))
-    ]
+    download_path = Path(download_dir)
+    files = (
+        [
+            str(path)
+            for path in download_path.iterdir()
+            if path.is_file()
+            and path.suffix not in ['.psd', '.json', '.zip', '.7z', '.rar', '.tar', '.gz', '.txt']
+            and (not queue_path or (path.suffix != '.part' and Path(str(path) + '.json').is_file()))
+        ]
+        if download_path.is_dir()
+        else []
+    )
     files = sort_files(files)
 
     logger.info(f'Downloaded {len(files)} post(s). Start importing...')
@@ -284,10 +290,9 @@ def main(urls: list = [], input_file: str = '', add_tags: list = [], verbose: bo
     def upload(content: bytes, file: str) -> bool | None:
         with open(file + '.json') as f:
             metadata = json.load(f)
-            try:
-                site = get_site(metadata['file_url'])
-            except KeyError:
-                site = get_site(metadata['category'])
+            file_url = metadata.get('file_url')
+            category = metadata.get('category')
+            site = (get_site(file_url) if file_url else None) or (get_site(category) if category else None)
             metadata['site'] = site
             metadata['source'] = generate_src(metadata)
 

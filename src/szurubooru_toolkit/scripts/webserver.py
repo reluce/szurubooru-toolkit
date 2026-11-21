@@ -109,10 +109,10 @@ class ToolkitRequestHandler(BaseHTTPRequestHandler):
             return
 
         start_run()
-        apply_overrides(params)
         try:
+            apply_overrides(params)
             import_from_url(urls=[current_url])
-        except Exception as e:
+        except (Exception, SystemExit) as e:
             logger.exception(f'Failed to import from {current_url}: {e}')
             self._respond(f'Import failed for URL {current_url}: {e}', 500)
             return
@@ -122,11 +122,11 @@ class ToolkitRequestHandler(BaseHTTPRequestHandler):
     def _handle_import_from_all_tabs(self, params: dict) -> None:
         try:
             length = int(self.headers.get('Content-Length', 0))
-            data = json.loads(self.rfile.read(length)) if length else None
+            data = json.loads(self.rfile.read(length)) if length > 0 else None
         except ValueError:
             data = None
 
-        if not data or 'urls' not in data:
+        if not isinstance(data, dict) or not isinstance(data.get('urls'), list) or not data['urls']:
             self._respond('No URLs provided', 400)
             return
 
@@ -134,7 +134,12 @@ class ToolkitRequestHandler(BaseHTTPRequestHandler):
         logger.info(f'Importing from {len(urls)} tabs')
 
         start_run()
-        apply_overrides(params)
+        try:
+            apply_overrides(params)
+        except (Exception, SystemExit) as e:
+            logger.exception(f'Failed to apply import overrides: {e}')
+            self._respond(f'Invalid import parameters: {e}', 400)
+            return
 
         successful_imports = 0
         failed_imports = 0
@@ -144,7 +149,7 @@ class ToolkitRequestHandler(BaseHTTPRequestHandler):
                 logger.info(f'Processing URL: {url}')
                 import_from_url(urls=[url])
                 successful_imports += 1
-            except Exception as e:
+            except (Exception, SystemExit) as e:
                 logger.exception(f'Failed to import from {url}: {e}')
                 failed_imports += 1
 
