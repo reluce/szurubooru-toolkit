@@ -8,7 +8,7 @@ CRON_USER=root
 # Never modify the bind-mounted crontab; install a copy instead.
 # Cron doesn't pass the container's environment to jobs, so set UV_NO_SYNC
 # (see Dockerfile) in the crontab itself; otherwise every `uv run` re-syncs.
-{ echo 'UV_NO_SYNC=1'; cat /etc/cron.d/crontab; } > /tmp/crontab
+{ echo 'UV_NO_SYNC=1'; cat /etc/cron.d/crontab; echo; } > /tmp/crontab
 
 if [ -n "$PUID" ] || [ -n "$PGID" ]; then
     PUID="${PUID:-1000}"
@@ -22,6 +22,9 @@ if [ -n "$PUID" ] || [ -n "$PGID" ]; then
         useradd --uid "$PUID" --gid "$PGID" --no-create-home --home-dir /szurubooru-toolkit toolkit
     fi
     CRON_USER="$(getent passwd "$PUID" | cut -d: -f1)"
+    if [ "$(id -g "$CRON_USER")" != "$PGID" ]; then
+        usermod --gid "$PGID" "$CRON_USER"
+    fi
 
     echo "Running cron jobs as $CRON_USER ($PUID:$PGID)"
     # upload_src is only ever read and is often a read-only mount; skip it.
@@ -36,7 +39,7 @@ if [ -n "$PUID" ] || [ -n "$PGID" ]; then
     LOG_FILE=/var/log/szuru-toolkit.log
     : > "$LOG_FILE"
     chown "$PUID:$PGID" "$LOG_FILE"
-    sed -i 's|> */proc/1/fd/1 *2>&1|>> '"$LOG_FILE"' 2>\&1|g' /tmp/crontab
+    sed -i -E 's|>>? */proc/1/fd/1 *2>&1|>> '"$LOG_FILE"' 2>\&1|g' /tmp/crontab
 
     tail -F "$LOG_FILE" &
 fi

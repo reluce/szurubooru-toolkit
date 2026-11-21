@@ -42,5 +42,5 @@ RUN uv sync --frozen --no-dev $EXTRAS
 # so entrypoint.sh sets it in the installed crontab as well.
 ENV UV_NO_SYNC=1
 
-RUN chmod +x /szurubooru-toolkit/entrypoint.sh
-CMD ["/szurubooru-toolkit/entrypoint.sh"]
+RUN chmod +x entrypoint.sh
+CMD ["./entrypoint.sh"]

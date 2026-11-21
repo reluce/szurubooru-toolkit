@@ -7,8 +7,8 @@ chrome.storage.sync.get(['savedInputs'], function(result) {
   const savedInputs = result.savedInputs;
 
   if (result.savedInputs) {
-    inputCookieLocationBox.value = savedInputs.inputCookieLocation;
-    inputRangeBox.value = savedInputs.inputRange;
+    inputCookieLocationBox.value = savedInputs.inputCookieLocation || '';
+    inputRangeBox.value = savedInputs.inputRange || '';
   }
 });
 
