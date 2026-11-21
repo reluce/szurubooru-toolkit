@@ -219,6 +219,7 @@ def process_post(  # noqa C901
     categories = {}
     original_tags = set(post.tags)
     original_safety = post.safety
+    has_source_rating = False
 
     # Search boorus by md5 hash of the file
     if config.auto_tagger['md5_search']:
@@ -226,7 +227,9 @@ def process_post(  # noqa C901
 
         if md5_results:
             tags_by_md5, sources, rating = prepare_post(md5_results, config, categories)
-            post.safety = rating or post.safety
+            if rating:
+                post.safety = rating
+                has_source_rating = True
             post.source = collect_sources(*sources, *post.source.splitlines())
         else:
             tags_by_md5 = []
@@ -259,7 +262,7 @@ def process_post(  # noqa C901
         image = file_to_upload
 
     # Search SauceNAO with file
-    if config.auto_tagger['saucenao'] and post.type != 'video' and not limit_event.is_set():
+    if config.auto_tagger['saucenao'] and post.type != 'video' and not limit_event.is_set() and (image or config.globals['public']):
         cooldown.wait()
         sauce_results, limit_reached = get_saucenao_results(sauce, post, image, cooldown)
 
@@ -272,7 +275,9 @@ def process_post(  # noqa C901
 
         if sauce_results:
             tags_by_sauce, sources, rating = prepare_post(sauce_results, config, categories)
-            post.safety = rating or post.safety
+            if rating:
+                post.safety = rating
+                has_source_rating = True
             post.source = collect_sources(*sources, *post.source.splitlines())
         else:
             tags_by_sauce = []
@@ -292,14 +297,16 @@ def process_post(  # noqa C901
 
         result = tag_media(
             image,
-            config.auto_tagger['default_safety'],
+            post.safety or config.auto_tagger['default_safety'],
             config.auto_tagger['wd_tagger_threshold'],
             config.auto_tagger['wd_tagger_character_threshold'],
             config.auto_tagger['wd_tagger_set_tag'],
             review_threshold,
         )
 
-        tags_by_wd_tagger, post.safety = result
+        tags_by_wd_tagger, wd_safety = result
+        if not has_source_rating:
+            post.safety = wd_safety
         if config.tag_categories['enabled']:
             for name, category in wd_tagger.tag_categories(tags_by_wd_tagger).items():
                 categories.setdefault(name, category)

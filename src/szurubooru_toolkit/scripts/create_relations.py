@@ -100,7 +100,7 @@ def evaluate_relations(tag: Tag, relation: Tag) -> None:
     # Create the relation only if at least the configured threshold of posts has both tags
     try:
         # Only the total is needed, so ask for a single post
-        count = next(szuru.get_posts(f'{tag.primary_name} {relation.primary_name}', max_results=1))
+        count = next(szuru.get_posts(f'{tag.primary_name} {relation.primary_name}', videos=True, max_results=1))
     except StopIteration:
         count = 0
 

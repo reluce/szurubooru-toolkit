@@ -4,7 +4,6 @@ import re
 import urllib.parse
 from typing import Callable
 
-import httpx
 from loguru import logger
 from tqdm import tqdm
 
@@ -125,11 +124,14 @@ def main(query: str = 'source:*sankaku*', dry_run: bool = False) -> None:
             if md5 not in cache:
                 try:
                     results = sankaku.search(f'md5:{md5}', limit=1)
-                except httpx.HTTPError as e:
+                except Exception as e:
                     # Not cached, so a later post with the same md5 tries again
                     logger.warning(f'Could not search Sankaku for md5 {md5}: {e}')
                     return None
-                cache[md5] = results[0]['id'] if results else None
+                if not isinstance(results, list):
+                    logger.warning(f'Unexpected Sankaku response for md5 {md5}: {results}')
+                    return None
+                cache[md5] = results[0].get('id') if results and isinstance(results[0], dict) else None
             return cache[md5]
 
         updated = unresolved_posts = 0

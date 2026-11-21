@@ -117,3 +117,55 @@ def test_tag_posts_skips_posts_which_would_not_change(monkeypatch, add_tags, upd
     tag_posts.main('1', add_tags=add_tags)
 
     assert len(szuru.updated) == updates
+
+
+def test_failed_download_skips_saucenao_when_not_public(monkeypatch, szuru):
+    auto_tagger.config.globals['public'] = False
+    auto_tagger.config.auto_tagger.update(saucenao=True, md5_search=False, wd_tagger=False)
+    monkeypatch.setattr(auto_tagger, 'download_media', lambda url, md5: None)
+    monkeypatch.setattr(
+        auto_tagger,
+        'get_saucenao_results',
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('SauceNAO must not be called with private URL')),
+    )
+
+    run(make_post())
+
+
+def test_wd_tagger_preserves_booru_rating_and_existing_safety_on_failure(monkeypatch, szuru):
+    auto_tagger.config.auto_tagger.update(saucenao=False, md5_search=True, wd_tagger=True, wd_tagger_forced=True)
+    monkeypatch.setattr(
+        auto_tagger,
+        'search_boorus',
+        lambda *args, **kwargs: {'danbooru': [BooruPost(id=1, tags='megumin', rating='explicit')]},
+    )
+    monkeypatch.setattr(auto_tagger, 'download_media', lambda url, md5: b'img')
+
+    class SafeTagger:
+        def tag_image(self, image, default_safety, *args):
+            return ['solo'], 'safe'
+
+    monkeypatch.setattr(auto_tagger, 'wd_tagger', SafeTagger())
+    post = make_post()
+    run(post)
+
+    assert post.safety == 'unsafe'
+
+
+def test_tag_posts_overwrite_does_not_mutate_shared_add_tags(monkeypatch):
+    post1 = make_post()
+    post2 = make_post()
+    post2.id = '2'
+    szuru = StubSzuru([post1, post2])
+    config = Config()
+    config.tag_posts.update(mode='overwrite', update_implications=True, workers=2)
+    monkeypatch.setattr(tag_posts, 'szuru', szuru)
+    monkeypatch.setattr(tag_posts, 'config', config)
+    monkeypatch.setattr(tag_posts, 'get_cached_implications', lambda tag: ['implied_tag'] if tag == 'char' else [])
+
+    shared = ['char']
+    tag_posts.main('1 2', add_tags=shared)
+
+    assert shared == ['char']
+    assert 'implied_tag' in post1.tags
+    assert 'implied_tag' in post2.tags

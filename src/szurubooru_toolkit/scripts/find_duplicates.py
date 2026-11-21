@@ -86,8 +86,9 @@ def main(query: str = '*') -> None:
             else:
                 logger.debug(f'Could not hash post {post.id}')
 
+        hide_progress = config.globals.get('hide_progress', config.find_duplicates['hide_progress'])
         workers = max(1, int(config.find_duplicates['workers']))
-        run_concurrently(posts, worker, workers, int(total_posts), config.find_duplicates['hide_progress'])
+        run_concurrently(posts, worker, workers, int(total_posts), hide_progress)
 
         clusters = find_duplicate_clusters(hashes, threshold)
 

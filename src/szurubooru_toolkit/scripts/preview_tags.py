@@ -7,6 +7,7 @@ from loguru import logger
 
 from szurubooru_toolkit import config
 from szurubooru_toolkit import szuru
+from szurubooru_toolkit.szurubooru import SzurubooruError
 from szurubooru_toolkit.utils import download_media
 from szurubooru_toolkit.wdtagger import CATEGORY_CHARACTER
 from szurubooru_toolkit.wdtagger import CATEGORY_GENERAL
@@ -105,10 +106,17 @@ def main(target: str) -> None:
         is_video = path.suffix.lower() in VIDEO_EXTENSIONS
         source = str(path)
     elif target.isnumeric():
-        post = szuru.get_post(target)
+        try:
+            post = szuru.get_post(target)
+        except SzurubooruError as e:
+            logger.critical(f'Could not fetch post {target}: {e}')
+            exit(1)
         media = download_media(post.content_url, post.md5)
         is_video = post.type == 'video'
         source = f'post {post.id}'
+        if not media:
+            logger.critical(f'Could not download {source}.')
+            exit(1)
     else:
         logger.critical(f'"{target}" is neither an existing file nor a post id.')
         exit(1)

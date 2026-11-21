@@ -58,7 +58,7 @@ def main(
             logger.info(f'Found {total_posts} posts. Start tagging...')
 
         def worker(post) -> None:
-            original = set(post.tags), post.source
+            original = set(post.tags), set(post.source.splitlines())
 
             if mode == 'append':
                 if add_tags:
@@ -67,7 +67,7 @@ def main(
                     post.source = collect_sources(post.source, source)
             elif mode == 'overwrite':
                 if add_tags:
-                    post.tags = add_tags
+                    post.tags = list(add_tags)
                 if source:
                     post.source = source
 
@@ -86,7 +86,7 @@ def main(
                             post.tags.append(implication)
 
             # Re-runs mostly hit posts which already are as requested
-            if (set(post.tags), post.source) != original:
+            if (set(post.tags), set(post.source.splitlines())) != original:
                 szuru.update_post(post)
 
         workers = max(1, int(config.tag_posts['workers']))

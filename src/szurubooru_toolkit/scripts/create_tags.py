@@ -54,6 +54,8 @@ def add_implications(tag_name: str, implications: list, implied_categories: dict
         None
     """
 
+    implications = list(dict.fromkeys(implied for implied in implications if implied))
+
     for implied in implications:
         try:
             szuru.get_tag(implied)
