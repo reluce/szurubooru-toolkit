@@ -90,3 +90,42 @@ def test_invalid_tag_category_mapping_rejected(make_config):
     config.tag_categories['category_map'] = {'character': 42}
     with pytest.raises(SystemExit):
         config.validate_config()
+
+
+def test_partial_credentials_preserves_defaults(monkeypatch, tmp_path):
+    config_file = tmp_path / 'config.toml'
+    config_file.write_text('[credentials.sankaku]\nusername = "alice"\n')
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(Config, 'validate_config', lambda self: None)
+
+    config = Config()
+
+    assert config.credentials['sankaku'] == {'username': 'alice', 'password': None}
+    assert config.credentials['pixiv'] == {'token': None}
+
+
+def test_validate_path_allows_unset_src_path(make_config, tmp_path):
+    config = make_config()
+    config.upload_media['src_path'] = None
+    config.import_from_url['tmp_path'] = str(tmp_path / 'tmp')
+    config.logging['log_file'] = str(tmp_path / 'logs' / 'app.log')
+
+    config.validate_path()
+
+    assert (tmp_path / 'tmp').is_dir()
+    assert (tmp_path / 'logs').is_dir()
+
+
+@pytest.mark.parametrize('bad_threshold', ['abcMB', None])
+def test_invalid_convert_threshold_rejected(make_config, bad_threshold):
+    config = make_config()
+    config.upload_media['convert_threshold'] = bad_threshold
+    with pytest.raises(SystemExit):
+        config.validate_config()
+
+
+def test_invalid_auto_tagger_default_safety_rejected(make_config):
+    config = make_config()
+    config.auto_tagger['default_safety'] = 'invalid'
+    with pytest.raises(SystemExit):
+        config.validate_config()
