@@ -75,7 +75,7 @@ dev = [
     "flake8<8.0.0,>=6.0.0",
     "isort<10.0.0,>=5.10.1",
     "pre-commit<5.0.0,>=3.0.0",
-    "pytest<9.0.0,>=8.0.0",
+    "pytest<10.0.0,>=8.0.0",
     # For the WD tagger tests: run and build small ONNX models
     "onnxruntime<2.0.0,>=1.19.0",
     "onnx<2.0.0,>=1.16.0",
