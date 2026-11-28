@@ -25,7 +25,7 @@ authors = [
 license = "GPL-3.0-only"
 requires-python = ">=3.11"
 dependencies = [
-    "Pillow<13.0.0,>=9.5.0",
+    "Pillow<14.0.0,>=9.5.0",
     "httpx<1.0.0,>=0.24.0",
     "click<9.0.0,>=8.0.0",
     "tqdm<5.0.0,>=4.65.0",
